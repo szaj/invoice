@@ -2,63 +2,28 @@ import "server-only";
 
 import { z } from "zod";
 
-const appEnvSchema = z.enum(["local", "development", "staging", "production"]);
-const nodeEnvSchema = z.enum(["development", "test", "production"]);
+import {
+  blankToUndefined,
+  envSchema,
+  parseSupabasePublicConfig,
+  type Env,
+  type EnvSource,
+  type SupabasePublicConfig,
+} from "@/config/env-schema";
 
-function blankToUndefined(value: string | undefined): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed === "" ? undefined : trimmed;
-}
-
-const optionalSecret = z.string().min(1).optional();
-const optionalUrl = z.url().optional();
-const optionalEmail = z.email().optional();
-
-const envSchema = z.object({
-  NODE_ENV: nodeEnvSchema.default("development"),
-  APP_ENV: appEnvSchema.default("local"),
-
-  DATABASE_URL: optionalSecret,
-  DIRECT_URL: optionalSecret,
-
-  NEXT_PUBLIC_SUPABASE_URL: optionalUrl,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: optionalSecret,
-  SUPABASE_SERVICE_ROLE_KEY: optionalSecret,
-
-  R2_ACCOUNT_ID: optionalSecret,
-  R2_ACCESS_KEY_ID: optionalSecret,
-  R2_SECRET_ACCESS_KEY: optionalSecret,
-  R2_BUCKET: optionalSecret,
-  R2_ENDPOINT: optionalUrl,
-
-  REDIS_URL: optionalSecret,
-
-  RESEND_API_KEY: optionalSecret,
-  EMAIL_FROM: optionalEmail,
-
-  SENTRY_DSN: optionalUrl,
-  NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
-
-  STRIPE_SECRET_KEY: optionalSecret,
-  STRIPE_PUBLISHABLE_KEY: optionalSecret,
-  STRIPE_WEBHOOK_SECRET: optionalSecret,
-  PAYPAL_CLIENT_ID: optionalSecret,
-  PAYPAL_CLIENT_SECRET: optionalSecret,
-  PAYPAL_WEBHOOK_ID: optionalSecret,
-  BANK_PROCESSOR_API_KEY: optionalSecret,
-  BANK_PROCESSOR_WEBHOOK_SECRET: optionalSecret,
-});
-
-export type Env = z.infer<typeof envSchema>;
-export type AppEnv = z.infer<typeof appEnvSchema>;
-
-export interface EnvSource {
-  readonly [key: string]: string | undefined;
-}
+export {
+  envSchema,
+  PUBLIC_ENV_KEYS,
+  publicEnvSchema,
+  SERVER_SECRET_ENV_KEYS,
+  serverEnvSchema,
+  type AppEnv,
+  type Env,
+  type EnvSource,
+  type PublicEnv,
+  type ServerEnv,
+  type SupabasePublicConfig,
+} from "@/config/env-schema";
 
 function readEnvInput(source: EnvSource) {
   return {
@@ -109,4 +74,26 @@ export function getEnv(): Env {
 
 export function resetEnvCache(): void {
   cachedEnv = undefined;
+}
+
+export function requireRuntimeDatabaseUrl(env: Env = getEnv()): string {
+  if (!env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required for application database access");
+  }
+
+  return env.DATABASE_URL;
+}
+
+export function requireDirectDatabaseUrl(env: Env = getEnv()): string {
+  const url = env.DIRECT_URL ?? env.DATABASE_URL;
+
+  if (!url) {
+    throw new Error("DIRECT_URL (or DATABASE_URL) is required for Prisma CLI migrations");
+  }
+
+  return url;
+}
+
+export function requireSupabasePublicConfig(env: Env = getEnv()): SupabasePublicConfig {
+  return parseSupabasePublicConfig(env);
 }

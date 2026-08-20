@@ -57,7 +57,9 @@ Internal development vault for the multi-brand invoicing and payment-management 
 - [[Error Handling]]
 - [[Testing]]
 - [[Deployment]]
+- [[Database]]
 - [[Engineering Rules]]
+- [[Authentication]]
 
 ## Development Phases
 
@@ -79,13 +81,13 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 Current Phase: Phase 01 — Platform Foundation
 
-Current Task: [[TASK-002 Database Foundation]]
+Current Task: [[TASK-004 Password Reset and Session Controls]]
 
-Current Status: [[TASK-001 Repository Foundation]] is COMPLETE. Next buildable task is TASK-002 (Prisma + Supabase PostgreSQL tooling). Do not implement product entities in TASK-002.
+Current Status: [[TASK-003 Authentication Base]] is COMPLETE. Next buildable task is TASK-004 (password reset and session controls). Supabase Auth proves identity; application DB/domain remains authorization.
 
-Next Task: [[TASK-002 Database Foundation]]
+Next Task: [[TASK-004 Password Reset and Session Controls]]
 
-TASK-002 uses accepted [[05 Architecture Decisions#ADR-002 — Database|ADR-002]] (Supabase PostgreSQL + Prisma). It depends on TASK-001.
+Do not start TASK-004 until ready. TASK-004 depends on TASK-003.
 
 ## Blocked Items
 

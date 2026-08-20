@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     "docs/**",
     ".obsidian/**",
     ".cursor/**",
+    "src/generated/**",
   ]),
 ]);
 

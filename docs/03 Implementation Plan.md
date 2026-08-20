@@ -126,9 +126,9 @@ Depends on: Phases 01–08
 
 ## First Buildable Task
 
-[[TASK-001 Repository Foundation]] is COMPLETE.
+[[TASK-001 Repository Foundation]] and [[TASK-002 Database Foundation]] and [[TASK-003 Authentication Base]] are COMPLETE.
 
-[[TASK-002 Database Foundation]] is the next buildable task. It depends on TASK-001. It uses accepted Supabase PostgreSQL + Prisma ([[05 Architecture Decisions#ADR-002 — Database|ADR-002]]). Do not implement customers, invoices, payments, or companies in TASK-002.
+[[TASK-004 Password Reset and Session Controls]] is the next buildable task. It depends on TASK-003.
 
 ## Explicitly Not Planned for Version 1
 

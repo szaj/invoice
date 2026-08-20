@@ -21,8 +21,8 @@ Control: [[03 Implementation Plan]] · [[04 Implementation Status]] · [[01 Mast
 | ID | Task | Dependencies | Status |
 |---|---|---|---|
 | TASK-001 | [[TASK-001 Repository Foundation]] | None | COMPLETE |
-| TASK-002 | [[TASK-002 Database Foundation]] | TASK-001 | NOT STARTED |
-| TASK-003 | [[TASK-003 Authentication Base]] | TASK-002 | NOT STARTED |
+| TASK-002 | [[TASK-002 Database Foundation]] | TASK-001 | COMPLETE |
+| TASK-003 | [[TASK-003 Authentication Base]] | TASK-002 | COMPLETE |
 | TASK-004 | [[TASK-004 Password Reset and Session Controls]] | TASK-003 | NOT STARTED |
 | TASK-005 | [[TASK-005 Roles and Permissions Model]] | TASK-003 | NOT STARTED |
 | TASK-006 | [[TASK-006 User Management]] | TASK-005 | NOT STARTED |

@@ -121,11 +121,20 @@ MySQL/MariaDB or another relational database. Not selected.
 
 [[TASK-002 Database Foundation]] uses Prisma against Supabase PostgreSQL. Money columns use NUMERIC/DECIMAL via Prisma Decimal. [[05 Architecture Decisions#ADR-004 — Money representation|ADR-004]].
 
+Prisma ORM v7 configuration used by this repository:
+
+- Prisma CLI (`migrate`, `studio`) reads **`DIRECT_URL`** from `prisma.config.ts`.
+- Application runtime uses pooled **`DATABASE_URL`** with `@prisma/adapter-pg`.
+- Production schema changes use Prisma migrations, not `db push`.
+
+This is how ADR-002 is applied; it is not a separate database product.
+
 ### Related Documents
 
 - [[Data Model]]
 - [[Deployment]]
 - [[Security]]
+- [[Database]]
 - [[TASK-002 Database Foundation]]
 
 ---

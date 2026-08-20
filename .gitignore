@@ -6,6 +6,9 @@ node_modules
 .next
 out
 
+# prisma generated client
+src/generated
+
 # env / secrets
 .env
 .env.*

@@ -1,0 +1,42 @@
+// TASK-003 adds identity mapping only (`users`).
+// Do not add companies, roles, permissions, customers, invoices, or payments here.
+//
+// Conventions for later models (PostgreSQL / Prisma):
+// - id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+// - company_id      String   @db.Uuid   // required on transactional tables
+// - created_at      DateTime @default(now()) @db.Timestamptz
+// - updated_at      DateTime @updatedAt @db.Timestamptz
+// - money           Decimal  @db.Decimal(19, 4)
+// - conversion_rate Decimal  @db.Decimal(20, 12)
+// Never use Float, Double, or JavaScript number for authoritative money.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("user_status")
+}
+
+/// Application identity record linked to Supabase Auth.
+/// This is not authorization: no role, permission, or company fields.
+model User {
+  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  email              String     @unique
+  supabaseAuthUserId String     @unique @map("supabase_auth_user_id") @db.Uuid
+  status             UserStatus @default(ACTIVE)
+  lastLoginAt        DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("users")
+}

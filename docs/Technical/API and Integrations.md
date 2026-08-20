@@ -35,7 +35,7 @@ The frontend should consume a versioned backend API. Even if the application is 
 
 | API Group | Representative Operations |
 | --- | --- |
-| Auth | POST /auth/login, /logout, /forgot-password, /reset-password; optional MFA endpoints. |
+| Auth | POST /api/auth/login, POST /api/auth/logout (TASK-003). POST /auth/forgot-password and /reset-password remain [[TASK-004 Password Reset and Session Controls]]. optional MFA endpoints later. |
 | Companies | GET/POST /companies; GET/PATCH /companies/{id}; gateway and currency configuration subresources. |
 | Customers | GET/POST /customers; GET/PATCH /customers/{id}; profile summary/invoices/payments. |
 | Invoices | GET/POST /invoices; GET/PATCH /invoices/{id}; issue, cancel, duplicate, PDF, email actions. |

@@ -21,7 +21,7 @@ Every task ID appears exactly once in this file.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001 is COMPLETE. The next buildable task is [[TASK-002 Database Foundation]]. All later application tasks remain NOT STARTED.
+TASK-001, [[TASK-002 Database Foundation]], and [[TASK-003 Authentication Base]] are COMPLETE. The next buildable task is [[TASK-004 Password Reset and Session Controls]]. All later application tasks remain NOT STARTED.
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -32,8 +32,8 @@ Phase index: [[Phase 01 Foundation]]
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
 | [[TASK-001 Repository Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Next.js / pnpm / Zod env / CI skeleton. No product features. |
-| [[TASK-002 Database Foundation]] | NOT STARTED | | | |  |
-| [[TASK-003 Authentication Base]] | NOT STARTED | | | |  |
+| [[TASK-002 Database Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Prisma 7 + Supabase PG. Live connectivity and foundation migration verified. |
+| [[TASK-003 Authentication Base]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Supabase Auth identity only. Live Supabase authentication verified. |
 | [[TASK-004 Password Reset and Session Controls]] | NOT STARTED | | | |  |
 | [[TASK-005 Roles and Permissions Model]] | NOT STARTED | | | |  |
 | [[TASK-006 User Management]] | NOT STARTED | | | |  |

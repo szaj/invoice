@@ -12,17 +12,17 @@ tags:
 > **Supabase Auth** proves identity. Application PostgreSQL/domain remains authoritative for roles, permissions, and company access. `authenticated = authorized` is invalid. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]] and [[Engineering Rules]].
 
 > [!abstract] Related
-> [[Roles and Permissions]] · [[Audit Logs]] · [[API and Integrations]] · [[Error Handling]] · [[Deployment]] · [[00 Home]]
+> [[Roles and Permissions]] · [[Audit Logs]] · [[API and Integrations]] · [[Error Handling]] · [[Deployment]] · [[Authentication]] · [[00 Home]]
 
 ### 20.1 Security
 
 - HTTPS only in all non-local environments.
 
-- Modern password hashing (Argon2id/bcrypt or framework-recommended equivalent).
+- Modern password hashing (Argon2id/bcrypt or framework-recommended equivalent). Login credentials are stored by **Supabase Auth**, not in the application `users` table.
 
 - CSRF protection where applicable and secure session cookies.
 
-- Rate-limit login, password reset, and sensitive API actions.
+- Rate-limit login, password reset, and sensitive API actions. TASK-003 rate-limits login through an application `LoginRateLimiter` boundary. The current implementation is **in-memory and process-local**; it is not globally effective across multiple application containers. The future production mechanism is Redis. Password-reset limiting is [[TASK-004 Password Reset and Session Controls]].
 
 - MFA strongly recommended for Admin and Compliance.
 
@@ -32,7 +32,7 @@ tags:
 
 - Principle of least privilege for application/database/cloud credentials.
 
-- Company-level authorization enforced server-side.
+- Company-level authorization enforced server-side. Not implemented in TASK-003; authentication only proves identity.
 
 - Audit log access restricted and sensitive values masked.
 
@@ -41,6 +41,8 @@ tags:
 - Security headers and content-security policy appropriate to the frontend architecture.
 
 - Dependency vulnerability scanning in CI/CD recommended.
+
+TASK-003 identity implementation: [[Authentication]]. Never treat Supabase Auth metadata as application authorization.
 
 ### 20.2 Performance and Scalability
 

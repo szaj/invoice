@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 1
 module: auth
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-003 — Authentication Base
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 1 ([[Phase 01 Foundation]])
 
@@ -88,32 +88,48 @@ N/A this cycle.
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/auth/*`, `src/server/auth/*`, `src/lib/supabase/*`, `src/config/env-schema.ts`, `src/config/public-env.ts`, `src/proxy.ts`, `src/app/login/*`, `src/app/(app)/*`, `src/app/api/auth/login/route.ts`, `src/app/api/auth/logout/route.ts`, `src/components/ui/{input,label,card}.tsx`, `prisma/migrations/20260820193000_authentication_base/`, `docs/Technical/Authentication.md`, auth unit/integration tests.
+
 ### Files Modified
+
+Env validation, Prisma schema, logger redaction, docs (Home, status, plan, security, API, database, README), Playwright shell spec.
 
 ### Migrations
 
+`20260820193000_authentication_base` — `users` identity table only.
+
 ### APIs
+
+`POST /api/auth/login`, `POST /api/auth/logout`, Server Actions `loginAction` / `logoutAction`.
 
 ### Tests
 
+Unit coverage for validation, login service, rate limit, HTTPS cookies, missing identity, no public signup, and no Auth-metadata authorization. DB identity-mapping integration gated on `RUN_DB_INTEGRATION`. Live Supabase login gated on `RUN_AUTH_INTEGRATION` plus test credentials.
+
+Live Supabase authentication verified (2026-08-20): valid login, invalid password (generic failure), server `getUser()` session recognition, logout clearing the Auth session, and `users` identity mapping without role/company/permission columns.
+
 ### Issues
 
+None remaining for TASK-003 live verification.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 
