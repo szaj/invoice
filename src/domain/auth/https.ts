@@ -20,13 +20,29 @@ export function isPublicAuthPath(pathname: string): boolean {
   return (
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/forgot-password/") ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/reset-password/") ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/auth/callback/") ||
     pathname === "/api/auth/login" ||
-    pathname === "/api/auth/logout"
+    pathname === "/api/auth/logout" ||
+    pathname === "/api/auth/forgot-password" ||
+    pathname === "/api/auth/reset-password"
   );
 }
 
 export function isLoginPagePath(pathname: string): boolean {
   return pathname === "/login" || pathname.startsWith("/login/");
+}
+
+export function isAuthenticatedAuthEntryPath(pathname: string): boolean {
+  return (
+    isLoginPagePath(pathname) ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/forgot-password/")
+  );
 }
 
 export function supabaseCookieOptions(appEnv: AppEnv): {

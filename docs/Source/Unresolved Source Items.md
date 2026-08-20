@@ -29,10 +29,10 @@ No two source documents were found to contradict a financial, permission, paymen
 | US-004 | Issued invoice financial edits | Minor non-financial metadata may be edited with audit history. Financial changes require either a controlled revised invoice version with reason, or cancellation and reissue. Final choice must be consistent across companies. | [[05 Architecture Decisions#ADR-009 — Issued invoice financial edit policy|ADR-009]] |
 | US-005 | Discount model | Optional line or invoice level; percentage or fixed; implementation should choose one consistent model or support both explicitly. | [[05 Architecture Decisions#ADR-010 — Discount model|ADR-010]] |
 | US-006 | Reporting/base currency | Configurable; initial recommendation USD. | [[05 Architecture Decisions#ADR-011 — Reporting/base currency default|ADR-011]] |
-| US-007 | Staff manual payment | Roles matrix: "Optional permission". | Policy during [[TASK-005 Roles and Permissions Model]] / [[TASK-050 Manual Payment Recording]] |
-| US-008 | Staff view of assigned invoices | Roles matrix: "Optional by policy". | Policy during [[TASK-005 Roles and Permissions Model]] |
-| US-009 | Staff report export | Roles matrix: "Optional". | Policy during [[TASK-005 Roles and Permissions Model]] / [[TASK-090 Report Exports]] |
-| US-010 | Staff audit visibility | Roles matrix: "Own activity only/none". | Policy during [[TASK-005 Roles and Permissions Model]] / [[TASK-076 Audit Log Viewer]] |
+| US-007 | Staff manual payment | Roles matrix: "Optional permission". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-050 Manual Payment Recording]] |
+| US-008 | Staff view of assigned invoices | Roles matrix: "Optional by policy". TASK-005 recorded as **denied** (no invented grant). | Policy during later invoice access tasks |
+| US-009 | Staff report export | Roles matrix: "Optional". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-090 Report Exports]] |
+| US-010 | Staff audit visibility | Roles matrix: "Own activity only/none". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-076 Audit Log Viewer]] |
 | US-011 | Due-on-receipt invoices | Due date is mandatory unless company policy allows due-on-receipt. | Policy during [[TASK-036 Invoice Lifecycle]] |
 | US-015 | Overpayment | A payment cannot apply more than the open balance unless overpayment is explicitly supported and authorized. | Policy during [[TASK-059 Partial Payments]] / [[TASK-060 Payment Allocation]] |
 

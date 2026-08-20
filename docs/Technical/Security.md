@@ -22,7 +22,7 @@ tags:
 
 - CSRF protection where applicable and secure session cookies.
 
-- Rate-limit login, password reset, and sensitive API actions. TASK-003 rate-limits login through an application `LoginRateLimiter` boundary. The current implementation is **in-memory and process-local**; it is not globally effective across multiple application containers. The future production mechanism is Redis. Password-reset limiting is [[TASK-004 Password Reset and Session Controls]].
+- Rate-limit login, password reset, and sensitive API actions. Login and password recovery use the application `AuthRateLimiter` boundary. The current implementation is **in-memory and process-local**; it is not globally effective across multiple application containers. The future production mechanism is Redis. See [[Authentication]].
 
 - MFA strongly recommended for Admin and Compliance.
 
@@ -32,17 +32,17 @@ tags:
 
 - Principle of least privilege for application/database/cloud credentials.
 
-- Company-level authorization enforced server-side. Not implemented in TASK-003; authentication only proves identity.
+- Company-level authorization enforced server-side. TASK-005 adds application roles/permissions. TASK-006 adds Admin user management under `user.manage`. TASK-007 adds Admin company CRUD under `company.write` (identity/address/status only; no hard-delete). TASK-008 stores `user_companies` and enforces Admin ALL vs Compliance/Staff assigned access (`assertCompanyAccess`). TASK-009 adds the header company switcher and per-request company context (`app-company-context` cookie); Admin All Companies is reporting-only; transactional actions require a concrete company. TASK-010 adds Admin company branding under `company.write` (invoice prefix, terms, email template reference, brand contact, logo metadata); Staff cannot change branding. File uploads are validated by MIME/magic bytes and size before StorageService persistence. TASK-011 adds Admin reporting groups (`company_groups` / `reporting_group_id`) for roll-up reporting only; membership never grants company access. TASK-012 adds append-only `audit_logs` for login and user/company admin events with sensitive-value masking; no update/delete APIs; viewer remains TASK-076 (`audit.read` Admin/Compliance; Staff US-010 OPEN/denied). The `bootstrap:admin` CLI is operational-only for first Admin / recovery and is not a runtime backdoor. `authenticated = authorized` remains invalid.
 
 - Audit log access restricted and sensitive values masked.
 
-- File uploads validated by MIME/type/size; malware scanning recommended if supporting arbitrary attachments.
+- File uploads validated by MIME/type/size; malware scanning recommended if supporting arbitrary attachments. Company logos (TASK-010) allow PNG/JPEG/WebP up to 2 MB with magic-byte checks; bytes are stored via StorageService, not in PostgreSQL columns.
 
 - Security headers and content-security policy appropriate to the frontend architecture.
 
 - Dependency vulnerability scanning in CI/CD recommended.
 
-TASK-003 identity implementation: [[Authentication]]. Never treat Supabase Auth metadata as application authorization.
+TASK-003/TASK-004 identity implementation: [[Authentication]]. TASK-005 RBAC and TASK-006 Admin user management: [[Authorization]]. Never treat Supabase Auth metadata as application authorization. Recovery tokens, access tokens, refresh tokens, passwords, cookies, authorization headers, and service-role keys must not be logged. Password-recovery redirects must use trusted application URLs (`APP_URL`); arbitrary client-supplied redirects are rejected. `password_reset_required` is workflow/session state only.
 
 ### 20.2 Performance and Scalability
 

@@ -40,3 +40,6 @@ Thumbs.db
 
 # vercel (not used; ignore if created locally)
 .vercel
+
+# local object storage (TASK-010 StorageService local adapter)
+.data/

@@ -23,13 +23,13 @@ Control: [[03 Implementation Plan]] · [[04 Implementation Status]] · [[01 Mast
 | TASK-001 | [[TASK-001 Repository Foundation]] | None | COMPLETE |
 | TASK-002 | [[TASK-002 Database Foundation]] | TASK-001 | COMPLETE |
 | TASK-003 | [[TASK-003 Authentication Base]] | TASK-002 | COMPLETE |
-| TASK-004 | [[TASK-004 Password Reset and Session Controls]] | TASK-003 | NOT STARTED |
-| TASK-005 | [[TASK-005 Roles and Permissions Model]] | TASK-003 | NOT STARTED |
-| TASK-006 | [[TASK-006 User Management]] | TASK-005 | NOT STARTED |
-| TASK-007 | [[TASK-007 Company CRUD]] | TASK-005, TASK-002 | NOT STARTED |
-| TASK-008 | [[TASK-008 User Company Assignments]] | TASK-006, TASK-007 | NOT STARTED |
-| TASK-009 | [[TASK-009 Tenant Isolation and Company Context]] | TASK-008 | NOT STARTED |
-| TASK-010 | [[TASK-010 Company Branding Configuration]] | TASK-007 | NOT STARTED |
-| TASK-011 | [[TASK-011 Reporting Groups]] | TASK-007 | NOT STARTED |
-| TASK-012 | [[TASK-012 Audit Event Foundation]] | TASK-003 | NOT STARTED |
+| TASK-004 | [[TASK-004 Password Reset and Session Controls]] | TASK-003 | COMPLETE |
+| TASK-005 | [[TASK-005 Roles and Permissions Model]] | TASK-003 | COMPLETE |
+| TASK-006 | [[TASK-006 User Management]] | TASK-005 | COMPLETE |
+| TASK-007 | [[TASK-007 Company CRUD]] | TASK-005, TASK-002 | COMPLETE |
+| TASK-008 | [[TASK-008 User Company Assignments]] | TASK-006, TASK-007 | COMPLETE |
+| TASK-009 | [[TASK-009 Tenant Isolation and Company Context]] | TASK-008 | COMPLETE |
+| TASK-010 | [[TASK-010 Company Branding Configuration]] | TASK-007 | COMPLETE |
+| TASK-011 | [[TASK-011 Reporting Groups]] | TASK-007 | COMPLETE |
+| TASK-012 | [[TASK-012 Audit Event Foundation]] | TASK-003 | COMPLETE |
 | TASK-013 | [[TASK-013 Core System Settings]] | TASK-006, TASK-007, TASK-012 | NOT STARTED |

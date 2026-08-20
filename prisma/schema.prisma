@@ -1,5 +1,13 @@
-// TASK-003 adds identity mapping only (`users`).
-// Do not add companies, roles, permissions, customers, invoices, or payments here.
+// TASK-003 adds identity mapping (`users`).
+// TASK-004 adds password_reset_required (workflow flag, not a credential).
+// TASK-005 adds roles / permissions in the application database.
+// TASK-006 adds Admin user-management fields (employee_id, mfa_enabled, created_by).
+// TASK-007 adds companies (identity, address, status, names).
+// TASK-008 adds user_companies (user-to-company assignment).
+// TASK-010 adds company branding fields and logo file metadata.
+// TASK-011 adds company_groups and companies.reporting_group_id (reporting only).
+// TASK-012 adds append-only audit_logs (application audit trail; not Pino).
+// Do not add currencies, customers, invoices, payments, or invoice sequences here.
 //
 // Conventions for later models (PostgreSQL / Prisma):
 // - id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -26,17 +34,195 @@ enum UserStatus {
   @@map("user_status")
 }
 
+enum RoleCode {
+  ADMIN
+  COMPLIANCE
+  STAFF
+
+  @@map("role_code")
+}
+
+enum RoleCompanyScope {
+  ALL
+  ASSIGNED
+
+  @@map("role_company_scope")
+}
+
+/// Application RBAC role. Authorization lives here, not in Supabase Auth metadata.
+model Role {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         RoleCode         @unique
+  name         String
+  companyScope RoleCompanyScope @map("company_scope")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  permissions  RolePermission[]
+  users        User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String           @unique
+  name      String
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  roles     RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
 /// Application identity record linked to Supabase Auth.
-/// This is not authorization: no role, permission, or company fields.
+/// role_id is application authorization, not an Auth credential.
+/// password_reset_required is an application workflow flag, not a credential or permission.
+/// Company assignment lives on user_companies, not on this row and not in Auth metadata.
 model User {
-  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name               String
-  email              String     @unique
-  supabaseAuthUserId String     @unique @map("supabase_auth_user_id") @db.Uuid
-  status             UserStatus @default(ACTIVE)
-  lastLoginAt        DateTime?  @map("last_login_at") @db.Timestamptz
-  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String
+  email                 String        @unique
+  supabaseAuthUserId    String        @unique @map("supabase_auth_user_id") @db.Uuid
+  status                UserStatus    @default(ACTIVE)
+  roleId                String?       @map("role_id") @db.Uuid
+  employeeId            String?       @map("employee_id")
+  mfaEnabled            Boolean       @default(false) @map("mfa_enabled")
+  lastLoginAt           DateTime?     @map("last_login_at") @db.Timestamptz
+  passwordResetRequired Boolean       @default(false) @map("password_reset_required")
+  createdByUserId       String?       @map("created_by_user_id") @db.Uuid
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  role                  Role?         @relation(fields: [roleId], references: [id])
+  createdBy             User?         @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdUsers          User[]        @relation("UserCreatedBy")
+  companies             UserCompany[]
 
   @@map("users")
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  WEBHOOK
+
+  @@map("audit_actor_type")
+}
+
+/// Append-only application audit trail (BR-015). Not operational Pino logs.
+/// Application layer must not expose update/delete APIs for this table.
+/// actor_user_id / company_id are historical references without FKs so rows survive
+/// actor/company lifecycle and remain writable for system/login events.
+model AuditLog {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurredAt    DateTime       @default(now()) @map("occurred_at") @db.Timestamptz
+  actorType     AuditActorType @map("actor_type")
+  actorUserId   String?        @map("actor_user_id") @db.Uuid
+  companyId     String?        @map("company_id") @db.Uuid
+  entityType    String         @map("entity_type")
+  entityId      String?        @map("entity_id")
+  action        String
+  oldValues     Json?          @map("old_values")
+  newValues     Json?          @map("new_values")
+  reason        String?
+  ipAddress     String?        @map("ip_address")
+  userAgent     String?        @map("user_agent")
+  correlationId String?        @map("correlation_id")
+
+  @@index([occurredAt])
+  @@index([actorUserId])
+  @@index([companyId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("company_status")
+}
+
+enum ReportingGroupStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("reporting_group_status")
+}
+
+/// Optional parent reporting group for consolidated reporting roll-ups.
+/// Membership is organizational/reporting only and never grants company access.
+model CompanyGroup {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  code         String               @unique
+  status       ReportingGroupStatus @default(ACTIVE)
+  displayOrder Int                  @default(0) @map("display_order")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  companies    Company[]
+
+  @@map("company_groups")
+}
+
+/// Company/brand identity, structured address, branding, and active/inactive status.
+/// Gateway credentials, currencies, and invoice sequence issuance are later tasks.
+/// reporting_group_id is for report roll-ups only; authorization uses user_companies.
+/// Logo bytes live in object storage; only metadata is stored here.
+model Company {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  displayName            String        @map("display_name")
+  legalName              String?       @map("legal_name")
+  email                  String?
+  phone                  String?
+  website                String?
+  registrationTaxNumber  String?       @map("registration_tax_number")
+  addressLine1           String?       @map("address_line1")
+  addressLine2           String?       @map("address_line2")
+  city                   String?
+  region                 String?
+  postalCode             String?       @map("postal_code")
+  countryCode            String?       @map("country_code") @db.Char(2)
+  invoicePrefix          String?       @map("invoice_prefix")
+  termsAndConditions     String?       @map("terms_and_conditions")
+  emailTemplateReference String?       @map("email_template_reference")
+  logoStorageKey         String?       @map("logo_storage_key")
+  logoMimeType           String?       @map("logo_mime_type")
+  logoByteSize           Int?          @map("logo_byte_size")
+  logoOriginalFilename   String?       @map("logo_original_filename")
+  logoUploadedAt         DateTime?     @map("logo_uploaded_at") @db.Timestamptz
+  reportingGroupId       String?       @map("reporting_group_id") @db.Uuid
+  status                 CompanyStatus @default(ACTIVE)
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  reportingGroup         CompanyGroup? @relation(fields: [reportingGroupId], references: [id], onDelete: SetNull)
+  users                  UserCompany[]
+
+  @@index([reportingGroupId])
+  @@map("companies")
+}
+
+/// Controls company access for Compliance and Staff.
+/// Admin authorization is all companies regardless of rows here.
+/// Reporting-group membership is not authorization.
+model UserCompany {
+  userId    String   @map("user_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@index([companyId])
+  @@map("user_companies")
 }

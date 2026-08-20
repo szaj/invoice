@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 1
 module: companies
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-008 — User Company Assignments
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 1 ([[Phase 01 Foundation]])
 
@@ -87,32 +87,48 @@ E2E-07 precursor.
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/authz/company-access.ts`, `src/app/(app)/users/company-assignment-fields.tsx`, `prisma/migrations/20260820240000_user_company_assignments/`, `tests/unit/company-assignments.test.ts`, `tests/integration/company-assignments.test.ts`.
+
 ### Files Modified
+
+Prisma `UserCompany`; User/Company relations. Authorization principal loads `assignedCompanyIds`. User create/update persist `companyIds`. `GET /api/companies/{id}` uses `assertCompanyAccess`. Admin company UI still requires `company.write`. User create/edit assignment checkboxes. [[Authorization]], [[Security]], [[API and Integrations]], [[Database]], [[Authentication]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 01 Foundation]], ADR-003 consequences, [[06 Development Log]].
 
 ### Migrations
 
+`20260820240000_user_company_assignments` — `user_companies (user_id, company_id)` with composite PK and FKs. Applied with `pnpm prisma:migrate:deploy`. No switcher, reporting groups, currencies, invoices, or payments.
+
 ### APIs
+
+- User create/PATCH include `companyIds` (Admin/`user.manage`).
+- `GET /api/companies/{id}` requires company access: Admin ALL, Compliance/Staff assigned only. Unassigned → 403.
+- Company list/create/PATCH/status remain `company.write` (Admin).
 
 ### Tests
 
+Unit: Admin ALL without assignment rows; Staff assigned vs unassigned; reporting-group field ignored; assignment persist/replace; unknown company IDs rejected. Integration (DB): assignment rows persisted; Staff GET assigned allowed; Staff GET unassigned 403 (E2E-07 precursor); Staff list still 403. US-007–010 remain denied. E2E N/A.
+
 ### Issues
 
+Company switcher and per-request company context remain [[TASK-009 Tenant Isolation and Company Context]]. Reporting groups are not authorization. Admin ALL is independent of `user_companies` rows. Audit store remains TASK-012 (safe Pino events only).
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

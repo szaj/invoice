@@ -21,7 +21,7 @@ Every task ID appears exactly once in this file.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001, [[TASK-002 Database Foundation]], and [[TASK-003 Authentication Base]] are COMPLETE. The next buildable task is [[TASK-004 Password Reset and Session Controls]]. All later application tasks remain NOT STARTED.
+TASK-001 through [[TASK-012 Audit Event Foundation]] are COMPLETE. The next buildable task is [[TASK-013 Core System Settings]]. All later application tasks remain NOT STARTED.
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -34,15 +34,15 @@ Phase index: [[Phase 01 Foundation]]
 | [[TASK-001 Repository Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Next.js / pnpm / Zod env / CI skeleton. No product features. |
 | [[TASK-002 Database Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Prisma 7 + Supabase PG. Live connectivity and foundation migration verified. |
 | [[TASK-003 Authentication Base]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Supabase Auth identity only. Live Supabase authentication verified. |
-| [[TASK-004 Password Reset and Session Controls]] | NOT STARTED | | | |  |
-| [[TASK-005 Roles and Permissions Model]] | NOT STARTED | | | |  |
-| [[TASK-006 User Management]] | NOT STARTED | | | |  |
-| [[TASK-007 Company CRUD]] | NOT STARTED | | | |  |
-| [[TASK-008 User Company Assignments]] | NOT STARTED | | | |  |
-| [[TASK-009 Tenant Isolation and Company Context]] | NOT STARTED | | | |  |
-| [[TASK-010 Company Branding Configuration]] | NOT STARTED | | | |  |
-| [[TASK-011 Reporting Groups]] | NOT STARTED | | | |  |
-| [[TASK-012 Audit Event Foundation]] | NOT STARTED | | | |  |
+| [[TASK-004 Password Reset and Session Controls]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Supabase Auth recovery/reset. Live password update verified; recovery-email click SKIPPED. |
+| [[TASK-005 Roles and Permissions Model]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Admin/Compliance/Staff matrix in application DB. Optional Staff policies denied (US-007–010). |
+| [[TASK-006 User Management]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Admin CRUD/suspend/reset. MFA status only. No company assignment. |
+| [[TASK-007 Company CRUD]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Admin identity/address/status CRUD. No currencies, gateways, branding files, or assignments. |
+| [[TASK-008 User Company Assignments]] | COMPLETE | 2026-08-20 | 2026-08-20 | | user_companies. Admin ALL; Staff/Compliance assigned-only. No switcher. |
+| [[TASK-009 Tenant Isolation and Company Context]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Header switcher; cookie context; All Companies reporting-only; transactional concrete company required. |
+| [[TASK-010 Company Branding Configuration]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Admin branding subresource: prefix, terms, email template ref, contact, logo metadata via StorageService. No PDF/email/sequence. |
+| [[TASK-011 Reporting Groups]] | COMPLETE | 2026-08-20 | 2026-08-20 | | company_groups + reporting_group_id. Admin CRUD/assign. Membership is not authorization. No VX seed. |
+| [[TASK-012 Audit Event Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Append-only `audit_logs`; login + user/company admin writers; no viewer. |
 | [[TASK-013 Core System Settings]] | NOT STARTED | | | |  |
 
 ## Phase 02 — Financial Foundation

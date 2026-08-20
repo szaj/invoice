@@ -19,7 +19,7 @@ tags:
 | PDF generation failure | Show generation error; do not claim email sent with missing attachment. |
 | Permission failure | Return 403; log high-risk attempts where appropriate. |
 | Concurrent invoice update | Use optimistic locking/version checks or equivalent to prevent silent overwrite. |
-| Invalid company context | Reject request server-side. |
+| Invalid company context | Reject request server-side (TASK-009: inaccessible/malformed selection → reject; All Companies on transactional action → 400; company_id mismatch / IDOR → 403). |
 | Currency disabled after invoice | Historical invoice remains valid; no impact on existing data. |
 | Gateway disabled after payment | Historical payments remain visible. |
 

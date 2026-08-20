@@ -1,0 +1,62 @@
+export type AuditActorType = "USER" | "SYSTEM" | "WEBHOOK";
+
+export type AuditJson =
+  null | boolean | number | string | readonly AuditJson[] | { readonly [key: string]: AuditJson };
+
+/**
+ * Append-only audit event input after domain validation / masking.
+ * Application APIs must not update or delete stored events.
+ */
+export interface AuditEventInput {
+  readonly actorType: AuditActorType;
+  readonly actorUserId?: string | null;
+  readonly companyId?: string | null;
+  readonly entityType: string;
+  readonly entityId?: string | null;
+  readonly action: string;
+  readonly oldValues?: AuditJson;
+  readonly newValues?: AuditJson;
+  readonly reason?: string | null;
+  readonly ipAddress?: string | null;
+  readonly userAgent?: string | null;
+  readonly correlationId?: string | null;
+  readonly occurredAt?: Date;
+}
+
+export interface AuditEventRecord extends AuditEventInput {
+  readonly id: string;
+  readonly occurredAt: Date;
+  readonly actorUserId: string | null;
+  readonly companyId: string | null;
+  readonly entityId: string | null;
+  readonly oldValues: AuditJson;
+  readonly newValues: AuditJson;
+  readonly reason: string | null;
+  readonly ipAddress: string | null;
+  readonly userAgent: string | null;
+  readonly correlationId: string | null;
+}
+
+export const AUDIT_APPEND_ONLY_MESSAGE = "Audit events are append-only.";
+export const AUDIT_WRITE_UNAVAILABLE = "Audit logging is temporarily unavailable.";
+
+/** Mandatory TASK-012 security/admin actions that already exist in the product. */
+export const AuditActions = {
+  LOGIN_SUCCEEDED: "auth.login_succeeded",
+  LOGIN_FAILED: "auth.login_failed",
+  LOGOUT_SUCCEEDED: "auth.logout_succeeded",
+  USER_CREATED: "users.created",
+  USER_UPDATED: "users.updated",
+  USER_SUSPENDED: "users.suspended",
+  COMPANY_CREATED: "companies.created",
+  COMPANY_UPDATED: "companies.updated",
+  COMPANY_STATUS_CHANGED: "companies.status_changed",
+} as const;
+
+export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
+
+export const AuditEntityTypes = {
+  SESSION: "session",
+  USER: "user",
+  COMPANY: "company",
+} as const;

@@ -17,8 +17,8 @@ Details: [`docs/Technical/Database.md`](docs/Technical/Database.md).
 
 ## Authentication (Supabase Auth identity)
 
-Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. There is no public signup. Accounts are provisioned later by an administrator.
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Set `APP_URL` to the public application origin (required outside local). There is no public signup. Accounts are provisioned later by an administrator.
 
-Authentication proves identity only. Application authorization (roles, permissions, company access) is not implemented yet.
+Authentication proves identity only. Application authorization (roles and permissions) lives in the application database. Company assignment is not implemented yet. There is no public signup. Password recovery uses Supabase Auth; recovery redirects must be allow-listed in the Supabase project as `{APP_URL}/auth/callback`.
 
 Details: [`docs/Technical/Authentication.md`](docs/Technical/Authentication.md).

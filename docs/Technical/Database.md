@@ -8,7 +8,7 @@ tags:
 
 # Database
 
-Prisma + Supabase PostgreSQL foundation. Product tables are added by later domain tasks. See [[05 Architecture Decisions#ADR-002 — Database|ADR-002]] and [[Data Model]].
+Prisma + Supabase PostgreSQL. Identity, RBAC, user management, and company identity tables exist; remaining product tables are added by later domain tasks. See [[05 Architecture Decisions#ADR-002 — Database|ADR-002]] and [[Data Model]].
 
 ## Local setup
 
@@ -53,6 +53,7 @@ Do not run migrations through the transaction pooler. That can hang or break mig
 | `pnpm prisma:migrate:deploy` | Apply existing migrations (staging/production) |
 | `pnpm prisma:migrate:status` | Show pending/applied migrations |
 | `pnpm prisma:studio` | Browse data (uses `DIRECT_URL`) |
+| `pnpm bootstrap:admin -- --email <user@example.com>` | One-time/recovery assign of system ADMIN to an existing linked ACTIVE application user (application DB only; see [[Authentication]]) |
 
 Do **not** use `prisma db push` as the production migration strategy.
 
@@ -60,7 +61,7 @@ Do **not** add `migrate reset` to package scripts. Resets are destructive and mu
 
 The foundation migration only enables `pgcrypto` for later UUIDs.
 
-TASK-003 adds `users` for identity mapping only (`id`, `name`, `email`, `supabase_auth_user_id`, `status`, `last_login_at`). It does not add companies, roles, permissions, invoices, or payments. Login credentials remain in Supabase Auth. See [[Authentication]].
+TASK-003 adds `users` for identity mapping (`id`, `name`, `email`, `supabase_auth_user_id`, `status`, `last_login_at`). TASK-004 adds `password_reset_required` (workflow flag only). TASK-005 adds `roles`, `permissions`, `role_permissions`, and optional `users.role_id`. TASK-006 adds `employee_id`, `mfa_enabled`, and `created_by_user_id`. TASK-007 adds `companies` (identity, structured address, ISO country, contact, registration/tax number, Active/Inactive). TASK-008 adds `user_companies` (`user_id`, `company_id`). TASK-009 stores selected company context in an httpOnly cookie (`app-company-context`), not a database table. TASK-010 adds company branding columns on `companies` (`invoice_prefix`, `terms_and_conditions`, `email_template_reference`, logo metadata); logo bytes remain in object storage via StorageService. TASK-011 adds `company_groups` and optional `companies.reporting_group_id` for reporting roll-ups only (not authorization). TASK-012 adds append-only `audit_logs` (UTC `occurred_at`, actor type/user id, company id, entity, action, masked old/new JSON, reason, IP, user agent, correlation id). Actor/company IDs are historical references without FKs. Login does not assign a role. None of these tasks add customers, invoices, payments, currencies, or invoice sequence. Login credentials and recovery tokens remain in Supabase Auth. See [[Authentication]], [[Authorization]], and [[Audit Logs]].
 
 ## Conventions for later tables
 

@@ -61,7 +61,7 @@ describe("database environment", () => {
 });
 
 describe("prisma schema conventions", () => {
-  it("targets PostgreSQL without later domain models", () => {
+  it("targets PostgreSQL with identity, RBAC, and company models only", () => {
     const schema = readFileSync(schemaPath, "utf8");
 
     expect(schema).toContain('provider = "postgresql"');
@@ -70,7 +70,8 @@ describe("prisma schema conventions", () => {
     expect(schema).toContain("@db.Timestamptz");
     expect(schema).toContain("company_id");
     expect(schema).toMatch(/model User\b/);
-    expect(schema).not.toMatch(/model\s+(Company|Customer|Invoice|Payment)\b/);
+    expect(schema).toMatch(/model Company\b/);
+    expect(schema).not.toMatch(/model\s+(Customer|Invoice|Payment)\b/);
 
     const uncommented = schema
       .split("\n")

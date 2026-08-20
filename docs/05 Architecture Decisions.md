@@ -188,9 +188,9 @@ Framework-native sessions as the identity store. Not selected.
 
 ### Consequences
 
-[[TASK-003 Authentication Base]] and [[TASK-004 Password Reset and Session Controls]] use Supabase Auth for identity flows. RBAC and company isolation remain application-domain work in later tasks.
+[[TASK-003 Authentication Base]] and [[TASK-004 Password Reset and Session Controls]] use Supabase Auth for identity flows. [[TASK-005 Roles and Permissions Model]] stores Admin/Compliance/Staff and the permission matrix in the application database. [[TASK-006 User Management]] provisions and manages application users (including Auth Admin adapter calls) while keeping authorization in the application DB. [[TASK-007 Company CRUD]] stores company identity/address/status records under `company.write`. [[TASK-008 User Company Assignments]] stores `user_companies` in the application database and enforces Admin ALL vs assigned access. [[TASK-009 Tenant Isolation and Company Context]] adds the header switcher and per-request company context (cookie); Admin All Companies is reporting-only; transactional actions require a concrete company. [[TASK-011 Reporting Groups]] stores optional parent groups for report roll-ups; membership is not authorization and never bypasses `user_companies`.
 
-MFA remains strongly recommended for Admin and Compliance as specified.
+MFA remains strongly recommended for Admin and Compliance as specified. TASK-006 stores optional MFA *status* only; challenge productization is later.
 
 ### Related Documents
 
@@ -199,6 +199,12 @@ MFA remains strongly recommended for Admin and Compliance as specified.
 - [[API and Integrations]]
 - [[Engineering Rules]]
 - [[TASK-003 Authentication Base]]
+- [[TASK-005 Roles and Permissions Model]]
+- [[TASK-006 User Management]]
+- [[TASK-007 Company CRUD]]
+- [[TASK-008 User Company Assignments]]
+- [[TASK-009 Tenant Isolation and Company Context]]
+- [[TASK-011 Reporting Groups]]
 
 ---
 
@@ -330,6 +336,8 @@ Approved storage architecture.
 Local filesystem as production storage; vendor-specific R2 SDK in domain code. Rejected for production/domain coupling.
 
 ### Consequences
+
+[[TASK-010 Company Branding Configuration]] stores company logo bytes through StorageService and logo metadata in PostgreSQL. Local/test may use a local-disk adapter when R2 is unset; staging/production require R2 configuration.
 
 [[TASK-039 PDF Generation]] stores files through StorageService. Historical PDFs remain retrievable and must not be regenerated from today’s mutable data when an immutable version exists.
 
@@ -631,6 +639,10 @@ Useful context: request/correlation ID, user ID, company ID, entity type/ID, int
 Never log: raw passwords, card numbers, CVV, payment credentials, API secrets, webhook secrets, sensitive auth tokens.
 
 Application logs are not the append-only business/security audit trail. See [[Audit Logs]].
+
+### Consequences (TASK-012)
+
+[[TASK-012 Audit Event Foundation]] adds `audit_logs` as the application audit trail. Existing login and Admin user/company mutations dual-write: Pino `event:` fields remain for operations; structured rows are persisted for control/history. Secrets are masked before audit persistence. No update/delete application APIs exist for audit rows.
 
 ### Related Documents
 

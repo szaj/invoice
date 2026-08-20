@@ -5,6 +5,7 @@ import { loginWithPassword, type PasswordIdentityProvider } from "@/server/auth/
 import { MemoryLoginRateLimiter } from "@/server/auth/rate-limit";
 import type { ApplicationUserIdentity } from "@/domain/auth/identity";
 import type { UserIdentityStore } from "@/server/auth/identity-repository";
+import { createMemoryAuditWriter } from "../helpers/memory-audit-writer";
 
 const mappedUser: ApplicationUserIdentity = {
   id: "app-user-1",
@@ -12,7 +13,12 @@ const mappedUser: ApplicationUserIdentity = {
   email: "ada@example.com",
   supabaseAuthUserId: "11111111-1111-1111-1111-111111111111",
   lastLoginAt: new Date("2026-08-20T00:00:00.000Z"),
+  passwordResetRequired: false,
 };
+
+function auditWriter() {
+  return createMemoryAuditWriter();
+}
 
 function createProvider(
   result: Awaited<ReturnType<PasswordIdentityProvider["signInWithPassword"]>>,
@@ -36,6 +42,13 @@ function createStore(): UserIdentityStore & { links: number } {
       store.links += 1;
       return mappedUser;
     },
+    async findByAuthUserId() {
+      return mappedUser;
+    },
+    async clearPasswordResetRequired() {},
+    async getStatusByAuthUserId() {
+      return "ACTIVE" as const;
+    },
   };
   return store;
 }
@@ -55,6 +68,7 @@ describe("loginWithPassword", () => {
         identityProvider: provider,
         identityStore: store,
         clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
       },
     );
 
@@ -71,6 +85,7 @@ describe("loginWithPassword", () => {
         identityProvider: createProvider({ ok: false, reason: "invalid_credentials" }),
         identityStore: createStore(),
         clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
       },
     );
 
@@ -90,6 +105,7 @@ describe("loginWithPassword", () => {
         identityProvider: createProvider({ ok: false, reason: "invalid_credentials" }),
         identityStore: createStore(),
         clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
       },
     );
 
@@ -107,6 +123,7 @@ describe("loginWithPassword", () => {
       identityProvider: createProvider({ ok: false, reason: "invalid_credentials" }),
       identityStore: createStore(),
       clientKey: "203.0.113.10",
+      auditWriter: auditWriter(),
     };
 
     await loginWithPassword({ email: "ada@example.com", password: "wrong" }, deps);
@@ -128,6 +145,7 @@ describe("loginWithPassword", () => {
         identityProvider: createProvider({ ok: false, reason: "unavailable" }),
         identityStore: createStore(),
         clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
       },
     );
 
@@ -152,14 +170,50 @@ describe("loginWithPassword", () => {
           async linkAuthenticatedIdentity() {
             throw new Error("db down");
           },
+          async findByAuthUserId() {
+            return null;
+          },
+          async clearPasswordResetRequired() {},
+          async getStatusByAuthUserId() {
+            return null;
+          },
         },
         clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
       },
     );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.reason).toBe("unavailable");
+    }
+    expect(provider.signOutCalls).toBe(1);
+  });
+
+  it("rejects suspended application users after authentication", async () => {
+    const provider = createProvider({
+      ok: true,
+      identity: { authUserId: mappedUser.supabaseAuthUserId, email: mappedUser.email },
+    });
+    const result = await loginWithPassword(
+      { email: "ada@example.com", password: "correct-horse" },
+      {
+        rateLimiter: new MemoryLoginRateLimiter(),
+        identityProvider: provider,
+        identityStore: {
+          ...createStore(),
+          async getStatusByAuthUserId() {
+            return "SUSPENDED";
+          },
+        },
+        clientKey: "127.0.0.1",
+        auditWriter: auditWriter(),
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("suspended");
     }
     expect(provider.signOutCalls).toBe(1);
   });

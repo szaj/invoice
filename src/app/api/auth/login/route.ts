@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { createDefaultLoginDependencies, loginWithPassword } from "@/server/auth/login";
-import { getRequestClientKeyFromRequest, isSameOriginRequest } from "@/server/auth/request";
+import {
+  getRequestClientKeyFromRequest,
+  getRequestUserAgentFromRequest,
+  isSameOriginRequest,
+} from "@/server/auth/request";
 import { SupabasePasswordIdentityProvider } from "@/server/auth/supabase-password-provider";
 import { GENERIC_LOGIN_FAILURE, LOGIN_UNAVAILABLE } from "@/domain/auth/errors";
 
@@ -22,12 +26,19 @@ export async function POST(request: Request) {
     createDefaultLoginDependencies(
       new SupabasePasswordIdentityProvider(),
       getRequestClientKeyFromRequest(request),
+      { userAgent: getRequestUserAgentFromRequest(request) },
     ),
   );
 
   if (!result.ok) {
     const status =
-      result.reason === "rate_limited" ? 429 : result.reason === "unavailable" ? 503 : 401;
+      result.reason === "rate_limited"
+        ? 429
+        : result.reason === "unavailable"
+          ? 503
+          : result.reason === "suspended"
+            ? 403
+            : 401;
     return NextResponse.json({ ok: false, error: result.error }, { status });
   }
 

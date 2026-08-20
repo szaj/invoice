@@ -32,6 +32,7 @@
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
+    "scripts/**/*.ts",
     "tests/setup/**/*.ts",
     "tests/unit/**/*.ts",
     "tests/integration/**/*.ts",

@@ -60,6 +60,7 @@ Internal development vault for the multi-brand invoicing and payment-management 
 - [[Database]]
 - [[Engineering Rules]]
 - [[Authentication]]
+- [[Authorization]]
 
 ## Development Phases
 
@@ -81,13 +82,13 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 Current Phase: Phase 01 — Platform Foundation
 
-Current Task: [[TASK-004 Password Reset and Session Controls]]
+Current Task: [[TASK-013 Core System Settings]]
 
-Current Status: [[TASK-003 Authentication Base]] is COMPLETE. Next buildable task is TASK-004 (password reset and session controls). Supabase Auth proves identity; application DB/domain remains authorization.
+Current Status: [[TASK-012 Audit Event Foundation]] is COMPLETE. Next buildable task is TASK-013 (core system settings). Append-only `audit_logs` records login and user/company admin events; Pino remains operational logging only. Audit viewer is TASK-076.
 
-Next Task: [[TASK-004 Password Reset and Session Controls]]
+Next Task: [[TASK-013 Core System Settings]]
 
-Do not start TASK-004 until ready. TASK-004 depends on TASK-003.
+Do not start TASK-013 until ready. TASK-013 depends on TASK-006, TASK-007, and TASK-012.
 
 ## Blocked Items
 

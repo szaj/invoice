@@ -40,6 +40,7 @@ export const publicEnvSchema = z.object({
 export const serverEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema.default("development"),
   APP_ENV: appEnvSchema.default("local"),
+  APP_URL: optionalUrl,
 
   DATABASE_URL: optionalPostgresUrl,
   DIRECT_URL: optionalPostgresUrl,

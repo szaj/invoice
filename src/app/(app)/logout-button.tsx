@@ -20,11 +20,11 @@ export function LogoutButton() {
   }
 
   return (
-    <div className="grid gap-2">
-      <Button type="button" variant="outline" onClick={onLogout} disabled={pending}>
+    <div className="flex flex-col items-end gap-1">
+      <Button type="button" variant="outline" size="sm" onClick={onLogout} disabled={pending}>
         {pending ? "Signing out…" : "Sign out"}
       </Button>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
 }

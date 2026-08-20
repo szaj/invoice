@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 1
 module: companies
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-011 — Reporting Groups
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 1 ([[Phase 01 Foundation]])
 
@@ -86,32 +86,49 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/reporting-groups/{types,schema}.ts`, `src/server/reporting-groups/{reporting-group-repository,reporting-group-service,actions}.ts`, `src/app/api/reporting-groups/**`, `src/app/(app)/settings/reporting-groups/**`, `prisma/migrations/20260820260000_reporting_groups/`, `tests/unit/reporting-groups.test.ts`, `tests/integration/reporting-groups.test.ts`.
+
 ### Files Modified
+
+Prisma `CompanyGroup` model and `companies.reporting_group_id`. Home Admin link. Prerequisite tests updated for `company_groups` / `reporting_group_id`. [[Authorization]], [[Security]], [[API and Integrations]], [[Database]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 01 Foundation]], ADR-003 consequences, [[06 Development Log]].
 
 ### Migrations
 
+`20260820260000_reporting_groups` — `company_groups` (name, code, status, display_order) and `companies.reporting_group_id` FK (`ON DELETE SET NULL`). Applied with `pnpm prisma:migrate:deploy`. No VX seed data. No reporting engines, currencies, invoices, payments, or audit tables.
+
 ### APIs
+
+- `GET/POST /api/reporting-groups`
+- `GET/PATCH /api/reporting-groups/{id}`
+
+All require `company.write` (Admin). PATCH with `{ status }` activates/deactivates. Company assignment via `companyIds` on create/update. Non-Admin → 403. Membership is reporting-only; `assertCompanyAccess` / `user_companies` remain authoritative.
 
 ### Tests
 
+Unit: schema; Admin CRUD; Staff denied mutate/list; group membership does not grant company access. Integration (DB): assignment persistence; Staff GET unassigned company in same group → 403; Staff cannot mutate groups; migration recorded. `pnpm typecheck` / `lint` / `format:check` / `test` (125) / `test:integration` (29 passed, 1 skipped) / `build` pass. E2E N/A.
+
 ### Issues
 
+Monthly brand matrix and reporting-group rollup engines remain TASK-088/089. Full audit store remains TASK-012. No new ADR; ADR-003 consequences updated.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 1
 module: auth
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-005 — Roles and Permissions Model
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 1 ([[Phase 01 Foundation]])
 
@@ -85,32 +85,46 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/authz/*`, `src/server/authz/{principal,require-permission}.ts`, `src/app/api/roles/route.ts`, `prisma/migrations/20260820210000_roles_and_permissions/`, `docs/Technical/Authorization.md`, `tests/unit/authz-roles.test.ts`, `tests/integration/authz-roles.test.ts`.
+
 ### Files Modified
+
+Prisma `User.roleId` (nullable), architecture/identity tests, [[Authentication]], [[Security]], [[API and Integrations]], [[Database]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 01 Foundation]], ADR-003 consequences, [[Unresolved Source Items]] US-007–010.
 
 ### Migrations
 
+`20260820210000_roles_and_permissions` — `roles`, `permissions`, `role_permissions`, optional `users.role_id`. Seeded Admin/Compliance/Staff and matrix grants. Applied with `pnpm prisma:migrate:deploy`. No company, customer, invoice, or payment tables. Optional Staff policies not granted.
+
 ### APIs
+
+`GET /api/roles` — requires `user.manage` (Admin). Lists the role catalog. Not user CRUD.
 
 ### Tests
 
+Unit coverage for the full matrix, open Staff policies denied, hard-delete always false, and Admin vs Compliance vs Staff on `user.manage`. DB seed verification gated on `RUN_DB_INTEGRATION`. E2E N/A.
+
 ### Issues
 
+US-007–010 remain open product policy; Staff grants were not invented. Company assignment is not implemented. Login still does not assign a role.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

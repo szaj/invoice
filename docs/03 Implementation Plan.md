@@ -126,9 +126,9 @@ Depends on: Phases 01–08
 
 ## First Buildable Task
 
-[[TASK-001 Repository Foundation]] and [[TASK-002 Database Foundation]] and [[TASK-003 Authentication Base]] are COMPLETE.
+[[TASK-001 Repository Foundation]], [[TASK-002 Database Foundation]], [[TASK-003 Authentication Base]], [[TASK-004 Password Reset and Session Controls]], [[TASK-005 Roles and Permissions Model]], [[TASK-006 User Management]], [[TASK-007 Company CRUD]], [[TASK-008 User Company Assignments]], [[TASK-009 Tenant Isolation and Company Context]], [[TASK-010 Company Branding Configuration]], [[TASK-011 Reporting Groups]], and [[TASK-012 Audit Event Foundation]] are COMPLETE.
 
-[[TASK-004 Password Reset and Session Controls]] is the next buildable task. It depends on TASK-003.
+[[TASK-013 Core System Settings]] is the next buildable task.
 
 ## Explicitly Not Planned for Version 1
 

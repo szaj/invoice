@@ -35,8 +35,9 @@ The frontend should consume a versioned backend API. Even if the application is 
 
 | API Group | Representative Operations |
 | --- | --- |
-| Auth | POST /api/auth/login, POST /api/auth/logout (TASK-003). POST /auth/forgot-password and /reset-password remain [[TASK-004 Password Reset and Session Controls]]. optional MFA endpoints later. |
-| Companies | GET/POST /companies; GET/PATCH /companies/{id}; gateway and currency configuration subresources. |
+| Auth | POST /api/auth/login, POST /api/auth/logout, POST /api/auth/forgot-password, POST /api/auth/reset-password; GET /auth/callback for Supabase recovery. GET /api/roles requires `user.manage` (TASK-005). optional MFA challenge endpoints later. |
+| Companies | GET/POST /api/companies; GET/PATCH /api/companies/{id}. List/create/PATCH require `company.write`. GET by id requires company access (TASK-008). Branding subresource: GET/PATCH /api/companies/{id}/branding; GET/POST/DELETE /api/companies/{id}/branding/logo (TASK-010, `company.write`). Reporting groups: GET/POST /api/reporting-groups; GET/PATCH /api/reporting-groups/{id} (TASK-011, `company.write`; membership is not authorization). Gateway and currency configuration subresources remain later. |
+| Company context | GET/POST /api/company-context (TASK-009 switcher selection). POST /api/company-context/transactional rejects All Companies and cross-company IDOR for company-scoped transactional checks. |
 | Customers | GET/POST /customers; GET/PATCH /customers/{id}; profile summary/invoices/payments. |
 | Invoices | GET/POST /invoices; GET/PATCH /invoices/{id}; issue, cancel, duplicate, PDF, email actions. |
 | Payments | GET/POST /payments; manual record endpoint; payment detail; refund/adjustment endpoints. |
@@ -44,8 +45,8 @@ The frontend should consume a versioned backend API. Even if the application is 
 | Currencies | GET/POST/PATCH currencies; fixed-rates endpoint; company-enabled currency endpoint. |
 | Compliance | Queues, review detail, status update, notes. |
 | Reports | Parameterized report endpoints with pagination and export jobs/files. |
-| Audit | Read-only filter endpoint for authorized roles. |
-| Users | Admin CRUD, role/company assignment, suspend/reset. |
+| Audit | Append-only application writes via domain/service (TASK-012). Read-only filter endpoint for authorized roles remains TASK-076. No update/delete audit APIs. |
+| Users | GET/POST /api/users; GET/PATCH /api/users/{id}; POST /api/users/{id}/suspend; POST /api/users/{id}/reset-password (TASK-006, Admin/`user.manage` only). PATCH/create persist `companyIds` (TASK-008). |
 
 
 ### 18.1 Webhook Requirements

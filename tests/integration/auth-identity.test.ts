@@ -35,6 +35,7 @@ describe.skipIf(!runDbIntegration)("authentication identity mapping", () => {
 
     expect(first.id).toBe(second.id);
     expect(first.supabaseAuthUserId).toBe(supabaseAuthUserId);
+    expect(first.passwordResetRequired).toBe(false);
     expect(second.lastLoginAt).not.toBeNull();
 
     await prisma.user.deleteMany({ where: { supabaseAuthUserId } });
@@ -152,15 +153,22 @@ describe.skipIf(!runAuthIntegration)("supabase auth login", () => {
         "email",
         "supabase_auth_user_id",
         "status",
+        "role_id",
         "last_login_at",
+        "password_reset_required",
         "created_at",
         "updated_at",
       ]),
     );
-    expect(columnNames).not.toEqual(expect.arrayContaining(["role", "role_id", "permissions"]));
-    expect(columnNames.some((name) => name.includes("role"))).toBe(false);
-    expect(columnNames.some((name) => name.includes("permission"))).toBe(false);
+    expect(columnNames).not.toContain("password");
+    expect(columnNames).not.toContain("password_hash");
+    expect(columnNames).not.toContain("reset_token");
     expect(columnNames.some((name) => name.includes("company"))).toBe(false);
+    expect(columnNames.some((name) => name.includes("permission"))).toBe(false);
+
+    const emailNormalized = email.trim().toLowerCase();
+    const prior = await prisma.user.findUnique({ where: { email: emailNormalized } });
+    const priorRoleId = prior?.roleId ?? null;
 
     const mapped = await prisma.user.findUnique({
       where: { supabaseAuthUserId: valid.user.supabaseAuthUserId },
@@ -170,9 +178,8 @@ describe.skipIf(!runAuthIntegration)("supabase auth login", () => {
     expect(mapped?.email).toBe(valid.user.email);
     expect(mapped?.supabaseAuthUserId).toBe(valid.user.supabaseAuthUserId);
     expect(mapped?.lastLoginAt).not.toBeNull();
-    expect(mapped).not.toHaveProperty("role");
-    expect(mapped).not.toHaveProperty("roleId");
-    expect(mapped).not.toHaveProperty("permissions");
+    // Login must not assign or change application roles (bootstrap/User Management own that).
+    expect(mapped?.roleId).toBe(priorRoleId);
     expect(mapped).not.toHaveProperty("companyId");
 
     await provider.signOut();

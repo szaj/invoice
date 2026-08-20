@@ -11,6 +11,9 @@ export interface IdentityLinkInput {
 
 export interface UserIdentityStore {
   linkAuthenticatedIdentity(input: IdentityLinkInput): Promise<ApplicationUserIdentity>;
+  findByAuthUserId(supabaseAuthUserId: string): Promise<ApplicationUserIdentity | null>;
+  clearPasswordResetRequired(supabaseAuthUserId: string): Promise<void>;
+  getStatusByAuthUserId(supabaseAuthUserId: string): Promise<"ACTIVE" | "SUSPENDED" | null>;
 }
 
 export class PrismaUserIdentityStore implements UserIdentityStore {
@@ -46,6 +49,32 @@ export class PrismaUserIdentityStore implements UserIdentityStore {
 
     return toIdentity(created);
   }
+
+  async findByAuthUserId(supabaseAuthUserId: string): Promise<ApplicationUserIdentity | null> {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { supabaseAuthUserId },
+    });
+
+    return user ? toIdentity(user) : null;
+  }
+
+  async clearPasswordResetRequired(supabaseAuthUserId: string): Promise<void> {
+    const prisma = getPrisma();
+    await prisma.user.updateMany({
+      where: { supabaseAuthUserId, passwordResetRequired: true },
+      data: { passwordResetRequired: false },
+    });
+  }
+
+  async getStatusByAuthUserId(supabaseAuthUserId: string): Promise<"ACTIVE" | "SUSPENDED" | null> {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { supabaseAuthUserId },
+      select: { status: true },
+    });
+    return user?.status ?? null;
+  }
 }
 
 function toIdentity(user: {
@@ -54,6 +83,7 @@ function toIdentity(user: {
   email: string;
   supabaseAuthUserId: string;
   lastLoginAt: Date | null;
+  passwordResetRequired: boolean;
 }): ApplicationUserIdentity {
   return {
     id: user.id,
@@ -61,5 +91,6 @@ function toIdentity(user: {
     email: user.email,
     supabaseAuthUserId: user.supabaseAuthUserId,
     lastLoginAt: user.lastLoginAt,
+    passwordResetRequired: user.passwordResetRequired,
   };
 }

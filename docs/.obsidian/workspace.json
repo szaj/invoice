@@ -180,8 +180,10 @@
   },
   "active": "vault-home",
   "lastOpenFiles": [
-    "Technical/Authentication.md",
+    "Untitled.canvas",
     "00 Home.md",
+    "Technical/Authorization.md",
+    "Technical/Authentication.md",
     "Tasks/TASK-038 Invoice Cancellation.md",
     "Tasks/TASK-059 Partial Payments.md",
     "Tasks/TASK-098 Performance Hardening.md",
@@ -204,8 +206,6 @@
     "Tasks/TASK-057 Bank Processor Webhook.md",
     "Tasks/TASK-056 Bank Processor Adapter.md",
     "Tasks/TASK-055 PayPal Webhook.md",
-    "Tasks/TASK-054 PayPal Adapter.md",
-    "Tasks/TASK-053 Stripe Webhook.md",
     "_build_backlog.py",
     "Architecture.canvas"
   ]

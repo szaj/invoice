@@ -1,8 +1,8 @@
 /**
  * Authenticated identity from Supabase Auth.
  *
- * This is not authorization. Later tasks will add application user status,
- * roles, permissions, and company access in the application database.
+ * This is not authorization. Application roles and permissions live in the
+ * application database (TASK-005) and are never read from Auth metadata.
  */
 export interface AuthenticatedIdentity {
   readonly authUserId: string;
@@ -15,6 +15,7 @@ export interface ApplicationUserIdentity {
   readonly email: string;
   readonly supabaseAuthUserId: string;
   readonly lastLoginAt: Date | null;
+  readonly passwordResetRequired: boolean;
 }
 
 export function identityFromAuthUser(

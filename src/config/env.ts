@@ -10,6 +10,7 @@ import {
   type EnvSource,
   type SupabasePublicConfig,
 } from "@/config/env-schema";
+import { getApplicationBaseUrl } from "@/domain/auth/redirect";
 
 export {
   envSchema,
@@ -29,6 +30,7 @@ function readEnvInput(source: EnvSource) {
   return {
     NODE_ENV: blankToUndefined(source.NODE_ENV),
     APP_ENV: blankToUndefined(source.APP_ENV),
+    APP_URL: blankToUndefined(source.APP_URL),
     DATABASE_URL: blankToUndefined(source.DATABASE_URL),
     DIRECT_URL: blankToUndefined(source.DIRECT_URL),
     NEXT_PUBLIC_SUPABASE_URL: blankToUndefined(source.NEXT_PUBLIC_SUPABASE_URL),
@@ -96,4 +98,19 @@ export function requireDirectDatabaseUrl(env: Env = getEnv()): string {
 
 export function requireSupabasePublicConfig(env: Env = getEnv()): SupabasePublicConfig {
   return parseSupabasePublicConfig(env);
+}
+
+export function requireSupabaseServiceRoleKey(env: Env = getEnv()): string {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for Admin user provisioning");
+  }
+
+  return env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+export function requireApplicationBaseUrl(env: Env = getEnv()): string {
+  return getApplicationBaseUrl({
+    appUrl: env.APP_URL,
+    appEnv: env.APP_ENV,
+  });
 }

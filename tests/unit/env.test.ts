@@ -15,6 +15,7 @@ describe("loadEnv", () => {
     expect(env.RESEND_API_KEY).toBeUndefined();
     expect(env.REDIS_URL).toBeUndefined();
     expect(env.SENTRY_DSN).toBeUndefined();
+    expect(env.APP_URL).toBeUndefined();
   });
 
   it("treats blank optional secrets as unset", () => {
@@ -46,5 +47,28 @@ describe("loadEnv", () => {
     });
 
     expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe("https://example.supabase.co");
+  });
+
+  it("accepts APP_URL and requires it outside local via requireApplicationBaseUrl", async () => {
+    const { loadEnv, requireApplicationBaseUrl } = await import("@/config/env");
+
+    expect(requireApplicationBaseUrl(loadEnv({ NODE_ENV: "test" }))).toBe("http://localhost:3000");
+    expect(
+      requireApplicationBaseUrl(
+        loadEnv({
+          NODE_ENV: "test",
+          APP_ENV: "production",
+          APP_URL: "https://invoices.example.com/",
+        }),
+      ),
+    ).toBe("https://invoices.example.com");
+    expect(() =>
+      requireApplicationBaseUrl(
+        loadEnv({
+          NODE_ENV: "test",
+          APP_ENV: "production",
+        }),
+      ),
+    ).toThrow(/APP_URL is required/);
   });
 });

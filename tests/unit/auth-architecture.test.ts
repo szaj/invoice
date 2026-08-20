@@ -105,16 +105,50 @@ describe("authentication architecture boundary", () => {
     }
   });
 
-  it("keeps the users model as identity mapping only", () => {
+  it("keeps credentials and company assignment off the users model", () => {
     const schema = readFileSync(path.resolve(process.cwd(), "prisma/schema.prisma"), "utf8");
     const userBlock = schema.slice(schema.indexOf("model User"), schema.indexOf('@@map("users")'));
 
     expect(userBlock).toContain("supabaseAuthUserId");
     expect(userBlock).toContain("lastLoginAt");
-    expect(userBlock).not.toMatch(/\broleId\b/);
-    expect(userBlock).not.toMatch(/\brole_id\b/);
+    expect(userBlock).toContain("passwordResetRequired");
+    expect(userBlock).toContain("roleId");
     expect(userBlock).not.toMatch(/\bcompanyId\b/);
-    expect(userBlock).not.toMatch(/\bpermission/);
     expect(userBlock).not.toMatch(/\bpasswordHash\b/);
+    expect(userBlock).not.toMatch(/\bpassword_hash\b/);
+    expect(userBlock).not.toMatch(/\bresetToken\b/);
+    expect(userBlock).not.toMatch(/\breset_token\b/);
+  });
+
+  it("stores roles and permissions in the application schema, not Auth metadata", () => {
+    const schema = readFileSync(path.resolve(process.cwd(), "prisma/schema.prisma"), "utf8");
+    expect(schema).toMatch(/model Role\b/);
+    expect(schema).toMatch(/model Permission\b/);
+    expect(schema).toMatch(/model RolePermission\b/);
+    expect(schema).not.toMatch(/model\s+(Customer|Invoice|Payment)\b/);
+  });
+
+  it("does not log passwords or recovery tokens from auth services", () => {
+    const authRoots = [
+      path.join(srcRoot, "server", "auth"),
+      path.join(srcRoot, "app", "auth"),
+      path.join(srcRoot, "app", "api", "auth"),
+    ];
+
+    for (const root of authRoots) {
+      for (const file of walkSourceFiles(root)) {
+        const logLines = uncommented(readFileSync(file, "utf8"))
+          .split("\n")
+          .filter((line) => line.includes("logger."));
+
+        for (const line of logLines) {
+          expect(line, path.relative(srcRoot, file)).not.toMatch(/\bpassword\s*:/);
+          expect(line, path.relative(srcRoot, file)).not.toMatch(/\btoken_hash\s*:/);
+          expect(line, path.relative(srcRoot, file)).not.toMatch(/\brecoveryToken\s*:/);
+          expect(line, path.relative(srcRoot, file)).not.toMatch(/\baccessToken\s*:/);
+          expect(line, path.relative(srcRoot, file)).not.toMatch(/\brefreshToken\s*:/);
+        }
+      }
+    }
   });
 });

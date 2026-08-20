@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  isLoginPagePath,
+  isAuthenticatedAuthEntryPath,
   isPublicAuthPath,
   requestIsHttps,
   requiresHttps,
@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (identity && isLoginPagePath(pathname)) {
+  if (identity && isAuthenticatedAuthEntryPath(pathname)) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/";
     homeUrl.search = "";

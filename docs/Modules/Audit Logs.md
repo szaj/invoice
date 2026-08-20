@@ -15,6 +15,8 @@ tags:
 
 Audit history is a control feature, not an optional activity feed. Records should be append-only from the application layer and protected from ordinary modification or deletion.
 
+TASK-012 implements the `audit_logs` store and writers for login success/failure/logout plus user create/update/suspend and company create/update/status. Sensitive keys are masked before persistence. Pino remains operational logging only ([[05 Architecture Decisions#ADR-014 — Logging|ADR-014]]). The audit viewer UI/API is TASK-076.
+
 | Audit Field | Requirement |
 | --- | --- |
 | Event ID | Unique ID. |
