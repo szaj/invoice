@@ -1,0 +1,19 @@
+{
+  "legacyEditor": false,
+  "livePreview": true,
+  "showFrontmatter": true,
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "Tasks",
+  "attachmentFolderPath": "./",
+  "useMarkdownLinks": false,
+  "newLinkFormat": "shortest",
+  "readableLineLength": false,
+  "strictLineBreaks": false,
+  "showLineNumber": false,
+  "spellcheck": true,
+  "defaultViewMode": "preview",
+  "promptDelete": true,
+  "showInlineTitle": true,
+  "propertiesInDocument": "visible"
+}

@@ -1,0 +1,16 @@
+---
+description: Confirmed financial records are immutable. Always apply.
+alwaysApply: true
+---
+
+# Financial Immutability Rule
+
+Confirmed financial records must not be silently edited or hard-deleted.
+
+Corrections must use controlled adjustment, reversal, refund, chargeback, or versioning workflows defined by the specification.
+
+Original successful payments remain preserved. Refund/dispute/chargeback state lives on linked adjustment records, not by rewriting success.
+
+Do not regenerate a historical invoice PDF from today's mutable company/invoice data when an immutable stored version exists.
+
+Authoritative docs: `docs/Modules/Invoices.md`, `docs/Modules/Payments.md`, `docs/Modules/Refunds Disputes Chargebacks.md`, `docs/Foundation/Business Rules.md`.

@@ -1,0 +1,212 @@
+{
+  "main": {
+    "id": "vault-main",
+    "type": "split",
+    "children": [
+      {
+        "id": "vault-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vault-home",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "vault-left",
+    "type": "split",
+    "children": [
+      {
+        "id": "vault-left-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vault-files",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "vault-search",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "29a1b25846ccf412",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "vault-right",
+    "type": "split",
+    "children": [
+      {
+        "id": "vault-right-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "vault-backlinks",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "vault-outgoing",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "vault-tags",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "vault-outline",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          },
+          {
+            "id": "ffee3423564917c9",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "vault-home",
+  "lastOpenFiles": [
+    "Tasks/TASK-103 Production Deployment.md",
+    "Tasks/TASK-102 Staging UAT Environment.md",
+    "Tasks/TASK-095 Webhook Testing.md",
+    "Tasks/TASK-100 Monitoring.md",
+    "Tasks/TASK-099 Queue Hardening.md",
+    "Tasks/TASK-096 E2E Test Suite.md",
+    "Tasks/TASK-090 Report Exports.md",
+    "Tasks/TASK-094 Financial Calculation Testing.md",
+    "Tasks/TASK-093 Authorization Testing.md",
+    "Tasks/TASK-091 Operational Notifications.md",
+    "Tasks/TASK-057 Bank Processor Webhook.md",
+    "Tasks/TASK-056 Bank Processor Adapter.md",
+    "Tasks/TASK-055 PayPal Webhook.md",
+    "Tasks/TASK-054 PayPal Adapter.md",
+    "Tasks/TASK-053 Stripe Webhook.md",
+    "Tasks/TASK-052 Stripe Adapter.md",
+    "Tasks/TASK-050 Manual Payment Recording.md",
+    "Tasks/TASK-049 Gateway Configuration Per Company.md",
+    "Tasks/TASK-048 Payment Provider Abstraction.md",
+    "Tasks/TASK-041 Email Delivery.md",
+    "Tasks/TASK-039 PDF Generation.md",
+    "Technical/Engineering Rules.md",
+    "00 Home.md",
+    "Tasks/TASK-025 Customer Company Relationships.md",
+    "Tasks/Phase 01 Foundation.md",
+    "Tasks/TASK-070 CBRF Calculation Engine.md",
+    "_build_backlog.py",
+    "Architecture.canvas"
+  ]
+}

@@ -1,0 +1,159 @@
+---
+type: module
+status: approved
+phase: 8
+domain: reporting
+tags:
+  - module
+  - finance
+---
+
+# Dashboard and Reporting
+
+> [!abstract] Related
+> [[Companies and Brands]] · [[Payments]] · [[Refunds Disputes Chargebacks]] · [[Currency and Conversion]] · [[Compliance]] · [[00 Home]]
+
+> [!warning] Do not mix currencies
+> If a report contains multiple original currencies, show separate totals or convert each record using **stored** Admin fixed-rate snapshots. Label converted values as equivalents. Merchant fees must not alter conversion totals.
+
+```mermaid
+flowchart LR
+    Gross[Gross Receipts<br/>confirmed payments] --> Net[Net G.Total]
+    CBRF[CB/RF<br/>refunds + CB lost − CB won] --> Net
+    Open[Open disputes] -.->|reported separately| Gross
+```
+
+### 13.1 Dashboard KPIs
+
+| KPI | Definition |
+| --- | --- |
+| Total Invoiced | Invoice value for selected filters; display original-currency breakdown and optional reporting-currency equivalent. |
+| Total Paid | Invoice-currency value applied by confirmed payments. |
+| Outstanding | Open invoice balance. |
+| Overdue | Outstanding balance where due date is past and invoice is not paid/cancelled. |
+| Converted Settlement | Confirmed settlement equivalent calculated using stored Admin fixed-rate snapshots. |
+| Processor / Merchant Fees | Optional confirmed fee totals by settlement currency; displayed separately and never deducted from converted settlement totals. |
+| Actual Amount Received | Optional confirmed/recorded received amounts by settlement currency, where this field is used. |
+| Invoice Count | Count by status. |
+| Payment Count | Count by method/status. |
+
+
+### 13.2 Required Filters
+
+- Date range
+
+- Company / All Companies
+
+- Customer
+
+- Staff
+
+- Invoice status
+
+- Payment status
+
+- Payment method/gateway
+
+- Invoice currency
+
+- Settlement currency
+
+- Country
+
+- Compliance status
+
+- Reporting Group / Parent Company
+
+- Adjustment type (Refund / Dispute / Chargeback / Reversal)
+
+- Reporting year / month
+
+- Gross / CB-RF / Net view
+
+### 13.3 Required Reports
+
+| Report | Minimum Output |
+| --- | --- |
+| Invoice Report | Invoice number, customer, company, dates, currency, total, paid, balance, status, staff. |
+| Payment Report | Invoice, customer, method, transaction ID, invoice amount applied, fixed rate snapshot, converted settlement amount, optional fee, optional actual received amount, currency, date, status. |
+| Outstanding Report | Invoice, customer, due date, age, currency, outstanding, company, staff. |
+| Overdue Aging | Buckets such as 1-30, 31-60, 61-90, 90+ days. |
+| Customer Report | Total invoiced/paid/outstanding by customer and currency. |
+| Company Performance | Invoice and settlement KPIs by company. |
+| Staff Performance | Invoices created/sent, value invoiced, collections linked to assigned invoices; avoid implying staff commission unless separately defined. |
+| Gateway Report | Transactions, converted settlement totals, optional merchant fees, optional actual received amounts, failures, refunds by gateway and settlement currency. |
+| Currency Report | Invoice totals by invoice currency and settlement totals by settlement currency. |
+| Compliance Report | Review counts, approved/flagged/pending, aging and notes references. |
+| Monthly Brand / CB-RF Report | Spreadsheet-style report with January-December rows, brand/company columns, Monthly Total, CB/RF, G.Total, annual summary, and reporting-group rollup such as VX. |
+| Refund & Chargeback Report | Original payment, customer, invoice, brand/company, adjustment type/status, amount, settlement currency, merchant case/reference ID, reason, opened/processed/resolved dates, created by, and financial impact. |
+
+
+#### 13.3.1 Monthly Brand / Company Matrix Report
+
+The application must provide a report closely matching the supplied spreadsheet. By default this report is based on payment received/effective date, not invoice creation date, with an optional report-basis selector if required later.
+
+Default columns: each brand/company inside the selected Reporting Group, followed by Monthly Total and CB/RF. Default rows: January through December plus G.Total.
+
+Gross brand/month values = sum of confirmed/successful customer payments for that brand and month in the selected reporting currency. CB/RF = processed refunds + chargeback debits/losses - chargeback won/reversal amounts. Open disputes with no financial debit are shown separately and do not reduce revenue.
+
+Annual Gross Total = sum of confirmed payments. Net G.Total = Annual Gross Total - CB/RF. Provide summary blocks for current-month totals and yearly reporting-group/company totals similar to the reference.
+
+Every amount must support drill-down to underlying payments/adjustments. Excel/CSV/PDF exports must preserve selected filters and totals.
+
+Reference reporting layout supplied by Product Owner.
+
+| Gross Receipts | Sum of Successful/Confirmed payments within selected scope. |
+| --- | --- |
+| CB/RF | Processed Refunds + Chargeback Debits/Losses - Chargeback Won/Reversal amounts. |
+| Net G.Total | Gross Receipts - CB/RF. |
+| Open Disputes | Reported separately; no deduction until a refund/merchant debit is recorded. |
+
+
+### 13.4 Multi-Currency Reporting Rule
+
+> [!warning] Do not mix currencies
+> Do not mix currencies If a report contains multiple original currencies, show separate currency totals or convert each record to a defined reporting currency using stored Admin fixed-rate snapshots. The UI must clearly label converted values as equivalents and retain drill-down to original amounts. Merchant fees must not be used to alter currency-conversion totals.
+
+
+### 13.5 Export Formats
+
+- CSV for all tabular reports.
+
+- XLSX recommended for business users.
+
+- PDF optional for summary reports.
+
+- Export action logged in audit history.
+
+
+## Related Documentation
+
+### Depends On
+
+- [[Companies and Brands]]
+- [[Payments]]
+- [[Currency and Conversion]]
+- [[Refunds Disputes Chargebacks]]
+
+### Integrates With
+
+- [[Compliance]]
+- [[Invoices]]
+- [[Customers]]
+
+### Technical
+
+- [[Business Rules]]
+- [[Testing]]
+
+> [!danger] Fixed conversion rates
+> Rates are Admin-defined and versioned. Historical payments retain the exact rate snapshot used. Changing a rate affects future transactions only. Never fetch, guess, or substitute a market/gateway rate.
+> Also see [[Currency and Conversion]] · [[Payments]] · [[Business Rules]] · [[Data Model]] · [[Dashboard and Reporting]] · [[Testing]]
+
+> [!tip] Merchant fees
+> Merchant/processor fees are reconciliation data only. They must never change invoice balance, the fixed conversion rate, converted settlement amount, or invoice amount.
+> Also see [[Payments]] · [[Currency and Conversion]] · [[Dashboard and Reporting]] · [[Business Rules]] · [[Testing]]
+
+> [!warning] Payment adjustments
+> Refunds, disputes, and chargebacks create linked adjustment records. The original successful payment remains preserved.
+> Also see [[Payments]] · [[Refunds Disputes Chargebacks]] · [[Audit Logs]] · [[Dashboard and Reporting]] · [[Business Rules]] · [[Testing]]

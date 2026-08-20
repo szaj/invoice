@@ -1,0 +1,18 @@
+---
+description: Provider-agnostic payment architecture. Always apply.
+alwaysApply: true
+---
+
+# Payment Rule
+
+Core payment business logic must never depend on Stripe, PayPal, Authorize.Net, or any other specific payment provider.
+
+All provider-specific SDK calls, payloads, webhook handling, status mapping, credentials, and provider behavior must remain inside provider adapters/integration boundaries.
+
+Adding a new payment provider must not require redesigning the core payment domain.
+
+Use a PaymentProvider registry and capability flags. Do not write `if (provider === "stripe")` in domain, allocation, FX, CB/RF, or reporting code.
+
+Manual payments use the same domain without fake webhooks.
+
+Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-008), `docs/Modules/Payments.md`.

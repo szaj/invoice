@@ -1,0 +1,24 @@
+---
+description: Supabase Auth is identity only. App DB authorizes. Always apply.
+alwaysApply: true
+---
+
+# Authorization Rule
+
+Supabase Auth proves identity.
+
+The application database/domain layer determines authorization (roles, permissions, user-company assignments, company access).
+
+Every company-scoped server operation must verify:
+
+1. authenticated identity
+2. application user status
+3. role/permission
+4. company assignment/access
+5. permission for the requested operation
+
+Frontend visibility is not authorization. Deny forged URLs, Route Handlers, Server Actions, and client payloads server-side.
+
+Never treat `authenticated = authorized` as valid.
+
+Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-003), `docs/Foundation/Roles and Permissions.md`, `docs/Foundation/Companies and Brands.md`.

@@ -1,0 +1,20 @@
+---
+description: Authoritative money must use Decimal/NUMERIC. Always apply.
+alwaysApply: true
+---
+
+# Money Rule
+
+Never use JavaScript floating-point arithmetic for authoritative money.
+
+Use Prisma Decimal / PostgreSQL NUMERIC or DECIMAL.
+
+This includes invoice totals, tax, discounts, allocations, outstanding, fixed-rate conversion, settlement, refunds, chargebacks, CB/RF, reporting totals, and rounding.
+
+Put formulas in a centralized financial domain layer. Do not duplicate them in React components, Route Handlers, Server Actions, or payment adapters.
+
+Historical fixed-rate snapshots must never be recalculated. Gateway FX must never override Admin-defined rates.
+
+Merchant/processor fees must never change invoice balance, the fixed rate, or converted settlement.
+
+Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-004), `docs/Foundation/Currency and Conversion.md`.

@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+pnpm-store
+docs
+.obsidian
+.cursor
+*.md
