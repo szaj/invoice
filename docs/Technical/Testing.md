@@ -16,7 +16,7 @@ tags:
 
 ### 22.1 Required Test Layers
 
-- Unit tests for money calculations, status logic, permission rules, fixed-rate currency conversion, invoice numbering.
+- Unit tests for money calculations, status logic, permission rules, fixed-rate currency conversion, invoice numbering. TASK-019 covers Decimal conversion formula, same-currency 1, fee exclusion, and rounding in `tests/unit/money.test.ts`.
 
 - Integration tests for database transactions and payment/provider adapters.
 

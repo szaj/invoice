@@ -54,6 +54,7 @@ describe("permission matrix", () => {
       "audit.read": true,
       "user.manage": true,
       "currency.manage": true,
+      "settings.manage": true,
     },
     COMPLIANCE: {
       "dashboard.view": true,
@@ -76,6 +77,7 @@ describe("permission matrix", () => {
       "audit.read": true,
       "user.manage": false,
       "currency.manage": false,
+      "settings.manage": false,
     },
     STAFF: {
       "dashboard.view": true,
@@ -98,6 +100,7 @@ describe("permission matrix", () => {
       "audit.read": false,
       "user.manage": false,
       "currency.manage": false,
+      "settings.manage": false,
     },
   };
 

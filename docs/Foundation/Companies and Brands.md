@@ -36,15 +36,16 @@ flowchart LR
 | Country | ISO country selection. |
 | Email / Phone / Website | Brand contact details. |
 | Registration / Tax Number | Optional company identifier. |
-| Default Invoice Currency | One active currency. |
-| Enabled Invoice Currencies | Any subset of active currencies. |
+| Default Invoice Currency | One active currency. TASK-015: `company_currencies.is_default` among enabled rows. |
+| Enabled Invoice Currencies | Any subset of active currencies. TASK-015: `company_currencies` with `enabled=true`. |
 | Reporting Currency | Typically USD; may be inherited from master settings. |
 | Invoice Prefix | Unique or company-specific prefix such as VX-. |
 | Invoice Sequence | Independent number sequence per company. |
 | Terms & Conditions | Brand-specific default invoice terms. |
 | Email Template | Brand-specific invoice email template. |
-| Payment Modes | Each payment mode individually enabled/disabled. |
-| Gateway Credentials | Stored encrypted and isolated to company. |
+| Payment Modes | Each payment mode individually enabled/disabled. TASK-020: `payment_gateway_configs.enabled` per method. |
+| Gateway Credentials | Stored encrypted and isolated to company. TASK-049 (not yet). |
+| Settlement Currencies | Per method/company enablement. TASK-020: `payment_gateway_settlement_currencies` (USD/AED initial; Admin may expand ACTIVE catalog codes). |
 | Status | Active / Inactive. |
 
 

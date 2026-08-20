@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 module: currency
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-016 — Fixed Conversion Rate Schema
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 2 ([[Phase 02 Financial Foundation]])
 
@@ -85,32 +85,48 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/fixed-rates/{types,schema}.ts`, `src/server/fixed-rates/{fixed-rate-repository,fixed-rate-service,actions}.ts`, `src/app/api/fixed-conversion-rates/route.ts`, `src/app/(app)/settings/fixed-rates/new/{page,fixed-rate-create-form}.tsx`, `prisma/migrations/20260820310000_fixed_conversion_rate_schema/`, `tests/unit/fixed-rates.test.ts`, `tests/integration/fixed-rates.test.ts`.
+
 ### Files Modified
+
+Prisma `FixedConversionRate` model + enums; audit `fixed_rates.created`; home Create fixed rate link; currencies page copy; prerequisite integration table assertions. [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Currency and Conversion]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-004/ADR-011 notes as needed, [[TASK-016 Fixed Conversion Rate Schema]].
 
 ### Migrations
 
+`20260820310000_fixed_conversion_rate_schema` — `fixed_conversion_rates` with `NUMERIC(20, 12)` `fixed_rate`, version/frequency/valid range/status/notes/created_by. Applied with `pnpm prisma:migrate:deploy`. No expire-previous, effective selection, settlement, or payment conversion. No live FX.
+
 ### APIs
+
+- `POST /api/fixed-conversion-rates`
+
+Requires `currency.manage` (Admin). Creates an append-only rate row with auto-incremented `version_no` per pair. Does not expire prior versions (TASK-017). Does not PATCH historical rates. Never fetches market/gateway rates. Audits `fixed_rates.created`.
 
 ### Tests
 
+Unit: Decimal precision up to 12 places; schema from≠to / date order; Staff denied; Admin create + audit. Integration: migration recorded; create rate; Non-Admin denied. `pnpm typecheck` / `lint` / `format:check` / `test` (146) / `RUN_DB_INTEGRATION=true test:integration` (40 passed, 1 skipped) / `build` pass. E2E N/A.
+
 ### Issues
 
+Expire-previous-on-create and version history list remain TASK-017. Effective rate selection is TASK-018. ADR-011 remains OPEN.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

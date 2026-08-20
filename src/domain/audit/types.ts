@@ -51,6 +51,17 @@ export const AuditActions = {
   COMPANY_CREATED: "companies.created",
   COMPANY_UPDATED: "companies.updated",
   COMPANY_STATUS_CHANGED: "companies.status_changed",
+  SETTINGS_UPDATED: "settings.updated",
+  CURRENCY_CREATED: "currencies.created",
+  CURRENCY_UPDATED: "currencies.updated",
+  CURRENCY_STATUS_CHANGED: "currencies.status_changed",
+  COMPANY_CURRENCIES_UPDATED: "companies.currencies_updated",
+  FIXED_RATE_CREATED: "fixed_rates.created",
+  FIXED_RATE_SCHEDULED: "fixed_rates.scheduled",
+  FIXED_RATE_ACTIVATED: "fixed_rates.activated",
+  FIXED_RATE_EXPIRED: "fixed_rates.expired",
+  FIXED_RATE_SUPERSEDED: "fixed_rates.superseded",
+  SETTLEMENT_CURRENCIES_UPDATED: "settlement.currencies_updated",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
@@ -59,4 +70,8 @@ export const AuditEntityTypes = {
   SESSION: "session",
   USER: "user",
   COMPANY: "company",
+  SETTINGS: "settings",
+  CURRENCY: "currency",
+  FIXED_CONVERSION_RATE: "fixed_conversion_rate",
+  PAYMENT_GATEWAY_CONFIG: "payment_gateway_config",
 } as const;

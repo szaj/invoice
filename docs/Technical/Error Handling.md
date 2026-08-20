@@ -12,7 +12,7 @@ tags:
 
 | Scenario | Required Behavior |
 | --- | --- |
-| Fixed conversion rate missing | Block the cross-currency payment/conversion and show a clear Admin configuration message. Never fetch, guess, or substitute a market/gateway rate. |
+| Fixed conversion rate missing | Block the cross-currency payment/conversion and show a clear Admin configuration message. Never fetch, guess, or substitute a market/gateway rate. TASK-018 `resolveFixedConversionRate` returns `FIXED_RATE_MISSING_FOR_CONVERSION` when no Admin version covers `at`. |
 | Gateway timeout | Keep payment Pending/Unknown; reconcile via webhook/status check; do not mark Paid optimistically. |
 | Duplicate webhook | Recognize event ID and process idempotently. |
 | Email failure | Invoice remains issued; email log marked Failed with retry action. |

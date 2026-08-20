@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 module: currency
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-018 — Effective Rate Selection
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 2 ([[Phase 02 Financial Foundation]])
 
@@ -85,32 +85,46 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/fixed-rates/resolve-rate.ts`, `src/server/fixed-rates/resolve-rate-service.ts`, `tests/unit/resolve-rate.test.ts`.
+
 ### Files Modified
+
+`src/domain/fixed-rates/types.ts` (effective-rate result + missing message); repository `listRatesForPair`; schema comments; minor `CurrencyWriteFormValues` type fix for typecheck. [[Currency and Conversion]], [[Error Handling]], [[Database]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], ADR-011 note, [[TASK-018 Effective Rate Selection]].
 
 ### Migrations
 
+None. Read model over existing `fixed_conversion_rates.valid_from` / `valid_to` / `status`.
+
 ### APIs
+
+None. Domain/service only: `selectEffectiveRate` / `resolveFixedConversionRate(from, to, at)`. Later conversion paths must call this. No payment/settlement application in this task.
 
 ### Tests
 
+Unit: same-currency `1.000000000000`; current ACTIVE; EXPIRED historical window; scheduled before/after `validFrom`; missing blocks with Admin message (never market FX). Integration N/A. `pnpm typecheck` / `lint` / `format:check` / `test` (154) / `RUN_DB_INTEGRATION=true test:integration` (40 passed, 1 skipped) / `build` pass.
+
 ### Issues
 
+Payment conversion and settlement remain later. Money formula helpers are TASK-019. ADR-011 remains OPEN.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

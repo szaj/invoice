@@ -80,15 +80,15 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 ## Current Development
 
-Current Phase: Phase 01 — Platform Foundation
+Current Phase: Phase 02 — Financial Foundation
 
-Current Task: [[TASK-013 Core System Settings]]
+Current Task: [[TASK-021 Currency Disable and Historical Visibility]]
 
-Current Status: [[TASK-012 Audit Event Foundation]] is COMPLETE. Next buildable task is TASK-013 (core system settings). Append-only `audit_logs` records login and user/company admin events; Pino remains operational logging only. Audit viewer is TASK-076.
+Current Status: [[TASK-020 Settlement Currency Configuration]] is COMPLETE. Next buildable task is TASK-021 (currency disable and historical visibility). Per-method settlement currency enablement is available on company gateway config (no credentials/charges). ADR-011 remains OPEN.
 
-Next Task: [[TASK-013 Core System Settings]]
+Next Task: [[TASK-021 Currency Disable and Historical Visibility]]
 
-Do not start TASK-013 until ready. TASK-013 depends on TASK-006, TASK-007, and TASK-012.
+Do not start TASK-021 until ready. TASK-021 depends on TASK-014 and TASK-015.
 
 ## Blocked Items
 

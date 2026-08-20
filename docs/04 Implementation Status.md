@@ -21,7 +21,7 @@ Every task ID appears exactly once in this file.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001 through [[TASK-012 Audit Event Foundation]] are COMPLETE. The next buildable task is [[TASK-013 Core System Settings]]. All later application tasks remain NOT STARTED.
+TASK-001 through [[TASK-019 Money Calculation Utilities]] are COMPLETE. The next buildable task is [[TASK-020 Settlement Currency Configuration]]. All later application tasks remain NOT STARTED.
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -43,7 +43,7 @@ Phase index: [[Phase 01 Foundation]]
 | [[TASK-010 Company Branding Configuration]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Admin branding subresource: prefix, terms, email template ref, contact, logo metadata via StorageService. No PDF/email/sequence. |
 | [[TASK-011 Reporting Groups]] | COMPLETE | 2026-08-20 | 2026-08-20 | | company_groups + reporting_group_id. Admin CRUD/assign. Membership is not authorization. No VX seed. |
 | [[TASK-012 Audit Event Foundation]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Append-only `audit_logs`; login + user/company admin writers; no viewer. |
-| [[TASK-013 Core System Settings]] | NOT STARTED | | | |  |
+| [[TASK-013 Core System Settings]] | COMPLETE | 2026-08-20 | 2026-08-20 | | `system_settings` + Admin UI; ADR-011 still OPEN. |
 
 ## Phase 02 — Financial Foundation
 
@@ -51,13 +51,13 @@ Phase index: [[Phase 02 Financial Foundation]]
 
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
-| [[TASK-014 Currency Master]] | NOT STARTED | | | |  |
-| [[TASK-015 Company Currency Configuration]] | NOT STARTED | | | |  |
-| [[TASK-016 Fixed Conversion Rate Schema]] | NOT STARTED | | | |  |
-| [[TASK-017 Fixed Rate Versioning]] | NOT STARTED | | | |  |
-| [[TASK-018 Effective Rate Selection]] | NOT STARTED | | | |  |
-| [[TASK-019 Money Calculation Utilities]] | NOT STARTED | | | |  |
-| [[TASK-020 Settlement Currency Configuration]] | NOT STARTED | | | |  |
+| [[TASK-014 Currency Master]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Global `currencies` seed USD/AED/PKR/GBP/AUD; Admin CRUD/disable. |
+| [[TASK-015 Company Currency Configuration]] | COMPLETE | 2026-08-20 | 2026-08-20 | | `company_currencies` enabled subset + default; Admin `company.write`. |
+| [[TASK-016 Fixed Conversion Rate Schema]] | COMPLETE | 2026-08-20 | 2026-08-20 | | `fixed_conversion_rates` Admin create; NUMERIC(20,12); no live FX. |
+| [[TASK-017 Fixed Rate Versioning]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Append-only versions; expire previous on create; history list. |
+| [[TASK-018 Effective Rate Selection]] | COMPLETE | 2026-08-20 | 2026-08-20 | | `resolve_rate(pair, at)`; same-currency 1; missing blocks. |
+| [[TASK-019 Money Calculation Utilities]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Prisma Decimal money layer; conversion formula; fee excluded. |
+| [[TASK-020 Settlement Currency Configuration]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Per-method settlement currencies on `payment_gateway_configs`; Admin `gateway.credentials.manage`; no credentials/charges. |
 | [[TASK-021 Currency Disable and Historical Visibility]] | NOT STARTED | | | |  |
 
 ## Phase 03 — Customers

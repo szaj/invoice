@@ -8,7 +8,7 @@ tags:
 
 # Authorization
 
-Application RBAC for TASK-005, Admin user management for TASK-006, Admin company CRUD for TASK-007, user-company assignments for TASK-008, tenant isolation / company context for TASK-009, Admin company branding for TASK-010, and Admin reporting groups for TASK-011. Identity remains Supabase Auth. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]], [[Roles and Permissions]], and [[Authentication]].
+Application RBAC for TASK-005 through TASK-020 (including Admin system settings, currency master, company currencies, fixed conversion rate versions, and settlement currency configuration). Identity remains Supabase Auth. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]], [[Roles and Permissions]], and [[Authentication]].
 
 ## Boundary
 
@@ -30,6 +30,19 @@ Do **not** read roles, permissions, or company access from Auth `user_metadata`,
 
 [[TASK-011 Reporting Groups]] stores optional `company_groups` and `companies.reporting_group_id` for consolidated report roll-ups. Admin manages groups under `company.write`. Membership never bypasses `user_companies` / `assertCompanyAccess`.
 
+[[TASK-013 Core System Settings]] stores singleton `system_settings` (reporting currency code, default timezone, rounding tolerance placeholder). Read/update require `settings.manage` (Admin). Updates are audited. ADR-011 remains OPEN.
+
+[[TASK-014 Currency Master]] stores global `currencies` (code, name, symbol, decimal precision, ACTIVE/INACTIVE). Admin manages under `currency.manage`. Soft-disable only (BR-011).
+
+[[TASK-015 Company Currency Configuration]] stores `company_currencies` (enabled subset + default invoice currency). Admin manages under `company.write`. Enabling a globally INACTIVE currency is rejected (BR-002).
+
+[[TASK-016 Fixed Conversion Rate Schema]] stores Admin-defined `fixed_conversion_rates` under `currency.manage`. Create-only; never market/gateway FX.
+
+[[TASK-017 Fixed Rate Versioning]] creates append-only versions: prior ACTIVE rows for the pair are expired/closed and retained; no PATCH of historical `fixed_rate`. Version history list under `/settings/fixed-rates`.
+
+[[TASK-018 Effective Rate Selection]] provides `resolveFixedConversionRate` for later conversion paths (read model over `valid_from`/`valid_to`; same-currency 1; missing blocks). Not an Admin-only gate — callers enforce their own authorization.
+
+[[TASK-020 Settlement Currency Configuration]] stores method enablement and settlement currencies on `payment_gateway_configs` / `payment_gateway_settlement_currencies`. Admin manages under `gateway.credentials.manage`. Non-enabled settlement currencies are rejected (BR-006). Credentials/charges are not included.
 ## Roles
 
 | Code | Name | Company scope capability |
@@ -81,6 +94,11 @@ Representative protected actions:
 - Company CRUD list/create/PATCH/status under `/companies` and `/api/companies` require `company.write`. Non-Admin → 403. There is no DELETE; deactivate sets status `INACTIVE`.
 - Company branding GET/PATCH and logo GET/POST/DELETE under `/api/companies/{id}/branding` require `company.write`. Non-Admin → 403.
 - Reporting groups GET/POST/PATCH under `/settings/reporting-groups` and `/api/reporting-groups` require `company.write`. Non-Admin → 403. Membership is not authorization.
+- System settings GET/PATCH under `/settings/system` and `/api/system-settings` require `settings.manage`. Non-Admin → 403.
+- Currencies GET/POST/PATCH under `/settings/currencies` and `/api/currencies` require `currency.manage`. Non-Admin → 403. Soft-disable only.
+- Company currencies GET/PATCH under `/companies/{id}/currencies` and `/api/companies/{id}/currencies` require `company.write`. Non-Admin → 403. Globally inactive currencies cannot be enabled.
+- Settlement currencies GET under `/companies/{id}/settlement` and `/api/companies/{id}/settlement`, and PATCH `/api/companies/{id}/settlement/{methodCode}`, require `gateway.credentials.manage`. Non-Admin → 403. Non-enabled settlement currencies are rejected (BR-006). No credentials or live charges.
+- Fixed conversion rates GET/POST under `/settings/fixed-rates` and `/api/fixed-conversion-rates` require `currency.manage`. Non-Admin → 403. No market/gateway FX substitution. No PATCH of historical rate amounts; new versions expire prior ACTIVE rows.
 - `GET /api/companies/{id}` requires company access. Admin ALL; Compliance/Staff assigned only. Unassigned → 403.
 - User create/PATCH persist `companyIds` under `user.manage`. Assignments are not read from Auth metadata.
 - `GET/POST /api/company-context` manage the selected company context. Staff/Compliance cannot select All Companies or unassigned IDs.

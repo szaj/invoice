@@ -32,4 +32,4 @@ Control: [[03 Implementation Plan]] · [[04 Implementation Status]] · [[01 Mast
 | TASK-010 | [[TASK-010 Company Branding Configuration]] | TASK-007 | COMPLETE |
 | TASK-011 | [[TASK-011 Reporting Groups]] | TASK-007 | COMPLETE |
 | TASK-012 | [[TASK-012 Audit Event Foundation]] | TASK-003 | COMPLETE |
-| TASK-013 | [[TASK-013 Core System Settings]] | TASK-006, TASK-007, TASK-012 | NOT STARTED |
+| TASK-013 | [[TASK-013 Core System Settings]] | TASK-006, TASK-007, TASK-012 | COMPLETE |

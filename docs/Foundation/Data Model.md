@@ -27,7 +27,7 @@ erDiagram
 ```
 
 > [!note] Money storage
-> Use Prisma Decimal mapped to PostgreSQL NUMERIC/DECIMAL — never JavaScript floating point for authoritative money. Store currency code with every monetary value. Conversion rates need 8–12 decimal places. Rounding is defined server-side; client totals are display-only. See [[05 Architecture Decisions#ADR-004 — Money representation|ADR-004]].
+> Use Prisma Decimal mapped to PostgreSQL NUMERIC/DECIMAL — never JavaScript floating point for authoritative money. Store currency code with every monetary value. Conversion rates need 8–12 decimal places. Rounding is defined server-side; client totals are display-only. See [[05 Architecture Decisions#ADR-004 — Money representation|ADR-004]]. TASK-019 implements the shared helpers in `src/domain/money`.
 
 > [!note] Users and identity
 > Application `users` must store a stable link to the Supabase Auth user identifier. Login credentials are not an application-owned second password store. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]].
@@ -52,7 +52,7 @@ The exact schema may vary by framework, but the following logical entities and r
 | payments | invoice/company/customer, method, status, transaction ID, invoice currency applied, settlement currency, fixed conversion rate snapshot, converted settlement amount, optional merchant fee, optional actual received amount, dates, source. |
 | payment_events | gateway webhook/events, unique external event ID, raw normalized status metadata; sensitive payload handling required. |
 | payment_adjustments | linked original payment; type (refund/dispute/chargeback/reversal), amount, invoice-currency amount if applicable, settlement-currency amount, status, reason, merchant reference/case ID, opened/processed/resolved dates, created_by. Original payment is never overwritten. |
-| payment_gateway_configs | company, gateway type, enabled, encrypted credentials reference, environment, supported settlement currencies. |
+| payment_gateway_configs | company, method code, enabled; settlement currencies via `payment_gateway_settlement_currencies`. Encrypted credentials, environment, webhooks later (TASK-049). |
 | compliance_reviews | entity, status, reviewer, notes, reason code, timestamps. |
 | customer_notes | customer, author, note, visibility internal. |
 | email_logs | invoice, recipient, subject, provider ID, status, sent_by, timestamps. |

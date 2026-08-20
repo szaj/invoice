@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 module: currency
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-015 — Company Currency Configuration
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 2 ([[Phase 02 Financial Foundation]])
 
@@ -86,32 +86,48 @@ E2E-09.
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/companies/company-currency-{types,schema}.ts`, `src/server/companies/company-currency-{repository,service,actions}.ts`, `src/app/api/companies/[id]/currencies/route.ts`, `src/app/(app)/companies/[id]/currencies/{page,company-currency-form}.tsx`, `prisma/migrations/20260820300000_company_currency_configuration/`, `tests/unit/company-currencies.test.ts`, `tests/integration/company-currencies.test.ts`.
+
 ### Files Modified
+
+Prisma `CompanyCurrency` model + Company/Currency relations; audit `companies.currencies_updated`; company detail Currencies link; prerequisite integration table assertions (companies-crud, reporting-groups, system-settings, currencies). [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Currency and Conversion]], [[Companies and Brands]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-011 note (still OPEN), [[TASK-015 Company Currency Configuration]].
 
 ### Migrations
 
+`20260820300000_company_currency_configuration` — `company_currencies` join (`company_id`, `currency_id`, `enabled`, `is_default`). Applied with `pnpm prisma:migrate:deploy`. No fixed rates, settlement currencies, or invoice issuance. ADR-011 remains OPEN.
+
 ### APIs
+
+- `GET/PATCH /api/companies/{id}/currencies`
+
+Require `company.write` (Admin). Body: `{ enabledCurrencyIds, defaultCurrencyId }`. Reject enabling globally INACTIVE currencies. Empty enabled set requires null default; non-empty requires default in enabled set. Writes audit `companies.currencies_updated`.
 
 ### Tests
 
+Unit: schema default-in-enabled; Admin read + Staff mutate denied; inactive global reject; subset persist + audit. Integration: migration recorded; subset persistence; Staff denied; inactive global rejected; no `fixed_conversion_rates`. `pnpm typecheck` / `lint` / `format:check` / `test` (143) / `RUN_DB_INTEGRATION=true test:integration` (38 passed, 1 skipped) / `build` pass. E2E N/A (E2E-09 remains later invoice flow).
+
 ### Issues
 
+ADR-011 remains OPEN. Fixed conversion rates are TASK-016+. Settlement currencies TASK-020. Invoice currency selection on drafts is later invoicing. Reporting currency on `system_settings` is still a free code (not company-default).
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

@@ -13,6 +13,8 @@ export default async function Home() {
   const principal = await getRequestAuthorizationPrincipal();
   const canManageUsers = authorizePermission(principal, "user.manage").allowed;
   const canWriteCompanies = authorizePermission(principal, "company.write").allowed;
+  const canManageSettings = authorizePermission(principal, "settings.manage").allowed;
+  const canManageCurrencies = authorizePermission(principal, "currency.manage").allowed;
   const context = await loadCompanyContextForLayout();
 
   const selection = context.selection;
@@ -43,6 +45,21 @@ export default async function Home() {
       {canWriteCompanies ? (
         <Button asChild variant="outline">
           <Link href="/settings/reporting-groups">Reporting groups</Link>
+        </Button>
+      ) : null}
+      {canManageSettings ? (
+        <Button asChild variant="outline">
+          <Link href="/settings/system">System settings</Link>
+        </Button>
+      ) : null}
+      {canManageCurrencies ? (
+        <Button asChild variant="outline">
+          <Link href="/settings/currencies">Currencies</Link>
+        </Button>
+      ) : null}
+      {canManageCurrencies ? (
+        <Button asChild variant="outline">
+          <Link href="/settings/fixed-rates">Fixed rate versions</Link>
         </Button>
       ) : null}
       {canManageUsers ? (

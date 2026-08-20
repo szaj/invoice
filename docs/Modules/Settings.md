@@ -15,15 +15,15 @@ tags:
 | Settings Area | Requirements |
 | --- | --- |
 | Companies | Create/edit/activate companies and branding. |
-| Currencies | Create/disable currencies; symbols and decimal precision. |
+| Currencies | Create/disable currencies; symbols and decimal precision. TASK-014 implements the global `currencies` catalog (seeded USD, AED, PKR, GBP, AUD) under Admin `currency.manage`. Company enablement is TASK-015 (`company_currencies` under Admin `company.write`). Fixed conversion rates: TASK-016/017 under `/settings/fixed-rates` (`currency.manage`; append-only versions with expire-previous). |
 | Fixed Conversion Rates | Effective-dated rate versions by currency pair; monthly/yearly/manual labels, future scheduling, active/expired history, and prospective-only changes. No live FX provider. |
-| Payment Methods | Enable/disable per company; credentials; allowed settlement currencies; test/live. |
+| Payment Methods | Enable/disable per company; allowed settlement currencies (TASK-020 under `/companies/{id}/settlement`, Admin `gateway.credentials.manage`). Credentials and test/live remain TASK-049. |
 | Invoice Numbering | Company prefix, sequence, optional year component, uniqueness rules. |
 | Invoice Templates | Logo, company fields, footer, terms, layout options. |
 | Email Settings | SMTP/provider configuration or transactional email provider; brand sender identity. |
 | Email Templates | Subject/body templates per company. |
 | User Management | Users, roles, company access, status, reset password. |
-| System | Reporting currency, timezone defaults, rounding tolerance, file retention, security policy. |
+| System | Reporting currency, timezone defaults, rounding tolerance, file retention, security policy. TASK-013 implements reporting currency (configurable; ADR-011 OPEN), timezone defaults, and rounding tolerance in `system_settings` under Admin `settings.manage`. TASK-019 uses rounding tolerance for within-tolerance zero comparisons in money helpers. File retention and security policy remain later. Secrets must not be stored here unencrypted. |
 | Reporting Groups | Create/edit parent reporting groups and assign brands/companies for consolidated reports. |
 | Refund / Chargeback Settings | Reason codes, permissions, evidence requirements, merchant case/reference fields, and financial-impact statuses. |
 

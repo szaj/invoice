@@ -7,7 +7,14 @@
 // TASK-010 adds company branding fields and logo file metadata.
 // TASK-011 adds company_groups and companies.reporting_group_id (reporting only).
 // TASK-012 adds append-only audit_logs (application audit trail; not Pino).
-// Do not add currencies, customers, invoices, payments, or invoice sequences here.
+// TASK-013 adds system_settings (reporting currency, timezone, rounding placeholder).
+// TASK-014 adds currencies (global catalog; company enablement and rates are later).
+// TASK-015 adds company_currencies (per-company enabled subset + default invoice currency).
+// TASK-016 adds fixed_conversion_rates (Admin-defined; no live FX; versioning expire is TASK-017).
+// TASK-017 expires prior ACTIVE versions on create (append-only; retained permanently).
+// TASK-018 selects effective rate by valid_from/valid_to at a timestamp (no payment conversion).
+// TASK-020 adds payment_gateway_configs settlement-currency enablement (no credentials/charges).
+// Do not add customers, invoices, payments charging, or live FX here.
 //
 // Conventions for later models (PostgreSQL / Prisma):
 // - id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -207,6 +214,8 @@ model Company {
   updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz
   reportingGroup         CompanyGroup? @relation(fields: [reportingGroupId], references: [id], onDelete: SetNull)
   users                  UserCompany[]
+  currencies             CompanyCurrency[]
+  paymentGatewayConfigs  PaymentGatewayConfig[]
 
   @@index([reportingGroupId])
   @@map("companies")
@@ -225,4 +234,145 @@ model UserCompany {
   @@id([userId, companyId])
   @@index([companyId])
   @@map("user_companies")
+}
+
+/// Singleton-style core system settings for later phases.
+/// reporting_currency_code is configurable (ADR-011 remains OPEN; seed is a recommendation).
+/// Secrets must never be stored here unencrypted. Gateway credentials and fixed rates are later tasks.
+model SystemSettings {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportingCurrencyCode String   @map("reporting_currency_code")
+  defaultTimezone       String   @map("default_timezone")
+  /// Placeholder for later money utilities (TASK-019). Authoritative money still uses Decimal.
+  roundingTolerance     Decimal  @default(0) @map("rounding_tolerance") @db.Decimal(19, 4)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("system_settings")
+}
+
+enum CurrencyStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("currency_status")
+}
+
+/// Global currency catalog. Company enablement is TASK-015; fixed rates are TASK-016+.
+/// Disabled currencies remain for historical display (BR-011); no hard-delete.
+model Currency {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code             String           @unique @db.Char(3)
+  name             String
+  symbol           String
+  decimalPrecision Int              @map("decimal_precision")
+  status           CurrencyStatus   @default(ACTIVE)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  companies        CompanyCurrency[]
+
+  @@index([status])
+  @@map("currencies")
+}
+
+/// Per-company enabled invoice currencies and default invoice currency.
+/// Presence with enabled=true means selectable for later invoice creation (BR-002).
+/// Settlement currencies are on payment_gateway_settlement_currencies (TASK-020).
+model CompanyCurrency {
+  companyId  String   @map("company_id") @db.Uuid
+  currencyId String   @map("currency_id") @db.Uuid
+  enabled    Boolean  @default(true)
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currency   Currency @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+
+  @@id([companyId, currencyId])
+  @@index([currencyId])
+  @@index([companyId, isDefault])
+  @@map("company_currencies")
+}
+
+enum FixedConversionRateStatus {
+  ACTIVE
+  EXPIRED
+
+  @@map("fixed_conversion_rate_status")
+}
+
+enum FixedConversionRateFrequency {
+  MONTHLY
+  YEARLY
+  MANUAL
+
+  @@map("fixed_conversion_rate_frequency")
+}
+
+/// Admin-defined fixed conversion rates only (no live FX / gateway rates).
+/// Append-only versions: create new rows; never PATCH fixed_rate on historical rows.
+/// Effective selection for payments uses valid_from/valid_to windows (TASK-018).
+/// Creating a new version expires/closes prior ACTIVE versions for the same pair (retained).
+model FixedConversionRate {
+  id               String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fromCurrency     String                         @map("from_currency") @db.Char(3)
+  toCurrency       String                         @map("to_currency") @db.Char(3)
+  fixedRate        Decimal                        @map("fixed_rate") @db.Decimal(20, 12)
+  versionNo        Int                            @map("version_no")
+  frequencyLabel   FixedConversionRateFrequency   @map("frequency_label")
+  validFrom        DateTime                       @map("valid_from") @db.Timestamptz
+  validTo          DateTime?                      @map("valid_to") @db.Timestamptz
+  status           FixedConversionRateStatus      @default(ACTIVE)
+  notes            String?
+  createdByUserId  String?                        @map("created_by") @db.Uuid
+  createdAt        DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([fromCurrency, toCurrency, versionNo])
+  @@index([fromCurrency, toCurrency, status])
+  @@index([validFrom])
+  @@map("fixed_conversion_rates")
+}
+
+/// Version 1 payment methods (provider-agnostic codes; adapters later).
+enum PaymentMethodCode {
+  STRIPE
+  PAYPAL
+  BANK_PROCESSOR
+  MANUAL
+
+  @@map("payment_method_code")
+}
+
+/// Company payment-method / gateway config shape.
+/// Settlement currency enablement is TASK-020 (BR-006 / BR-007).
+/// Encrypted credentials, environment, webhooks are TASK-049 — not stored here yet.
+model PaymentGatewayConfig {
+  id                   String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String                             @map("company_id") @db.Uuid
+  methodCode           PaymentMethodCode                  @map("method_code")
+  /// Whether this payment method is enabled for the company (modes on/off).
+  enabled              Boolean                            @default(false)
+  createdAt            DateTime                           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime                           @updatedAt @map("updated_at") @db.Timestamptz
+  company              Company                            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  settlementCurrencies PaymentGatewaySettlementCurrency[]
+
+  @@unique([companyId, methodCode])
+  @@index([companyId])
+  @@map("payment_gateway_configs")
+}
+
+/// Per payment-method settlement currencies enabled for a company.
+/// Initial Version 1 currencies are USD and AED; Admin may enable other ACTIVE catalog codes.
+model PaymentGatewaySettlementCurrency {
+  gatewayConfigId String              @map("gateway_config_id") @db.Uuid
+  currencyCode    String              @map("currency_code") @db.Char(3)
+  enabled         Boolean             @default(true)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  gatewayConfig   PaymentGatewayConfig @relation(fields: [gatewayConfigId], references: [id], onDelete: Cascade)
+
+  @@id([gatewayConfigId, currencyCode])
+  @@index([currencyCode])
+  @@map("payment_gateway_settlement_currencies")
 }

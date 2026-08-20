@@ -19,6 +19,7 @@ export const PERMISSION_CODES = [
   "audit.read",
   "user.manage",
   "currency.manage",
+  "settings.manage",
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
@@ -53,6 +54,7 @@ export const PERMISSION_DEFINITIONS: Record<
   "audit.read": { code: "audit.read", name: "Read audit logs" },
   "user.manage": { code: "user.manage", name: "Manage users" },
   "currency.manage": { code: "currency.manage", name: "Manage currencies/rates" },
+  "settings.manage": { code: "settings.manage", name: "Manage system settings" },
 };
 
 export function isPermissionCode(value: string | null | undefined): value is PermissionCode {
@@ -64,6 +66,7 @@ export const HIGH_RISK_PERMISSIONS = new Set<PermissionCode>([
   "gateway.credentials.manage",
   "user.manage",
   "currency.manage",
+  "settings.manage",
   "customer.delete",
   "payment.adjust",
 ]);

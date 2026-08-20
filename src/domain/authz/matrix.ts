@@ -27,6 +27,7 @@ const ADMIN_PERMISSIONS: readonly PermissionCode[] = [
   "audit.read",
   "user.manage",
   "currency.manage",
+  "settings.manage",
 ];
 
 const COMPLIANCE_PERMISSIONS: readonly PermissionCode[] = [

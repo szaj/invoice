@@ -240,7 +240,7 @@ IEEE floating-point money — rejected. Integer minor-units — not specified; d
 
 ### Consequences
 
-[[TASK-019 Money Calculation Utilities]] is the centralized money layer. Historical snapshots are never recalculated.
+[[TASK-019 Money Calculation Utilities]] is the centralized money layer (`src/domain/money`, Prisma Decimal). Historical snapshots are never recalculated. [[TASK-016 Fixed Conversion Rate Schema]] stores Admin fixed rates as Prisma `Decimal` / PostgreSQL `NUMERIC(20, 12)` and never uses JavaScript float math or live FX for authoritative rates.
 
 ### Related Documents
 
@@ -570,6 +570,8 @@ USD as initial system default, with Admin configuration. Not formally accepted b
 ### Consequences
 
 Mixed-currency totals must still not be shown as a single unlabeled amount. Converted values use stored snapshots. Reporting remains provider-neutral. [[05 Architecture Decisions#ADR-008 — Payment provider architecture|ADR-008]]
+
+[[TASK-013 Core System Settings]] persists a configurable `reporting_currency_code` on `system_settings` with an initial USD seed matching the Definitions recommendation. That seed does **not** accept ADR-011; Admin may change the value. [[TASK-014 Currency Master]] adds the global currency catalog but does **not** lock reporting currency to a catalog FK or accept ADR-011. [[TASK-015 Company Currency Configuration]] adds per-company enabled invoice currencies and default; it does **not** accept ADR-011 or redefine reporting currency. [[TASK-016 Fixed Conversion Rate Schema]] stores Admin fixed rates only and does **not** accept ADR-011. [[TASK-017 Fixed Rate Versioning]] adds append-only version expiry and does **not** accept ADR-011. [[TASK-018 Effective Rate Selection]] selects Admin rates by effective window and does **not** accept ADR-011.
 
 ### Related Documents
 

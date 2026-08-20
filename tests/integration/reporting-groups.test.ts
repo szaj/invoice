@@ -173,7 +173,6 @@ describe.skipIf(!runDbIntegration)("reporting groups integration", () => {
     `;
     const tableNames = tables.map((table) => table.table_name);
     expect(tableNames).toContain("company_groups");
-    expect(tableNames).not.toContain("company_currencies");
     expect(tableNames).toContain("audit_logs");
   }, 30_000);
 

@@ -126,9 +126,9 @@ Depends on: Phases 01–08
 
 ## First Buildable Task
 
-[[TASK-001 Repository Foundation]], [[TASK-002 Database Foundation]], [[TASK-003 Authentication Base]], [[TASK-004 Password Reset and Session Controls]], [[TASK-005 Roles and Permissions Model]], [[TASK-006 User Management]], [[TASK-007 Company CRUD]], [[TASK-008 User Company Assignments]], [[TASK-009 Tenant Isolation and Company Context]], [[TASK-010 Company Branding Configuration]], [[TASK-011 Reporting Groups]], and [[TASK-012 Audit Event Foundation]] are COMPLETE.
+[[TASK-001 Repository Foundation]] through [[TASK-020 Settlement Currency Configuration]] are COMPLETE.
 
-[[TASK-013 Core System Settings]] is the next buildable task.
+[[TASK-021 Currency Disable and Historical Visibility]] is the next buildable task.
 
 ## Explicitly Not Planned for Version 1
 

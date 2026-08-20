@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 module: currency
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-019 — Money Calculation Utilities
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 2 ([[Phase 02 Financial Foundation]])
 
@@ -89,32 +89,46 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/money/{types,decimal,round,convert,outstanding,format,index}.ts`, `tests/unit/money.test.ts`.
+
 ### Files Modified
+
+[[Currency and Conversion]], [[Data Model]], [[Engineering Rules]], [[Testing]], [[Settings]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], ADR-004 consequences, [[TASK-019 Money Calculation Utilities]].
 
 ### Migrations
 
+None.
+
 ### APIs
+
+None. Domain helpers only — later invoice/payment modules must call `@/domain/money` (never JS float math in Route Handlers / React / adapters).
 
 ### Tests
 
+Unit: conversion formula; same-currency 1; fee exclusion; half-up rounding; settings tolerance; outstanding (BR-009); mixed-currency guard (BR-013). Integration N/A. `pnpm typecheck` / `lint` / `format:check` / `test` (164) / `RUN_DB_INTEGRATION=true test:integration` (40 passed, 1 skipped) / `build` pass.
+
 ### Issues
 
+Invoice line/tax totals, payment allocation workflows, and settlement charging remain later tasks. ADR-011 remains OPEN.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

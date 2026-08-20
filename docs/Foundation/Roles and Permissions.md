@@ -35,6 +35,7 @@ Role-Based Access Control (RBAC) is mandatory. Permissions should also be constr
 | Audit logs | All | Assigned | Own activity only/none |
 | Manage users | Yes | No | No |
 | Manage currencies/rates | Yes | No | No |
+| Manage system settings | Yes | No | No |
 
 
 *Customer deletion should normally be a soft-delete/deactivation only if financial records exist. Financial records must never be hard-deleted through the UI.

@@ -30,6 +30,8 @@ Use Prisma Decimal / PostgreSQL NUMERIC or DECIMAL.
 
 Historical fixed-rate snapshots must never be recalculated.
 
+Shared helpers live in `src/domain/money` ([[TASK-019 Money Calculation Utilities]]). Do not duplicate formulas in React, Route Handlers, Server Actions, or payment adapters.
+
 See [[05 Architecture Decisions#ADR-004 — Money representation|ADR-004]] and [[Currency and Conversion]].
 
 ## Authorization Rule

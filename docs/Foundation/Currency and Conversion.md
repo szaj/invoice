@@ -37,6 +37,19 @@ flowchart LR
 | GBP | Pound Sterling | £ | Active |
 | AUD | Australian Dollar | A$ | Active |
 
+TASK-014 seeds these five ACTIVE rows in `currencies`. Admin may add further ISO-style currencies and soft-disable existing ones.
+
+TASK-015 stores per-company enablement in `company_currencies` (enabled subset + one default invoice currency when any are enabled). Only globally ACTIVE currencies may be newly enabled.
+
+TASK-016 stores Admin-defined rows in `fixed_conversion_rates` (`NUMERIC(20, 12)`). Create is append-only; market/gateway rates are never fetched or substituted.
+
+TASK-017 expires prior ACTIVE versions for the same pair when a new version is created (rows retained; `fixed_rate` unchanged). Version history is listed under Settings.
+
+TASK-018 selects the effective Admin fixed rate for a pair at timestamp `at` via `resolveFixedConversionRate` / `selectEffectiveRate` (`validFrom <= at < validTo`; same-currency → `1.000000000000`; missing → Admin configuration error; never market FX). Payment/settlement application remains later.
+
+TASK-019 provides centralized Prisma Decimal helpers in `src/domain/money`: `computeConvertedSettlementAmount` (fee excluded), rounding to currency precision, settings tolerance, outstanding from confirmed applications, and display-only formatting.
+
+TASK-020 stores per-company, per-payment-method settlement currency enablement on `payment_gateway_configs` / `payment_gateway_settlement_currencies` (method enablement + currency codes; no credentials). Initial USD/AED (BR-007); Admin may enable other ACTIVE catalog codes. Non-enabled settlement currencies are rejected (BR-006). Encrypted credentials remain TASK-049; live charges remain later.
 
 ### 6.2 Currency Administration
 
@@ -46,7 +59,7 @@ flowchart LR
 
 - A company can enable a subset of globally active currencies.
 
-- Settlement currencies are configured separately per payment method. Initially payment settlement must support USD and AED only unless expanded by Admin configuration.
+- Settlement currencies are configured separately per payment method (TASK-020). Initially payment settlement must support USD and AED only unless expanded by Admin configuration.
 
 ### 6.3 Fixed Conversion Rates
 

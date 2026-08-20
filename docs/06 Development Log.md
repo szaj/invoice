@@ -29,6 +29,246 @@ Next task:
 
 ## Entries
 
+### 2026-08-20 — TASK-020
+
+Work completed:
+
+Implemented per-company, per-payment-method settlement currency enablement on the gateway config shape (`payment_gateway_configs` + `payment_gateway_settlement_currencies`). Method codes are provider-agnostic (STRIPE, PAYPAL, BANK_PROCESSOR, MANUAL). Initial Version 1 settlement currencies are USD and AED; Admin may enable other globally ACTIVE catalog codes (BR-006 / BR-007). Non-enabled settlement currencies are rejected via `assertSettlementCurrencyEnabled`. Encrypted credentials, sandbox/live, webhooks, and live charges were not implemented (TASK-049+). ADR-011 remains OPEN.
+
+Files changed:
+
+Created settlement domain/schemas, repository/service/actions, `/api/companies/{id}/settlement` (+ method PATCH), company Settlement UI, unit/integration tests, migration `20260820320000_settlement_currency_configuration`. Updated Prisma schema, audit action/entity, company detail link, [[Currency and Conversion]], [[Payments]], [[Companies and Brands]], [[Data Model]], [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], [[TASK-020 Settlement Currency Configuration]].
+
+Database changes:
+
+Migration adds `payment_method_code` enum, `payment_gateway_configs` (company, method, enabled; no credentials), and `payment_gateway_settlement_currencies` (gateway_config_id, currency_code, enabled). Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 170 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 42 passed, 1 skipped (recovery-link). `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Admin-only under existing `gateway.credentials.manage` (same permission TASK-049 will extend for credentials). No provider-specific branches in domain code (ADR-008).
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-021 Currency Disable and Historical Visibility]]
+
+### 2026-08-20 — TASK-019
+
+Work completed:
+
+Implemented the centralized financial calculation domain (`src/domain/money`) using Prisma Decimal. Includes `computeConvertedSettlementAmount` (invoice × fixed rate; merchant fee excluded), same-currency rate 1, half-up rounding to currency precision, system-settings rounding tolerance comparison, invoice outstanding from confirmed applications (BR-009), and mixed-currency unlabeled-total guard (BR-013). Display formatting is explicitly non-authoritative. No invoice/payment/settlement workflows. ADR-011 remains OPEN.
+
+Files changed:
+
+Created money domain modules and unit tests. Updated [[Currency and Conversion]], [[Data Model]], [[Engineering Rules]], [[Testing]], [[Settings]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], ADR-004 consequences, [[TASK-019 Money Calculation Utilities]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 164 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 1 skipped (recovery-link). `pnpm build` pass. Integration/E2E N/A per task.
+
+Decisions:
+
+No new ADR. Rounding mode is half-up to currency `decimalPrecision`. `system_settings.roundingTolerance` is used for within-tolerance zero comparisons, not as the money scale. ADR-011 remains OPEN.
+
+Problems:
+
+None blocking. Settlement currency configuration remains TASK-020.
+
+Next task:
+
+[[TASK-020 Settlement Currency Configuration]] (not started)
+
+### 2026-08-20 — TASK-018
+
+Work completed:
+
+Implemented effective fixed-rate selection for a currency pair at a timestamp. Domain `selectEffectiveRate` / server `resolveFixedConversionRate` read `valid_from`/`valid_to` windows (EXPIRED versions remain selectable historically). Same-currency resolves to Decimal string `1.000000000000`. Missing Admin rate returns a clear configuration error and never substitutes market/gateway FX. No payment conversion, settlement, invoice conversion, or UI. ADR-011 remains OPEN.
+
+Files changed:
+
+Created `resolve-rate` domain + server service and unit tests. Updated fixed-rate types/repository comments, Prisma comments, currency form type export for typecheck, [[Currency and Conversion]], [[Error Handling]], [[Database]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], ADR-011 note, [[TASK-018 Effective Rate Selection]].
+
+Database changes:
+
+None. Read model over existing `fixed_conversion_rates`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 154 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 1 skipped (recovery-link). `pnpm build` pass. Integration/E2E N/A per task.
+
+Decisions:
+
+No new ADR. Window is `validFrom <= at < validTo` (open-ended when `validTo` is null). Status is not the sole selector. Authorization is N/A for this pure resolve service; later conversion callers enforce their own authz. ADR-011 remains OPEN.
+
+Problems:
+
+None blocking. Money calculation utilities remain TASK-019.
+
+Next task:
+
+[[TASK-019 Money Calculation Utilities]] (not started)
+
+### 2026-08-20 — TASK-017
+
+Work completed:
+
+Implemented append-only fixed conversion rate versioning. Creating a new version for a currency pair expires/closes prior ACTIVE versions (sets `EXPIRED` and closes `valid_to`) while retaining rows and original `fixed_rate` values permanently. Added version history list UI/API and lifecycle audits (created/scheduled/activated/expired/superseded). No in-place PATCH of historical rate amounts. Effective rate selection, payment conversion, and settlement were not implemented. ADR-011 remains OPEN.
+
+Files changed:
+
+Updated fixed-rate repository/service/actions, `GET/POST /api/fixed-conversion-rates`, Settings version history page, create UI copy, home link, unit/integration tests. Updated [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Currency and Conversion]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-011 note, [[TASK-017 Fixed Rate Versioning]].
+
+Database changes:
+
+No new migration. Reuses TASK-016 `fixed_conversion_rates` columns (`status`, `valid_to`) for expire/close on create.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 148 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 1 skipped (recovery-link). `pnpm build` pass. E2E N/A (E2E-13 precursor).
+
+Decisions:
+
+No new ADR. Expire-previous runs on create (not a separate activation job). Scheduled vs activated audit is based on `validFrom` vs now. ADR-011 remains OPEN.
+
+Problems:
+
+None blocking. Effective rate selection remains TASK-018.
+
+Next task:
+
+[[TASK-018 Effective Rate Selection]] (not started)
+
+### 2026-08-20 — TASK-016
+
+Work completed:
+
+Implemented Admin-defined fixed conversion rate storage on `fixed_conversion_rates` with `NUMERIC(20, 12)` precision. Create-only API and Settings UI under `currency.manage`. No live FX, market, or gateway rate substitution. In-place historical edit is not offered. Expire-previous-on-create and version history list remain TASK-017. Effective selection, settlement, and payment conversion were not implemented. ADR-011 remains OPEN.
+
+Files changed:
+
+Created fixed-rates domain/schemas, repository/service/actions, `POST /api/fixed-conversion-rates`, Settings create UI, unit/integration tests, migration `20260820310000_fixed_conversion_rate_schema`. Updated Prisma schema, audit action, home link, prerequisite integration table assertions, [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Currency and Conversion]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-004/ADR-011 notes, [[TASK-016 Fixed Conversion Rate Schema]].
+
+Database changes:
+
+Migration adds `fixed_conversion_rates` and frequency/status enums. Applied with `pnpm prisma:migrate:deploy`. No payment snapshot tables or live FX integrations.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 146 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 1 skipped (recovery-link). `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+No new ADR. Uses existing `currency.manage` (Admin). Rates are Decimal strings on the wire; storage is `NUMERIC(20, 12)` per ADR-004 / Database conventions. ADR-011 remains OPEN.
+
+Problems:
+
+None blocking. Fixed rate versioning (expire previous) remains TASK-017.
+
+Next task:
+
+[[TASK-017 Fixed Rate Versioning]] (not started)
+
+### 2026-08-20 — TASK-015
+
+Work completed:
+
+Implemented per-company enabled invoice currency subset and default invoice currency on `company_currencies`. Admin manages under `company.write` (company subresource, same as branding). Globally INACTIVE currencies cannot be newly enabled (BR-002). Settlement currencies, fixed conversion rates, and invoice draft currency selection were not implemented. ADR-011 remains OPEN.
+
+Files changed:
+
+Created company-currency domain/schemas, repository/service/actions, `/api/companies/{id}/currencies`, company Currencies UI, unit/integration tests, migration `20260820300000_company_currency_configuration`. Updated Prisma schema, audit action, company detail link, prerequisite integration table assertions, [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Currency and Conversion]], [[Companies and Brands]], [[Settings]], [[Audit Logs]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-011 note, [[TASK-015 Company Currency Configuration]].
+
+Database changes:
+
+Migration adds `company_currencies` (`company_id`, `currency_id`, `enabled`, `is_default`) with FKs to companies (CASCADE) and currencies (RESTRICT). Applied with `pnpm prisma:migrate:deploy`. No fixed-rate or settlement tables.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 143 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 38 passed, 1 skipped (recovery-link). `pnpm build` pass. Playwright E2E N/A (E2E-09 remains later invoice flow).
+
+Decisions:
+
+No new ADR. ADR-011 remains OPEN. Company currency management uses existing `company.write` (Admin), not `currency.manage` (global catalog).
+
+Problems:
+
+None blocking. Fixed conversion rate schema remains TASK-016.
+
+Next task:
+
+[[TASK-016 Fixed Conversion Rate Schema]] (not started)
+
+### 2026-08-20 — TASK-014
+
+Work completed:
+
+Implemented the global currency catalog with seeded defaults USD, AED, PKR, GBP, AUD. Admin may add currencies and disable (soft status) under `currency.manage`. Disabled currencies remain retained for later historical display (BR-011). Company currency enablement, fixed conversion rates, settlement configuration, and live FX were not implemented. ADR-011 remains OPEN.
+
+Files changed:
+
+Created currencies domain/schemas, repository/service/actions, `/api/currencies` routes, Settings Currencies UI, unit/integration tests, migration `20260820290000_currency_master`. Updated Prisma schema, home Admin link, audit actions, prerequisite system-settings table assertion, [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Settings]], [[Currency and Conversion]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], ADR-011 note, [[TASK-014 Currency Master]].
+
+Database changes:
+
+Migration adds `currencies` and seeds five ACTIVE defaults. Applied with `pnpm prisma:migrate:deploy`. No `company_currencies` or fixed-rate tables.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 139 passed. `RUN_DB_INTEGRATION=true RUN_AUTH_INTEGRATION=true pnpm test:integration` 36 passed, 1 skipped (recovery-link). `pnpm build` pass. Playwright E2E N/A (E2E-09 precursor only).
+
+Decisions:
+
+No new ADR. ADR-011 remains OPEN. Reporting currency on `system_settings` stays a free configurable code (not FK-locked to the catalog here).
+
+Problems:
+
+None blocking. Company currency configuration remains TASK-015.
+
+Next task:
+
+[[TASK-015 Company Currency Configuration]] (not started)
+
+### 2026-08-20 — TASK-013
+
+Work completed:
+
+Implemented core system settings persistence and Admin UI. Stores configurable reporting currency code (ADR-011 remains OPEN; USD seed is a recommendation), default IANA timezone, and a rounding-tolerance placeholder (Decimal). Added Admin-only `settings.manage` permission. Setting updates write audit events (BR-015). Fixed conversion rates and gateway credentials were not implemented. Secrets are not stored in `system_settings`.
+
+Files changed:
+
+Created settings domain/schemas, repository/service/actions, `/api/system-settings`, `/settings/system` UI, unit/integration tests, migration `20260820280000_core_system_settings`. Updated permissions/matrix, home link, audit actions, [[Security]], [[Authorization]], [[API and Integrations]], [[Database]], [[Settings]], [[Roles and Permissions]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 01 Foundation]], ADR-011 consequences note, [[TASK-013 Core System Settings]].
+
+Database changes:
+
+Migration adds `system_settings` singleton seed and `settings.manage` (Admin). Applied with `pnpm prisma:migrate:deploy`. No currency master, fixed rates, or gateway tables.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 135 passed. `RUN_DB_INTEGRATION=true RUN_AUTH_INTEGRATION=true pnpm test:integration` 34 passed, 1 skipped (recovery-link). `pnpm build` pass. Playwright E2E N/A.
+
+Decisions:
+
+No new ADR. ADR-011 remains OPEN. Reporting currency is a free 3-letter code until TASK-014. Authorization uses `settings.manage` (Admin only), not role-code checks.
+
+Problems:
+
+None blocking. Currency master remains TASK-014.
+
+Next task:
+
+[[TASK-014 Currency Master]] (not started)
+
 ### 2026-08-20 — TASK-012
 
 Work completed:

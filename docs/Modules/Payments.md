@@ -43,11 +43,11 @@ sequenceDiagram
 
 | Configuration | Requirement |
 | --- | --- |
-| Enabled | Boolean per gateway/company. |
-| Credentials | Encrypted at rest; never exposed to Staff. |
-| Mode | Sandbox/Test vs Live. |
-| Settlement Currencies | USD and/or AED initially. |
-| Webhook Secret | Encrypted; required where gateway supports webhooks. |
+| Enabled | Boolean per gateway/company. TASK-020: `payment_gateway_configs.enabled` per method code. |
+| Credentials | Encrypted at rest; never exposed to Staff. TASK-049 (not stored yet). |
+| Mode | Sandbox/Test vs Live. TASK-049. |
+| Settlement Currencies | USD and/or AED initially; Admin may expand ACTIVE catalog codes. TASK-020: `payment_gateway_settlement_currencies`. |
+| Webhook Secret | Encrypted; required where gateway supports webhooks. TASK-049. |
 | Merchant Fee Capture | Optional API-provided or manual reconciliation field. Never used in fixed-rate conversion or invoice balance. |
 | Payment Link / Checkout | Optional hosted checkout generation; no customer portal. |
 | Status | Healthy / Configuration Error / Disabled (operational indicator). |
