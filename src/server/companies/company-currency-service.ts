@@ -113,7 +113,12 @@ export async function updateCompanyCurrencyConfiguration(
       return { ok: false, status: 404, error: COMPANY_NOT_FOUND_MESSAGE };
     }
 
-    const updated = await deps.store.replaceCompanyCurrencies(parsedId.data, parsed.data);
+    // New selection path only accepts ACTIVE ids; historical INACTIVE assignments
+    // are preserved inside replaceCompanyCurrencies (BR-011).
+    const updated = await deps.store.replaceCompanyCurrencies(parsedId.data, {
+      enabledCurrencyIds: enabledIds,
+      defaultCurrencyId: enabledIds.length === 0 ? null : parsed.data.defaultCurrencyId,
+    });
 
     await recordAuditEventRequired(
       {

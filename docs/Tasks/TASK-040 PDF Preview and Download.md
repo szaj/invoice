@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-040 — PDF Preview and Download
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -85,32 +85,54 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/app/api/invoices/[id]/pdf/files/[fileId]/route.ts`
+- `src/app/(app)/invoices/invoice-pdf-panel.tsx`
+- `tests/unit/invoices-pdf-download.test.ts`
+
 ### Files Modified
+
+- `src/server/invoices/invoice-pdf-service.ts` — `downloadInvoicePdf`
+- `src/server/invoices/invoice-file-repository.ts` — `getById`
+- `src/server/invoices/actions.ts` — `loadInvoicePdfFilesForUi`
+- `src/app/(app)/invoices/[id]/page.tsx` — PDF panel
+- `src/domain/invoices/pdf.ts` — forbidden/not-found copy
+- Vault: TASK-040, Status, Home, Plan, Phase 04, Dev Log, Invoices, PDF and Email, Screen Inventory, API
 
 ### Migrations
 
+None.
+
 ### APIs
+
+- `GET /api/invoices/[id]/pdf/files/[fileId]?disposition=inline|attachment` — stream stored PDF bytes
+- Existing `GET /api/invoices/[id]/pdf` lists metadata; `POST` generates (TASK-039)
 
 ### Tests
 
+Authorization unit: Staff unassigned → 403; assigned Staff receives stored bytes; missing storage object → 404 (no silent regenerate). `pnpm typecheck` / `lint` / `format` / `test` (256) / `build` pass.
+
 ### Issues
 
+None. Email remains [[TASK-041 Email Delivery]].
+
 ### Commit
+
+Not committed (await explicit request).
 
 ## Next Recommended Task
 

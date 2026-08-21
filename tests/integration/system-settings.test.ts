@@ -15,6 +15,7 @@ describe.skipIf(!runDbIntegration)("core system settings integration", () => {
         reportingCurrencyCode: string;
         defaultTimezone: string;
         roundingTolerance: string;
+        invoiceNumberIncludeYear: boolean;
       }
     | undefined;
 
@@ -54,6 +55,7 @@ describe.skipIf(!runDbIntegration)("core system settings integration", () => {
       reportingCurrencyCode: current.data.reportingCurrencyCode,
       defaultTimezone: current.data.defaultTimezone,
       roundingTolerance: current.data.roundingTolerance,
+      invoiceNumberIncludeYear: current.data.invoiceNumberIncludeYear,
     };
 
     const denied = await updateSystemSettings(
@@ -62,6 +64,7 @@ describe.skipIf(!runDbIntegration)("core system settings integration", () => {
         reportingCurrencyCode: "GBP",
         defaultTimezone: "Europe/London",
         roundingTolerance: "0.02",
+        invoiceNumberIncludeYear: false,
       },
       deps,
     );
@@ -78,6 +81,7 @@ describe.skipIf(!runDbIntegration)("core system settings integration", () => {
         reportingCurrencyCode: nextCurrency,
         defaultTimezone: "Asia/Dubai",
         roundingTolerance: "0.01",
+        invoiceNumberIncludeYear: previous.invoiceNumberIncludeYear,
       },
       deps,
     );
@@ -128,6 +132,7 @@ describe.skipIf(!runDbIntegration)("core system settings integration", () => {
           reportingCurrencyCode: previous.reportingCurrencyCode,
           defaultTimezone: previous.defaultTimezone,
           roundingTolerance: previous.roundingTolerance,
+          invoiceNumberIncludeYear: previous.invoiceNumberIncludeYear,
         },
       });
     }

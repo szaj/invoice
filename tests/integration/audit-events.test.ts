@@ -97,8 +97,8 @@ describe.skipIf(!runDbIntegration)("audit event foundation integration", () => {
     `;
     const tableNames = tables.map((table) => table.table_name);
     expect(tableNames).toContain("audit_logs");
-    expect(tableNames).not.toContain("invoices");
-    expect(tableNames).not.toContain("payments");
+    expect(tableNames).toContain("invoices");
+    expect(tableNames).toContain("payments");
   }, 30_000);
 
   it("has no application update/delete path for audit rows", async () => {

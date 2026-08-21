@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 module: currency
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-021 — Currency Disable and Historical Visibility
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 2 ([[Phase 02 Financial Foundation]])
 
@@ -86,32 +86,52 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+`src/domain/currencies/selection.ts`, `src/server/currencies/currency-selection-service.ts`, `src/components/currencies/new-document-currency-picker.tsx`, `tests/unit/currency-selection.test.ts`.
+
 ### Files Modified
+
+`src/domain/currencies/types.ts` (disabled/new-selection error constants); company currency repository/service/form/page (preserve historically enabled INACTIVE assignments; picker/history copy); settlement form historical copy; Prisma model comments. [[Currency and Conversion]], [[Error Handling]], [[Authorization]], [[Security]], [[API and Integrations]], [[Database]], [[Settings]], [[Testing]], ADR-011 note (still OPEN), [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], [[TASK-021 Currency Disable and Historical Visibility]].
 
 ### Migrations
 
+None. Reuses existing `currencies.status` / `currency_status` flags from TASK-014. No new tables or columns.
+
 ### APIs
+
+No new public routes. Later invoice/payment callers use:
+
+- `validateCurrencyForNewDocument(companyId, currencyId)` — rejects INACTIVE or company-disabled (BR-002 / BR-011)
+- `listCurrenciesForNewDocument(companyId)` — ACTIVE + company-enabled only
+- `resolveCurrencyForHistoricalDisplay(code)` — returns INACTIVE catalog metadata without rewriting codes
+
+Admin disable remains TASK-014 `PATCH /api/currencies/{id}` under `currency.manage`. Selection hooks do not require Admin (callers enforce authz).
 
 ### Tests
 
+Unit: new selection rejects disabled; company-disabled rejected; picker hides INACTIVE; historical label retains code; server hooks match. Company currency save preserves historically enabled inactive assignments. `pnpm typecheck` / `lint` / `format:check` / `test` (181) / `RUN_DB_INTEGRATION=true test:integration` (39 passed, 4 skipped) / `build` pass. Integration/E2E N/A per task.
+
 ### Issues
 
+ADR-011 remains OPEN. Invoice/payment create workflows that call these hooks remain later tasks. No rewriting of historical currency codes.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

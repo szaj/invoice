@@ -5,6 +5,7 @@
 // TASK-007 adds companies (identity, address, status, names).
 // TASK-008 adds user_companies (user-to-company assignment).
 // TASK-010 adds company branding fields and logo file metadata.
+// TASK-035 adds companies.invoice_sequence_next and system_settings.invoice_number_include_year.
 // TASK-011 adds company_groups and companies.reporting_group_id (reporting only).
 // TASK-012 adds append-only audit_logs (application audit trail; not Pino).
 // TASK-013 adds system_settings (reporting currency, timezone, rounding placeholder).
@@ -14,7 +15,19 @@
 // TASK-017 expires prior ACTIVE versions on create (append-only; retained permanently).
 // TASK-018 selects effective rate by valid_from/valid_to at a timestamp (no payment conversion).
 // TASK-020 adds payment_gateway_configs settlement-currency enablement (no credentials/charges).
-// Do not add customers, invoices, payments charging, or live FX here.
+// TASK-021 formalizes currency disable vs historical visibility (status flags only).
+// TASK-022 adds customers master (fields from Customers §7.1).
+// TASK-025 adds customer_companies (multi-company linkage; access via linked companies).
+// TASK-027 adds customer_notes (internal-only; author/timestamp).
+// TASK-030 adds invoices header (company+customer; draft status; no line items/payments).
+// TASK-033 adds invoice_items (line totals server-side; discount blocked until ADR-010).
+// TASK-034 adds stored invoice totals (recalculated from items/payments; discount total = 0 while ADR-010 OPEN).
+// TASK-037 adds invoice_versions (immutable snapshots on issue; ADR-009 financial revision OPEN).
+// TASK-038 adds invoices.cancellation_reason / cancelled_at / cancelled_by (soft cancel; BR-012).
+// TASK-039 adds invoice_files (PDF metadata; blob in StorageService / R2 — ADR-006 / ADR-013).
+// TASK-041 adds email_logs (invoice email delivery; EmailService → ResendAdapter — ADR-007).
+// TASK-044 adds payments (provider-agnostic payment records; no charges/webhooks/allocation).
+// Do not add payment charging, customer portal, or live FX here.
 //
 // Conventions for later models (PostgreSQL / Prisma):
 // - id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -113,6 +126,19 @@ model User {
   createdBy             User?         @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdUsers          User[]        @relation("UserCreatedBy")
   companies             UserCompany[]
+  assignedCustomers     Customer[]     @relation("CustomerAssignedStaff")
+  createdCustomers      Customer[]     @relation("CustomerCreatedBy")
+  updatedCustomers      Customer[]     @relation("CustomerUpdatedBy")
+  authoredCustomerNotes CustomerNote[] @relation("CustomerNoteAuthor")
+  assignedInvoices      Invoice[]      @relation("InvoiceAssignedStaff")
+  createdInvoices       Invoice[]      @relation("InvoiceCreatedBy")
+  updatedInvoices       Invoice[]      @relation("InvoiceUpdatedBy")
+  createdInvoiceVersions InvoiceVersion[] @relation("InvoiceVersionCreatedBy")
+  cancelledInvoices      Invoice[] @relation("InvoiceCancelledBy")
+  createdInvoiceFiles    InvoiceFile[] @relation("InvoiceFileCreatedBy")
+  sentEmailLogs          EmailLog[] @relation("EmailLogSentBy")
+  createdPayments        Payment[] @relation("PaymentCreatedBy")
+  confirmedPayments      Payment[] @relation("PaymentConfirmedBy")
 
   @@map("users")
 }
@@ -183,7 +209,7 @@ model CompanyGroup {
 }
 
 /// Company/brand identity, structured address, branding, and active/inactive status.
-/// Gateway credentials, currencies, and invoice sequence issuance are later tasks.
+/// Gateway credentials and currencies are later tasks; invoice sequence allocation is TASK-035.
 /// reporting_group_id is for report roll-ups only; authorization uses user_companies.
 /// Logo bytes live in object storage; only metadata is stored here.
 model Company {
@@ -201,6 +227,8 @@ model Company {
   postalCode             String?       @map("postal_code")
   countryCode            String?       @map("country_code") @db.Char(2)
   invoicePrefix          String?       @map("invoice_prefix")
+  /// Next sequence value to allocate for this company (TASK-035). Never decreases.
+  invoiceSequenceNext    Int           @default(1) @map("invoice_sequence_next")
   termsAndConditions     String?       @map("terms_and_conditions")
   emailTemplateReference String?       @map("email_template_reference")
   logoStorageKey         String?       @map("logo_storage_key")
@@ -216,6 +244,11 @@ model Company {
   users                  UserCompany[]
   currencies             CompanyCurrency[]
   paymentGatewayConfigs  PaymentGatewayConfig[]
+  defaultForCustomers    Customer[]
+  customerLinks          CustomerCompany[]
+  invoices               Invoice[]
+  emailLogs              EmailLog[]
+  payments               Payment[]
 
   @@index([reportingGroupId])
   @@map("companies")
@@ -245,6 +278,8 @@ model SystemSettings {
   defaultTimezone       String   @map("default_timezone")
   /// Placeholder for later money utilities (TASK-019). Authoritative money still uses Decimal.
   roundingTolerance     Decimal  @default(0) @map("rounding_tolerance") @db.Decimal(19, 4)
+  /// When true, allocated invoice numbers include YYYY between prefix and sequence (TASK-035).
+  invoiceNumberIncludeYear Boolean @default(false) @map("invoice_number_include_year")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -259,7 +294,8 @@ enum CurrencyStatus {
 }
 
 /// Global currency catalog. Company enablement is TASK-015; fixed rates are TASK-016+.
-/// Disabled currencies remain for historical display (BR-011); no hard-delete.
+/// Soft-disable via status only (no hard-delete). Disabled rows remain for historical
+/// display (BR-011) and are rejected by new-document selection hooks (TASK-021).
 model Currency {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code             String           @unique @db.Char(3)
@@ -276,7 +312,8 @@ model Currency {
 }
 
 /// Per-company enabled invoice currencies and default invoice currency.
-/// Presence with enabled=true means selectable for later invoice creation (BR-002).
+/// Presence with enabled=true and globally ACTIVE means selectable for new documents (BR-002).
+/// Globally INACTIVE assignments may remain for historical visibility; new selection rejects them (TASK-021).
 /// Settlement currencies are on payment_gateway_settlement_currencies (TASK-020).
 model CompanyCurrency {
   companyId  String   @map("company_id") @db.Uuid
@@ -326,6 +363,7 @@ model FixedConversionRate {
   notes            String?
   createdByUserId  String?                        @map("created_by") @db.Uuid
   createdAt        DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+  paymentSnapshots Payment[]
 
   @@unique([fromCurrency, toCurrency, versionNo])
   @@index([fromCurrency, toCurrency, status])
@@ -375,4 +413,368 @@ model PaymentGatewaySettlementCurrency {
   @@id([gatewayConfigId, currencyCode])
   @@index([currencyCode])
   @@map("payment_gateway_settlement_currencies")
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+
+  @@map("customer_type")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("customer_status")
+}
+
+/// Customer master record (Customers §7.1).
+/// Email is optional at create (required later only to email an invoice — BR-017).
+/// Multi-company linkage via customer_companies (TASK-025). Soft status only (BR-012); no hard-delete API.
+/// default_company_id is a preference, not ownership or authorization.
+model Customer {
+  id                         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  displayName                String            @map("display_name")
+  contactPerson              String?           @map("contact_person")
+  customerType               CustomerType      @map("customer_type")
+  email                      String?
+  phone                      String?
+  alternatePhone             String?           @map("alternate_phone")
+  addressLine1               String?           @map("address_line1")
+  addressLine2               String?           @map("address_line2")
+  city                       String?
+  region                     String?
+  postalCode                 String?           @map("postal_code")
+  countryCode                String?           @map("country_code") @db.Char(2)
+  taxRegistrationId          String?           @map("tax_registration_id")
+  website                    String?
+  defaultInvoiceCurrencyCode String?           @map("default_invoice_currency_code") @db.Char(3)
+  defaultCompanyId           String?           @map("default_company_id") @db.Uuid
+  paymentPreference          String?           @map("payment_preference")
+  status                     CustomerStatus    @default(ACTIVE)
+  assignedStaffUserId        String?           @map("assigned_staff_user_id") @db.Uuid
+  internalNotes              String?           @map("internal_notes")
+  tags                       String[]          @default([])
+  createdByUserId            String?           @map("created_by_user_id") @db.Uuid
+  updatedByUserId            String?           @map("updated_by_user_id") @db.Uuid
+  createdAt                  DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  defaultCompany             Company?          @relation(fields: [defaultCompanyId], references: [id], onDelete: SetNull)
+  assignedStaff              User?             @relation("CustomerAssignedStaff", fields: [assignedStaffUserId], references: [id], onDelete: SetNull)
+  createdBy                  User?             @relation("CustomerCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy                  User?             @relation("CustomerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  companyLinks               CustomerCompany[]
+  notes                      CustomerNote[]
+  invoices                   Invoice[]
+  payments                   Payment[]
+
+  @@index([status])
+  @@index([displayName])
+  @@index([email])
+  @@index([defaultCompanyId])
+  @@index([assignedStaffUserId])
+  @@map("customers")
+}
+
+/// Links a customer master to one or more companies without duplicating the customer.
+/// Authorization for Staff/Compliance is intersection with user_companies (TASK-025).
+model CustomerCompany {
+  customerId String   @map("customer_id") @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, companyId])
+  @@index([companyId])
+  @@map("customer_companies")
+}
+
+enum CustomerNoteVisibility {
+  INTERNAL
+
+  @@map("customer_note_visibility")
+}
+
+/// Internal-only customer notes thread (Customers §7.2 / TASK-027).
+/// Never customer-portal visible. Never included on PDF/email payloads.
+model CustomerNote {
+  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId   String                 @map("customer_id") @db.Uuid
+  authorUserId String                 @map("author_user_id") @db.Uuid
+  body         String
+  visibility   CustomerNoteVisibility @default(INTERNAL)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  customer     Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author       User                   @relation("CustomerNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@index([authorUserId])
+  @@map("customer_notes")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+
+  @@map("invoice_status")
+}
+
+enum InvoiceComplianceStatus {
+  NOT_REVIEWED
+  UNDER_REVIEW
+  APPROVED
+  FLAGGED
+
+  @@map("invoice_compliance_status")
+}
+
+/// Invoice header (Invoices §8.2 / TASK-030). BR-001: exactly one company and one customer.
+/// Numbering lock / issue / PDF / payments / totals are later tasks.
+/// invoice_number is nullable until TASK-035; unique per company when set.
+/// Transactional writes require a concrete company context (TASK-009), not All Companies.
+model Invoice {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String                  @map("company_id") @db.Uuid
+  customerId       String                  @map("customer_id") @db.Uuid
+  /// System-generated per company; null while draft before numbering (TASK-035).
+  invoiceNumber    String?                 @map("invoice_number")
+  invoiceDate      DateTime                @map("invoice_date") @db.Date
+  dueDate          DateTime                @map("due_date") @db.Date
+  /// Invoice currency code; must be enabled for company when drafting (BR-002 / TASK-031).
+  currencyCode     String                  @map("currency_code") @db.Char(3)
+  referencePo      String?                 @map("reference_po")
+  assignedStaffUserId String?              @map("assigned_staff_user_id") @db.Uuid
+  status           InvoiceStatus           @default(DRAFT)
+  complianceStatus InvoiceComplianceStatus @default(NOT_REVIEWED) @map("compliance_status")
+  /// Never printed or emailed (Invoices §8.2).
+  internalNotes    String?                 @map("internal_notes")
+  /// Optional invoice-visible notes (PDF/email later).
+  customerNotes    String?                 @map("customer_notes")
+  /// Stored totals (TASK-034). Recalculated from line items / confirmed payment applications.
+  subtotal             Decimal @default(0) @map("subtotal") @db.Decimal(19, 4)
+  /// Always 0 while ADR-010 remains OPEN — not a manually editable discount.
+  discountTotal        Decimal @default(0) @map("discount_total") @db.Decimal(19, 4)
+  taxTotal             Decimal @default(0) @map("tax_total") @db.Decimal(19, 4)
+  invoiceTotal         Decimal @default(0) @map("invoice_total") @db.Decimal(19, 4)
+  /// Cached sum of confirmed applications (BR-009); never a manually edited paid total.
+  confirmedPaidAmount  Decimal @default(0) @map("confirmed_paid_amount") @db.Decimal(19, 4)
+  outstandingAmount    Decimal @default(0) @map("outstanding_amount") @db.Decimal(19, 4)
+  /// Soft-cancel reason (TASK-038 / BR-012). Financial totals are not rewritten on cancel.
+  cancellationReason   String?   @map("cancellation_reason")
+  cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledByUserId    String?   @map("cancelled_by_user_id") @db.Uuid
+  createdByUserId  String?                 @map("created_by_user_id") @db.Uuid
+  updatedByUserId  String?                 @map("updated_by_user_id") @db.Uuid
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  company          Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer         Customer                @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  assignedStaff    User?                   @relation("InvoiceAssignedStaff", fields: [assignedStaffUserId], references: [id], onDelete: SetNull)
+  createdBy        User?                   @relation("InvoiceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy        User?                   @relation("InvoiceUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy      User?                   @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  lineItems        InvoiceItem[]
+  versions         InvoiceVersion[]
+  files            InvoiceFile[]
+  emailLogs        EmailLog[]
+  payments         Payment[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId, status])
+  @@index([customerId])
+  @@index([assignedStaffUserId])
+  @@index([invoiceDate])
+  @@map("invoices")
+}
+
+/// Immutable invoice document snapshot (TASK-037). Created on issue.
+/// Does not authorize issued financial edits while ADR-009 is OPEN.
+/// Historical rows are never updated or hard-deleted.
+model InvoiceVersion {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  versionNo       Int      @map("version_no")
+  /// Header + line items + totals snapshot at creation time (Decimal strings).
+  snapshot        Json
+  reason          String?
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  createdBy       User?    @relation("InvoiceVersionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  files           InvoiceFile[]
+
+  @@unique([invoiceId, versionNo])
+  @@index([invoiceId])
+  @@map("invoice_versions")
+}
+
+/// Stored invoice PDF metadata (TASK-039 / ADR-006). Binary lives in StorageService (R2).
+/// One PDF per invoice version; never regenerate from today's mutable data when a row exists.
+model InvoiceFile {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String   @map("invoice_id") @db.Uuid
+  invoiceVersionId String   @map("invoice_version_id") @db.Uuid
+  storageKey       String   @map("storage_key")
+  checksumSha256   String   @map("checksum_sha256") @db.Char(64)
+  byteSize         Int      @map("byte_size")
+  contentType      String   @default("application/pdf") @map("content_type")
+  /// A4 or LETTER (PDF and Email §9.1).
+  pageSize         String   @default("A4") @map("page_size")
+  createdByUserId  String?  @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoiceVersion   InvoiceVersion @relation(fields: [invoiceVersionId], references: [id], onDelete: Restrict)
+  createdBy        User?    @relation("InvoiceFileCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  emailLogs        EmailLog[]
+
+  @@unique([invoiceVersionId])
+  @@index([invoiceId])
+  @@map("invoice_files")
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("email_delivery_status")
+}
+
+/// Invoice (and later operational) email delivery log (TASK-041 / ADR-007).
+/// Email failure must not un-issue an invoice. PDF binaries are not stored here.
+model EmailLog {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  invoiceId         String              @map("invoice_id") @db.Uuid
+  invoiceFileId     String?             @map("invoice_file_id") @db.Uuid
+  recipient         String
+  subject           String
+  status            EmailDeliveryStatus
+  providerMessageId String?             @map("provider_message_id")
+  errorMessage      String?             @map("error_message")
+  /// True when status is FAILED and a later retry is allowed.
+  retryable         Boolean             @default(false)
+  sentByUserId      String?             @map("sent_by_user_id") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  invoice           Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoiceFile       InvoiceFile?        @relation(fields: [invoiceFileId], references: [id], onDelete: SetNull)
+  sentBy            User?               @relation("EmailLogSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([companyId, createdAt])
+  @@map("email_logs")
+}
+
+/// Invoice line item (Invoices §8.3 / TASK-033).
+/// Discount omitted until ADR-010 is accepted. Tax name/rate are optional snapshots;
+/// TASK-034 aggregates tax into invoice tax_total from these snapshots. line_total is pre-tax.
+model InvoiceItem {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  sortOrder       Int      @default(0) @map("sort_order")
+  description     String
+  /// Decimal > 0; default 1.
+  quantity        Decimal  @db.Decimal(20, 6)
+  /// Unit rate in invoice currency (ADR-004).
+  unitRate        Decimal  @map("unit_rate") @db.Decimal(19, 4)
+  /// Optional tax name snapshot (Invoices §8.3).
+  taxName         String?  @map("tax_name")
+  /// Optional tax rate percentage snapshot used for invoice tax_total (TASK-034).
+  taxRatePercent  Decimal? @map("tax_rate_percent") @db.Decimal(10, 6)
+  /// Server-calculated: round(quantity × unit_rate) in invoice currency precision (pre-tax).
+  lineTotal       Decimal  @map("line_total") @db.Decimal(19, 4)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, sortOrder])
+  @@map("invoice_items")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+
+  @@map("payment_status")
+}
+
+/// How the payment record entered the system (ADR-008). Not a provider brand.
+enum PaymentSource {
+  MANUAL
+  GATEWAY_API
+  GATEWAY_WEBHOOK
+  SYSTEM
+
+  @@map("payment_source")
+}
+
+/// Rate provenance for the locked snapshot (BR-020 / BR-021). Never market/gateway FX.
+enum PaymentRateSource {
+  ADMIN_FIXED_RATE
+  SAME_CURRENCY
+
+  @@map("payment_rate_source")
+}
+
+/// Provider-agnostic payment record (Payments §10.3 / TASK-044 / ADR-008).
+/// Core application statuses: Pending / Successful / Failed.
+/// Refunds/disputes/chargebacks are later linked adjustments — never rewrite SUCCESSFUL financial fields (BR-004/005).
+/// Merchant/processor fee and actual received are optional reconciliation only (BR-020); excluded from conversion and invoice balance.
+/// No gateway credentials, Stripe-/PayPal-specific columns, charging, webhooks, or allocation here.
+model Payment {
+  id                       String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                String            @map("company_id") @db.Uuid
+  invoiceId                String            @map("invoice_id") @db.Uuid
+  /// Snapshot/reference to the customer at payment time (Payments §10.3).
+  customerId               String            @map("customer_id") @db.Uuid
+  /// Provider-agnostic method code (STRIPE / PAYPAL / BANK_PROCESSOR / MANUAL). Adapters later.
+  methodCode               PaymentMethodCode @map("method_code")
+  /// External provider/manual reference. Provider-neutral; not a credential.
+  externalTransactionId    String?           @map("external_transaction_id")
+  status                   PaymentStatus     @default(PENDING)
+  invoiceCurrencyCode      String            @map("invoice_currency_code") @db.Char(3)
+  /// Amount applied to the invoice balance in invoice currency (ADR-004).
+  invoiceAmountApplied     Decimal           @map("invoice_amount_applied") @db.Decimal(19, 4)
+  settlementCurrencyCode   String            @map("settlement_currency_code") @db.Char(3)
+  /// Locked Admin-defined fixed rate snapshot (or 1 for same-currency). Never recalculated (BR-020/021).
+  fixedConversionRate      Decimal           @map("fixed_conversion_rate") @db.Decimal(20, 12)
+  /// Optional link to the fixed_conversion_rates version used (placeholder until TASK-046 fills on confirm).
+  rateVersionId            String?           @map("rate_version_id") @db.Uuid
+  rateSource               PaymentRateSource @map("rate_source")
+  /// invoice_amount_applied × fixed_conversion_rate; fee excluded (TASK-019 / BR-020).
+  convertedSettlementAmount Decimal          @map("converted_settlement_amount") @db.Decimal(19, 4)
+  /// Optional processor/merchant fee in settlement currency — reconciliation only.
+  processorFeeAmount       Decimal?          @map("processor_fee_amount") @db.Decimal(19, 4)
+  /// Optional actual amount received — not auto-derived from fee (Definitions / TASK-047 behavior).
+  actualReceivedAmount     Decimal?          @map("actual_received_amount") @db.Decimal(19, 4)
+  paymentDate              DateTime          @map("payment_date") @db.Date
+  receivedAt               DateTime?         @map("received_at") @db.Timestamptz
+  source                   PaymentSource
+  notes                    String?
+  createdByUserId          String?           @map("created_by_user_id") @db.Uuid
+  confirmedByUserId        String?           @map("confirmed_by_user_id") @db.Uuid
+  createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  company                  Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  invoice                  Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer                 Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  rateVersion              FixedConversionRate? @relation(fields: [rateVersionId], references: [id], onDelete: SetNull)
+  createdBy                User?             @relation("PaymentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  confirmedBy              User?             @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([methodCode, externalTransactionId])
+  @@index([paymentDate])
+  @@map("payments")
 }

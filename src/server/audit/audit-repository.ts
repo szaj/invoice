@@ -53,6 +53,7 @@ export interface AuditEventStore {
 
 /**
  * Write-only Prisma store. Update/delete are intentionally absent.
+ * Entity-scoped reads for customer profile activity (TASK-026) are allowed.
  */
 export class PrismaAuditEventStore implements AuditEventStore {
   async append(
@@ -84,5 +85,44 @@ export class PrismaAuditEventStore implements AuditEventStore {
     });
 
     return mapRow(created);
+  }
+
+  /**
+   * List events for one entity. Callers must enforce authorization and company scope.
+   * When `allowedCompanyIds` is set, only events with null companyId or a listed companyId are returned.
+   */
+  async listByEntity(input: {
+    readonly entityType: string;
+    readonly entityId: string;
+    readonly allowedCompanyIds?: readonly string[] | null;
+    readonly companyId?: string | null;
+    readonly limit?: number;
+  }): Promise<AuditEventRecord[]> {
+    const prisma = getPrisma();
+    const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+
+    const companyFilter: Prisma.AuditLogWhereInput[] = [];
+    if (input.companyId) {
+      companyFilter.push({
+        OR: [{ companyId: null }, { companyId: input.companyId }],
+      });
+    }
+    if (input.allowedCompanyIds) {
+      companyFilter.push({
+        OR: [{ companyId: null }, { companyId: { in: [...input.allowedCompanyIds] } }],
+      });
+    }
+
+    const rows = await prisma.auditLog.findMany({
+      where: {
+        entityType: input.entityType,
+        entityId: input.entityId,
+        AND: companyFilter.length > 0 ? companyFilter : undefined,
+      },
+      orderBy: { occurredAt: "desc" },
+      take: limit,
+    });
+
+    return rows.map(mapRow);
   }
 }

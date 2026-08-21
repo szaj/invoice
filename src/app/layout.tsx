@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice platform",
+  title: "Invoices",
   description: "Multi-brand invoice management",
 };
 

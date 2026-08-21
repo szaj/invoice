@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-036 — Invoice Lifecycle
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -86,32 +86,59 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/domain/invoices/lifecycle.ts`
+- `src/server/invoices/invoice-lifecycle-service.ts`
+- `src/app/api/invoices/[id]/issue/route.ts`
+- `src/app/(app)/invoices/invoice-issue-button.tsx`
+- `tests/unit/invoices-lifecycle.test.ts`
+- `tests/integration/invoices-lifecycle.test.ts`
+
 ### Files Modified
+
+- Access helpers (`canIssueDraftInvoice`, `canViewInvoice`); list/get support non-draft statuses
+- Status filters on `/invoices`; Issue button on draft detail
+- Line-item list readable for issued invoices; draft edit still blocked for non-draft
+- Audit: `invoices.issued`, `invoices.overdue_marked`
 
 ### Migrations
 
+None — `status` and `due_date` already exist (TASK-030).
+
 ### APIs
+
+- `POST /api/invoices/{id}/issue` — Draft → ISSUED; allocates number if null (TASK-035)
+- Overdue refresh on list/detail load (BR-018)
 
 ### Tests
 
+- Unit: transitions + BR-018 overdue rule
+- Integration: issue + number + overdue mark
+
 ### Issues
 
+- **Cancel (Draft/Issued → Cancelled)** deferred to [[TASK-038 Invoice Cancellation]] (explicit in TASK-036 auth + TASK-038 ownership). BR-019 collectible-outstanding exclusion for cancelled waits on cancel.
+- **Paid / Partially Paid** transitions excluded without payment records.
+- **ADR-009 OPEN**: issued financial field edits not implemented (blocked; no silent edits).
+- **US-011 undecided**: due date remains mandatory; due-on-receipt not enabled.
+
 ### Commit
+
+Not committed in this session.
 
 ## Next Recommended Task
 

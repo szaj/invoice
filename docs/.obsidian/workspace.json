@@ -180,7 +180,12 @@
   },
   "active": "vault-home",
   "lastOpenFiles": [
+    "00 Home.md",
+    "Tasks/TASK-031 Invoice Draft Service.md",
+    "Tasks/TASK-007 Company CRUD.md",
+    "Tasks/TASK-017 Fixed Rate Versioning.md",
     "Architecture.canvas",
+    "Technical/UI UX Design System.md",
     "Untitled.canvas",
     "Tasks/TASK-033 Invoice Line Items.md",
     "Tasks/TASK-037 Invoice Versions.md",
@@ -198,15 +203,11 @@
     "Tasks/TASK-044 Payment Domain Schema.md",
     "Tasks/TASK-077 Dashboard KPIs.md",
     "Tasks/TASK-076 Audit Log Viewer.md",
-    "00 Home.md",
     "Technical/Authorization.md",
     "Technical/Authentication.md",
     "Tasks/TASK-038 Invoice Cancellation.md",
     "Tasks/TASK-059 Partial Payments.md",
     "Tasks/TASK-098 Performance Hardening.md",
-    "Tasks/TASK-047 Merchant Fee Reconciliation Fields.md",
-    "Tasks/TASK-069 Payment Adjustment UI.md",
-    "Tasks/TASK-074 Compliance Review UI.md",
     "_build_backlog.py"
   ]
 }

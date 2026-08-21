@@ -58,7 +58,7 @@ export function CompanySwitcher({
       <select
         id="company-context-switcher"
         data-testid="company-switcher"
-        className="border-input bg-background focus-visible:ring-ring h-9 max-w-xs rounded-md border px-3 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
+        className="border-input bg-background focus-visible:ring-ring h-9 max-w-[14rem] rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-2 disabled:opacity-50"
         value={value}
         disabled={pending}
         onChange={(event) => onChange(event.target.value)}

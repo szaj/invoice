@@ -12,6 +12,18 @@ Permanent rules for Cursor and developers. Product requirements remain in [[01 M
 
 These rules also exist as always-apply Cursor rules under `.cursor/rules/`.
 
+## UI / UX Design System Rule
+
+All frontend work from [[TASK-042 Email Invoice UI]] onward must reuse [[UI UX Design System]].
+
+Do not invent arbitrary page layouts, card/form/table styles, status colors, spacing, typography, or navigation patterns. Extend shared primitives instead.
+
+Stack remains Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, Lucide, React Hook Form, Zod, and TanStack Table where appropriate. Do not introduce another UI framework.
+
+Frontend visibility is not authorization. Authoritative validation stays server-side.
+
+Cursor rule: `.cursor/rules/ui-ux.mdc`.
+
 ## Payment Rule
 
 Core payment business logic must never depend on Stripe, PayPal, Authorize.Net, or any other specific payment provider.

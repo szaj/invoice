@@ -1,0 +1,20 @@
+---
+description: Frontend must reuse the shared UI/UX design system. Always apply.
+alwaysApply: true
+---
+
+# UI / UX Design System Rule
+
+All frontend work from TASK-042 onward must reuse the established UI/UX Design System.
+
+Do not invent page-specific layouts, card styles, form styles, table styles, status colors, spacing, typography, or navigation patterns. Extend the shared system with reusable primitives instead.
+
+Stack (do not replace): Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, Lucide, React Hook Form, Zod, TanStack Table where appropriate.
+
+Use semantic tokens from `src/app/globals.css` (`background`, `surface`/`card`, `border`, `foreground`, `muted-foreground`, `primary`, `destructive`, `success`, `warning`, `info`). Prefer shared components under `src/components/layout`, `src/components/ui`, `src/components/data`, `src/components/forms`, and `src/components/feedback`.
+
+Target restrained B2B financial/admin UX: hierarchy, clarity, information density, consistent spacing/alignment. Avoid decorative gradients, oversized card grids, and inconsistent visual languages.
+
+Frontend visibility is not authorization. Do not move authoritative business validation into client components.
+
+Authoritative docs: `docs/Technical/UI UX Design System.md`, `docs/Technical/Engineering Rules.md`.

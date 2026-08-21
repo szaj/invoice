@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -13,7 +13,7 @@ tags:
 
 # TASK-031 — Invoice Draft Service
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -72,7 +72,7 @@ Deactivated customer rejected.
 
 ### Unit
 
-N/A
+N/A (authz/domain coverage added in unit tests for Staff own/assigned + inactive/currency gates).
 
 ### Integration
 
@@ -88,32 +88,58 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/domain/invoices/access.ts`
+- `src/server/invoices/invoice-draft-service.ts`
+- `src/app/api/invoices/route.ts`
+- `src/app/api/invoices/[id]/route.ts`
+- `tests/unit/invoices-draft.test.ts`
+- `tests/integration/invoices-draft.test.ts`
+
 ### Files Modified
+
+- `src/domain/invoices/schema.ts` — draft write/list schemas
+- `src/domain/invoices/types.ts` — draft error constants
+- `src/server/invoices/invoice-repository.ts` — listInvoices
+- `src/server/currencies/currency-selection-service.ts` — validateCurrencyCodeForNewDocument
+- `src/domain/audit/types.ts` — INVOICE_CREATED / INVOICE_UPDATED
+- Vault: task, status, home, plan, phase, Invoices, API, Testing, Dev Log
 
 ### Migrations
 
+None (uses TASK-030 `invoices` table).
+
 ### APIs
+
+- `GET/POST /api/invoices` — list/create drafts (`invoice.create`; company-scoped)
+- `GET/PATCH /api/invoices/{id}` — get/update draft (`invoice.create` / `invoice.edit_draft`)
 
 ### Tests
 
+- Unit: Staff own/assigned edit; inactive customer; currency not enabled; create audit
+- Integration: create/update; Staff assigned edit allowed; Staff unassigned denied; inactive customer blocked
+
 ### Issues
 
+None blocking. Line items, totals, numbering, issue/send, PDF remain later tasks. ADR-009 / ADR-011 remain OPEN.
+
 ### Commit
+
+Not committed (awaiting explicit request).
 
 ## Next Recommended Task
 

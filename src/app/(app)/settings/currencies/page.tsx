@@ -1,11 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DataTable, type DataTableColumn } from "@/components/data/data-table";
+import { StatusBadge } from "@/components/data/status-badge";
+import { PageFrame } from "@/components/layout/page-frame";
+import { PageHeader } from "@/components/layout/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { loadCurrenciesForAdmin } from "@/server/currencies/actions";
 
 export const dynamic = "force-dynamic";
+
+type CurrencyRow = {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  decimalPrecision: number;
+  status: string;
+};
 
 export default async function CurrenciesPage() {
   const result = await loadCurrenciesForAdmin();
@@ -14,72 +27,72 @@ export default async function CurrenciesPage() {
       redirect("/");
     }
     return (
-      <main className="mx-auto max-w-4xl p-8">
-        <p className="text-destructive text-sm">{result.error}</p>
-      </main>
+      <PageFrame width="wide">
+        <Alert variant="destructive">
+          <AlertDescription>{result.error}</AlertDescription>
+        </Alert>
+      </PageFrame>
     );
   }
 
-  return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-8">
-      <div className="flex items-center justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-xl font-semibold">Currencies</h1>
-          <p className="text-muted-foreground text-sm">
-            Global currency catalog. Company enablement is configured per company. Admin-defined
-            fixed conversion rates use Settings → Create fixed rate. Disabled currencies remain for
-            historical display.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/settings/currencies/new">Add currency</Link>
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardDescription>{result.data.length} currency(ies)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 pr-4 font-medium">Code</th>
-                  <th className="py-2 pr-4 font-medium">Name</th>
-                  <th className="py-2 pr-4 font-medium">Symbol</th>
-                  <th className="py-2 pr-4 font-medium">Decimals</th>
-                  <th className="py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.data.map((currency) => (
-                  <tr key={currency.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4">
-                      <Link
-                        href={`/settings/currencies/${currency.id}`}
-                        className="text-primary underline-offset-4 hover:underline"
-                      >
-                        {currency.code}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">{currency.name}</td>
-                    <td className="py-2 pr-4">{currency.symbol}</td>
-                    <td className="py-2 pr-4">{currency.decimalPrecision}</td>
-                    <td className="py-2">{currency.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <p className="text-sm">
-        <Link href="/" className="text-primary underline-offset-4 hover:underline">
-          Back to home
+  const columns: DataTableColumn<CurrencyRow>[] = [
+    {
+      id: "code",
+      header: "Code",
+      className: "font-mono font-medium",
+      cell: (currency) => (
+        <Link
+          href={`/settings/currencies/${currency.id}`}
+          className="underline-offset-4 hover:underline"
+        >
+          {currency.code}
         </Link>
-      </p>
-    </main>
+      ),
+    },
+    {
+      id: "name",
+      header: "Name",
+      cell: (currency) => currency.name,
+    },
+    {
+      id: "symbol",
+      header: "Symbol",
+      cell: (currency) => currency.symbol,
+    },
+    {
+      id: "decimals",
+      header: "Decimals",
+      className: "font-mono tabular-nums",
+      cell: (currency) => currency.decimalPrecision,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (currency) => <StatusBadge status={currency.status} />,
+    },
+  ];
+
+  return (
+    <PageFrame width="wide">
+      <PageHeader
+        title="Currencies"
+        description="Global currency catalog. Company enablement is configured per company. Disabled currencies remain for historical display."
+        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Settings" }, { label: "Currencies" }]}
+        actions={
+          <Button asChild>
+            <Link href="/settings/currencies/new">Add currency</Link>
+          </Button>
+        }
+      />
+
+      <DataTable
+        columns={columns}
+        rows={result.data}
+        rowKey={(currency) => currency.id}
+        summary={`${result.data.length} currency(ies)`}
+        emptyTitle="No currencies"
+        emptyDescription="Add a currency to the global catalog."
+      />
+    </PageFrame>
   );
 }

@@ -21,7 +21,7 @@ Every task ID appears exactly once in this file.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001 through [[TASK-019 Money Calculation Utilities]] are COMPLETE. The next buildable task is [[TASK-020 Settlement Currency Configuration]]. All later application tasks remain NOT STARTED.
+TASK-001 through [[TASK-044 Payment Domain Schema]] are COMPLETE. The next buildable task is [[TASK-045 Payment Service]] (NOT STARTED). **UI/UX Foundation Refresh — before TASK-042** remains COMPLETE as a non-numbered presentation checkpoint; see [[UI UX Design System]]. All later application tasks remain NOT STARTED.
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -58,7 +58,7 @@ Phase index: [[Phase 02 Financial Foundation]]
 | [[TASK-018 Effective Rate Selection]] | COMPLETE | 2026-08-20 | 2026-08-20 | | `resolve_rate(pair, at)`; same-currency 1; missing blocks. |
 | [[TASK-019 Money Calculation Utilities]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Prisma Decimal money layer; conversion formula; fee excluded. |
 | [[TASK-020 Settlement Currency Configuration]] | COMPLETE | 2026-08-20 | 2026-08-20 | | Per-method settlement currencies on `payment_gateway_configs`; Admin `gateway.credentials.manage`; no credentials/charges. |
-| [[TASK-021 Currency Disable and Historical Visibility]] | NOT STARTED | | | |  |
+| [[TASK-021 Currency Disable and Historical Visibility]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Status flags only; new-selection rejects disabled; historical display retained (BR-011). |
 
 ## Phase 03 — Customers
 
@@ -66,14 +66,14 @@ Phase index: [[Phase 03 Customers]]
 
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
-| [[TASK-022 Customer Domain Schema]] | NOT STARTED | | | |  |
-| [[TASK-023 Customer CRUD Service]] | NOT STARTED | | | |  |
-| [[TASK-024 Customer List and Form UI]] | NOT STARTED | | | |  |
-| [[TASK-025 Customer Company Relationships]] | NOT STARTED | | | |  |
-| [[TASK-026 Customer Profile]] | NOT STARTED | | | |  |
-| [[TASK-027 Customer Notes]] | NOT STARTED | | | |  |
-| [[TASK-028 Customer Duplicate Detection and Status]] | NOT STARTED | | | |  |
-| [[TASK-029 Customer Financial Summary]] | NOT STARTED | | | |  |
+| [[TASK-022 Customer Domain Schema]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `customers` master §7.1; email optional; soft status; no public CRUD. |
+| [[TASK-023 Customer CRUD Service]] | COMPLETE | 2026-08-21 | 2026-08-21 | | CRUD/search APIs; soft-deactivate; company-scoped until TASK-025. |
+| [[TASK-024 Customer List and Form UI]] | COMPLETE | 2026-08-21 | 2026-08-21 | | List/search/filter + create/edit UI; Server Actions → TASK-023; no profile/amounts. |
+| [[TASK-025 Customer Company Relationships]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `customer_companies`; link APIs; access via linked companies (replaces interim scope). |
+| [[TASK-026 Customer Profile]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Profile endpoint + UI; placeholders; authorized company filter; activity from audit. |
+| [[TASK-027 Customer Notes]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `customer_notes` internal-only; create/list; profile UI; assignment-scoped. |
+| [[TASK-028 Customer Duplicate Detection and Status]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Duplicate warn (email/phone/name); Admin/Compliance ack; soft status + invoice gate. |
+| [[TASK-029 Customer Financial Summary]] | COMPLETE | 2026-08-21 | 2026-08-21 | | By-currency summary widgets; empty until invoices; BR-013; summary/invoices/payments APIs. |
 
 ## Phase 04 — Invoicing
 
@@ -81,20 +81,20 @@ Phase index: [[Phase 04 Invoicing]]
 
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
-| [[TASK-030 Invoice Domain Schema]] | NOT STARTED | | | |  |
-| [[TASK-031 Invoice Draft Service]] | NOT STARTED | | | |  |
-| [[TASK-032 Invoice Draft UI]] | NOT STARTED | | | |  |
-| [[TASK-033 Invoice Line Items]] | NOT STARTED | | | |  |
-| [[TASK-034 Invoice Totals]] | NOT STARTED | | | |  |
-| [[TASK-035 Invoice Numbering]] | NOT STARTED | | | |  |
-| [[TASK-036 Invoice Lifecycle]] | NOT STARTED | | | |  |
-| [[TASK-037 Invoice Versions]] | NOT STARTED | | | |  |
-| [[TASK-038 Invoice Cancellation]] | NOT STARTED | | | |  |
-| [[TASK-039 PDF Generation]] | NOT STARTED | | | |  |
-| [[TASK-040 PDF Preview and Download]] | NOT STARTED | | | |  |
-| [[TASK-041 Email Delivery]] | NOT STARTED | | | |  |
-| [[TASK-042 Email Invoice UI]] | NOT STARTED | | | |  |
-| [[TASK-043 Invoice Duplicate and Print]] | NOT STARTED | | | |  |
+| [[TASK-030 Invoice Domain Schema]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `invoices` header §8.2; company+customer; draft; internal store only. |
+| [[TASK-031 Invoice Draft Service]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Draft GET/POST/PATCH APIs; BR-001/002; ACTIVE customer gate; Staff own/assigned edit. |
+| [[TASK-032 Invoice Draft UI]] | COMPLETE | 2026-08-21 | 2026-08-21 | | List/filter + create/edit/view drafts; internal notes labeled; totals placeholder. |
+| [[TASK-033 Invoice Line Items]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `invoice_items`; server line totals; draft nested replace; discount blocked (ADR-010). |
+| [[TASK-034 Invoice Totals]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Stored totals; recalculate on item change; discount=0 (ADR-010); BR-009 outstanding. |
+| [[TASK-035 Invoice Numbering]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Per-company sequence; prefix from branding; optional year; BR-003; concurrent-safe. |
+| [[TASK-036 Invoice Lifecycle]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Issue Draft→ISSUED; BR-018 overdue; status filters. Cancel→TASK-038. |
+| [[TASK-037 Invoice Versions]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Immutable snapshots on issue; reject issued financial PATCH; metadata Admin/Compliance. |
+| [[TASK-038 Invoice Cancellation]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Soft cancel + reason; BR-019; Staff denied. |
+| [[TASK-039 PDF Generation]] | COMPLETE | 2026-08-21 | 2026-08-21 | | React-pdf + invoice_files; once per version; StorageService. |
+| [[TASK-040 PDF Preview and Download]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Preview/download stored PDFs; Staff unassigned 403. |
+| [[TASK-041 Email Delivery]] | COMPLETE | 2026-08-21 | 2026-08-21 | | EmailService→Resend; email_logs; stored PDF attach; BR-017. |
+| [[TASK-042 Email Invoice UI]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Modal + history on invoice view; CC/BCC via `invoice.edit_issued`; reuses TASK-041 send. |
+| [[TASK-043 Invoice Duplicate and Print]] | COMPLETE | 2026-08-21 | 2026-08-21 | | Duplicate → new Draft; print/download via stored PDF. |
 
 ## Phase 05 — Payments
 
@@ -102,7 +102,7 @@ Phase index: [[Phase 05 Payments]]
 
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
-| [[TASK-044 Payment Domain Schema]] | NOT STARTED | | | |  |
+| [[TASK-044 Payment Domain Schema]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `payments` §10.3; provider-agnostic; Decimal; fee separate; no charges. |
 | [[TASK-045 Payment Service]] | NOT STARTED | | | |  |
 | [[TASK-046 Settlement Conversion Snapshot]] | NOT STARTED | | | |  |
 | [[TASK-047 Merchant Fee Reconciliation Fields]] | NOT STARTED | | | |  |

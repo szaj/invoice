@@ -39,22 +39,22 @@ The exact schema may vary by framework, but the following logical entities and r
 | users | id, name, email, password_hash, role_id, status, last_login_at, mfa fields. |
 | roles / permissions | role definitions and granular permission mapping. |
 | user_companies | user_id, company_id; controls company access. |
-| companies | identity, branding, address, default currency, invoice prefix/sequence, optional reporting_group_id / parent group, status. |
+| companies | identity, branding, address, default currency, invoice prefix, `invoice_sequence_next` (TASK-035), optional reporting_group_id / parent group, status. |
 | currencies | code, name, symbol, decimals, active. |
 | company_currencies | company_id, currency_id, enabled/default flags. |
 | fixed_conversion_rates | from_currency, to_currency, fixed_rate, version_no, frequency_label, valid_from, valid_to, status, notes, created_by, created_at. Versions are append-only/prospective; expired versions are retained. |
-| customers | master customer information and status. |
-| customer_companies | optional relation for company linkage/assignment. |
-| invoices | company, customer, number, dates, currency, totals, statuses, assigned staff, compliance status. |
-| invoice_items | invoice_id, description, qty, rate, discount, tax snapshot, total. |
-| invoice_versions | invoice_id, version_no, financial/document snapshot metadata, reason, created_by. |
-| invoice_files | invoice/version link, PDF storage path/key, checksum, created_at. |
-| payments | invoice/company/customer, method, status, transaction ID, invoice currency applied, settlement currency, fixed conversion rate snapshot, converted settlement amount, optional merchant fee, optional actual received amount, dates, source. |
+| customers | master customer information and status. TASK-022 implements `customers` (Customers §7.1 fields; email optional; soft ACTIVE/INACTIVE). |
+| customer_companies | TASK-025: optional multi-company linkage (`customer_id`, `company_id`). Authorization for Staff/Compliance uses intersection with `user_companies`. |
+| invoices | TASK-030 header + TASK-034 stored totals + TASK-035 nullable until numbered (`invoice_number` unique per company). TASK-038 soft-cancel: `cancellation_reason`, `cancelled_at`, `cancelled_by_user_id` (no hard delete). |
+| invoice_items | TASK-033: invoice_id, description, qty, unit rate, optional tax name/rate snapshot, server line_total. Discount omitted until ADR-010. |
+| invoice_versions | TASK-037: invoice_id, version_no, JSON snapshot (header/lines/totals), reason, created_by; append-only on issue. |
+| invoice_files | TASK-039: invoice_id + invoice_version_id (unique), storage_key, checksum_sha256, byte_size, content_type, page_size (A4/LETTER), created_at. Blob in StorageService — not Postgres. |
+| payments | TASK-044: invoice/company/customer, method_code, status PENDING/SUCCESSFUL/FAILED, external_transaction_id, invoice currency applied, settlement currency, fixed conversion rate snapshot + optional rate_version_id, converted settlement amount, optional merchant fee, optional actual received amount, dates, source, actors. Provider-agnostic (ADR-008); no credentials. |
 | payment_events | gateway webhook/events, unique external event ID, raw normalized status metadata; sensitive payload handling required. |
 | payment_adjustments | linked original payment; type (refund/dispute/chargeback/reversal), amount, invoice-currency amount if applicable, settlement-currency amount, status, reason, merchant reference/case ID, opened/processed/resolved dates, created_by. Original payment is never overwritten. |
 | payment_gateway_configs | company, method code, enabled; settlement currencies via `payment_gateway_settlement_currencies`. Encrypted credentials, environment, webhooks later (TASK-049). |
 | compliance_reviews | entity, status, reviewer, notes, reason code, timestamps. |
-| customer_notes | customer, author, note, visibility internal. |
+| customer_notes | TASK-027: internal-only notes (`customer_id`, `author_user_id`, `body`, `visibility=INTERNAL`, `created_at`). Never portal/PDF/email. |
 | email_logs | invoice, recipient, subject, provider ID, status, sent_by, timestamps. |
 | audit_logs | append-only event store fields defined earlier. |
 | attachments | generic metadata for evidence/supporting docs if included. |

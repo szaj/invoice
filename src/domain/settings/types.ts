@@ -4,6 +4,8 @@ export type SystemSettingsRecord = {
   readonly defaultTimezone: string;
   /** Decimal string for wire/API; never JavaScript number for money-adjacent values. */
   readonly roundingTolerance: string;
+  /** Optional YYYY segment in allocated invoice numbers (TASK-035). */
+  readonly invoiceNumberIncludeYear: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 };

@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { AppHeader } from "@/app/(app)/app-header";
+import { AppShell } from "@/components/layout/app-shell";
 import { getAuthenticatedIdentity } from "@/server/auth/session";
 import { requiresPasswordReset } from "@/server/auth/password-reset-access";
 import { enforceActiveApplicationUser } from "@/server/auth/active-user";
+import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
+import { loadCompanyContextForLayout } from "@/server/company-context/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +32,14 @@ export default async function AuthenticatedLayout({
     redirect("/reset-password");
   }
 
+  const [actor, companyContext] = await Promise.all([
+    getRequestAuthorizationPrincipal(),
+    loadCompanyContextForLayout(),
+  ]);
+
   return (
-    <div className="bg-background min-h-svh">
-      <AppHeader />
+    <AppShell actor={actor} identityEmail={identity.email} companyContext={companyContext}>
       {children}
-    </div>
+    </AppShell>
   );
 }

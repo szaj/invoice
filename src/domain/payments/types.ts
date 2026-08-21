@@ -1,0 +1,88 @@
+import type { PaymentMethodCode } from "@/domain/settlement/types";
+
+/** Application payment status (Payments §10.3 / ADR-008). */
+export const PAYMENT_STATUSES = ["PENDING", "SUCCESSFUL", "FAILED"] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/** How the payment entered the system — not a provider brand. */
+export const PAYMENT_SOURCES = ["MANUAL", "GATEWAY_API", "GATEWAY_WEBHOOK", "SYSTEM"] as const;
+
+export type PaymentSource = (typeof PAYMENT_SOURCES)[number];
+
+/** Locked rate provenance (BR-020). Never market/gateway FX. */
+export const PAYMENT_RATE_SOURCES = ["ADMIN_FIXED_RATE", "SAME_CURRENCY"] as const;
+
+export type PaymentRateSource = (typeof PAYMENT_RATE_SOURCES)[number];
+
+/**
+ * Financial fields that are immutable once status is SUCCESSFUL (BR-004 / BR-005).
+ * Corrections use linked adjustments (Phase 06), not silent edits.
+ */
+export const PAYMENT_CONFIRMED_FINANCIAL_FIELDS = [
+  "invoiceCurrencyCode",
+  "invoiceAmountApplied",
+  "settlementCurrencyCode",
+  "fixedConversionRate",
+  "rateVersionId",
+  "rateSource",
+  "convertedSettlementAmount",
+  "processorFeeAmount",
+  "actualReceivedAmount",
+  "paymentDate",
+  "methodCode",
+  "externalTransactionId",
+] as const;
+
+export type PaymentConfirmedFinancialField = (typeof PAYMENT_CONFIRMED_FINANCIAL_FIELDS)[number];
+
+export const PAYMENT_INVALID_INPUT = "Check the payment details and try again.";
+export const PAYMENT_COMPANY_REQUIRED = "Every payment requires a company.";
+export const PAYMENT_INVOICE_REQUIRED = "Every payment requires an invoice.";
+export const PAYMENT_CUSTOMER_REQUIRED = "Every payment requires a customer.";
+export const PAYMENT_AMOUNT_REQUIRED = "Invoice amount applied is required.";
+export const PAYMENT_CURRENCY_REQUIRED = "Invoice and settlement currency codes are required.";
+export const PAYMENT_NOT_FOUND = "Payment not found.";
+export const PAYMENT_UNAVAILABLE = "Payment management is temporarily unavailable.";
+export const PAYMENT_CONFIRMED_IMMUTABLE =
+  "Confirmed payment financial fields cannot be edited. Use an adjustment workflow.";
+export const PAYMENT_HARD_DELETE_FORBIDDEN =
+  "Paid or confirmed payments must not be hard-deleted (BR-004).";
+export const PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT =
+  "Processor fee must not change converted settlement amount (BR-020).";
+export const PAYMENT_JS_NUMBER_FORBIDDEN =
+  "JavaScript number is not allowed for authoritative payment money fields.";
+
+/**
+ * Provider-agnostic payment record (Payments §10.3 / TASK-044).
+ * Amounts are Decimal strings — never JS number.
+ * Gateway credentials are never stored on this record.
+ */
+export type PaymentRecord = {
+  readonly id: string;
+  readonly companyId: string;
+  readonly invoiceId: string;
+  readonly customerId: string;
+  readonly methodCode: PaymentMethodCode;
+  readonly externalTransactionId: string | null;
+  readonly status: PaymentStatus;
+  readonly invoiceCurrencyCode: string;
+  readonly invoiceAmountApplied: string;
+  readonly settlementCurrencyCode: string;
+  readonly fixedConversionRate: string;
+  readonly rateVersionId: string | null;
+  readonly rateSource: PaymentRateSource;
+  readonly convertedSettlementAmount: string;
+  /** Optional reconciliation fee in settlement currency; excluded from conversion/balance. */
+  readonly processorFeeAmount: string | null;
+  /** Optional actual received; not auto-derived from fee. */
+  readonly actualReceivedAmount: string | null;
+  readonly paymentDate: Date;
+  readonly receivedAt: Date | null;
+  readonly source: PaymentSource;
+  readonly notes: string | null;
+  readonly createdByUserId: string | null;
+  readonly confirmedByUserId: string | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+};

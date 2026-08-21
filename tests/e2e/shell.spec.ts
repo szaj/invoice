@@ -18,7 +18,7 @@ describeLiveAuth("live password login", () => {
     await page.getByLabel("Email").fill(authEmail ?? "");
     await page.getByLabel("Password").fill(authPassword ?? "");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Signed in" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   });

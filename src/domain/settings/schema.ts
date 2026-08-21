@@ -41,6 +41,7 @@ export const systemSettingsUpdateSchema = z.object({
   reportingCurrencyCode: currencyCodeSchema,
   defaultTimezone: timezoneSchema,
   roundingTolerance: roundingToleranceSchema,
+  invoiceNumberIncludeYear: z.boolean(),
 });
 
 export type SystemSettingsUpdateInput = z.infer<typeof systemSettingsUpdateSchema>;
@@ -48,4 +49,5 @@ export type SystemSettingsUpdateFormValues = {
   reportingCurrencyCode: string;
   defaultTimezone: string;
   roundingTolerance: string;
+  invoiceNumberIncludeYear: boolean;
 };

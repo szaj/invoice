@@ -9,7 +9,7 @@ export type CompanyLogoMetadata = {
 /**
  * Company branding subresource used later by invoices, PDFs, and email.
  * Contact fields mirror Companies and Brands §5.1 brand contact details.
- * Invoice sequence issuance remains TASK-035.
+ * Invoice sequence issuance remains TASK-035 (companies.invoice_sequence_next).
  */
 export type CompanyBrandingRecord = {
   readonly companyId: string;

@@ -15,10 +15,10 @@ tags:
 | Settings Area | Requirements |
 | --- | --- |
 | Companies | Create/edit/activate companies and branding. |
-| Currencies | Create/disable currencies; symbols and decimal precision. TASK-014 implements the global `currencies` catalog (seeded USD, AED, PKR, GBP, AUD) under Admin `currency.manage`. Company enablement is TASK-015 (`company_currencies` under Admin `company.write`). Fixed conversion rates: TASK-016/017 under `/settings/fixed-rates` (`currency.manage`; append-only versions with expire-previous). |
+| Currencies | Create/disable currencies; symbols and decimal precision. TASK-014 implements the global `currencies` catalog (seeded USD, AED, PKR, GBP, AUD) under Admin `currency.manage`. Company enablement is TASK-015 (`company_currencies` under Admin `company.write`). Fixed conversion rates: TASK-016/017 under `/settings/fixed-rates` (`currency.manage`; append-only versions with expire-previous). TASK-021: disabled currencies stay visible historically; new-document pickers hide them. |
 | Fixed Conversion Rates | Effective-dated rate versions by currency pair; monthly/yearly/manual labels, future scheduling, active/expired history, and prospective-only changes. No live FX provider. |
 | Payment Methods | Enable/disable per company; allowed settlement currencies (TASK-020 under `/companies/{id}/settlement`, Admin `gateway.credentials.manage`). Credentials and test/live remain TASK-049. |
-| Invoice Numbering | Company prefix, sequence, optional year component, uniqueness rules. |
+| Invoice Numbering | Company prefix (branding), per-company sequence (`invoice_sequence_next`), optional year component (`system_settings.invoice_number_include_year`), uniqueness within company (BR-003). |
 | Invoice Templates | Logo, company fields, footer, terms, layout options. |
 | Email Settings | SMTP/provider configuration or transactional email provider; brand sender identity. |
 | Email Templates | Subject/body templates per company. |

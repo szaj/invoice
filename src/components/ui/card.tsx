@@ -6,21 +6,27 @@ function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("bg-card text-card-foreground rounded-xl border py-6 shadow-sm", className)}
+      className={cn("bg-card text-card-foreground rounded-lg border shadow-xs", className)}
       {...props}
     />
   );
 }
 
 function CardHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div data-slot="card-header" className={cn("px-6", className)} {...props} />;
+  return (
+    <div
+      data-slot="card-header"
+      className={cn("flex flex-col gap-1 border-b px-5 py-4", className)}
+      {...props}
+    />
+  );
 }
 
 function CardTitle({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("text-base leading-none font-semibold", className)}
       {...props}
     />
   );
@@ -37,7 +43,17 @@ function CardDescription({ className, ...props }: ComponentProps<"div">) {
 }
 
 function CardContent({ className, ...props }: ComponentProps<"div">) {
-  return <div data-slot="card-content" className={cn("px-6", className)} {...props} />;
+  return <div data-slot="card-content" className={cn("px-5 py-4", className)} {...props} />;
 }
 
-export { Card, CardContent, CardDescription, CardHeader, CardTitle };
+function CardFooter({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center border-t px-5 py-3", className)}
+      {...props}
+    />
+  );
+}
+
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

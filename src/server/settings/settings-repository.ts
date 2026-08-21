@@ -11,6 +11,7 @@ function mapRow(row: {
   reportingCurrencyCode: string;
   defaultTimezone: string;
   roundingTolerance: Prisma.Decimal;
+  invoiceNumberIncludeYear: boolean;
   createdAt: Date;
   updatedAt: Date;
 }): SystemSettingsRecord {
@@ -19,6 +20,7 @@ function mapRow(row: {
     reportingCurrencyCode: row.reportingCurrencyCode,
     defaultTimezone: row.defaultTimezone,
     roundingTolerance: row.roundingTolerance.toString(),
+    invoiceNumberIncludeYear: row.invoiceNumberIncludeYear,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -38,6 +40,7 @@ export class PrismaSystemSettingsStore {
     reportingCurrencyCode: string;
     defaultTimezone: string;
     roundingTolerance: string;
+    invoiceNumberIncludeYear: boolean;
   }): Promise<SystemSettingsRecord> {
     const prisma = getPrisma();
     const existing = await this.getSettings();
@@ -51,6 +54,7 @@ export class PrismaSystemSettingsStore {
         reportingCurrencyCode: input.reportingCurrencyCode,
         defaultTimezone: input.defaultTimezone,
         roundingTolerance: new Prisma.Decimal(input.roundingTolerance),
+        invoiceNumberIncludeYear: input.invoiceNumberIncludeYear,
       },
     });
     return mapRow(updated);

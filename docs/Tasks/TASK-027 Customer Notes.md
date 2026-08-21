@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 3
 module: customers
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-027 — Customer Notes
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 3 ([[Phase 03 Customers]])
 
@@ -85,32 +85,56 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260821140000_customer_notes/migration.sql`
+- `src/domain/customers/{notes,note-schema,external-document-payload}.ts`
+- `src/server/customers/{customer-note-repository,customer-note-service}.ts`
+- `src/app/api/customers/[id]/notes/route.ts`
+- `src/app/(app)/customers/[id]/customer-notes-panel.tsx`
+- `tests/unit/customers-notes.test.ts`
+- `tests/integration/customers-notes.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `CustomerNote` + visibility enum
+- Profile types/service/UI to show real notes
+- `src/server/customers/actions.ts` — `createCustomerNoteAction`
+- `src/domain/audit/types.ts` — `customers.note_created`
+- [[Customers]], [[Data Model]], [[Database]], [[Authorization]], [[API and Integrations]], [[Audit Logs]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]]
 
 ### Migrations
 
+`20260821140000_customer_notes` — applied with `pnpm prisma:migrate:deploy`.
+
 ### APIs
+
+`GET|POST /api/customers/{id}/notes` — `customer.edit` + customer access (`customer_companies` ∩ assignment). Create-only (no edit/delete). Visibility always `INTERNAL`.
 
 ### Tests
 
+Unit: PDF/email fixture omits notes; Staff denied outside assignment; create audits. Integration: create/list + Staff 403. `pnpm typecheck` / `lint` / `format:check` / `test` (204) / `RUN_DB_INTEGRATION=true test:integration` (42 passed, 4 skipped) / `build` pass. E2E N/A.
+
 ### Issues
 
+None. No portal notes. No PDF/email sending implemented — fixture proves omission. ADR-011 remains OPEN.
+
 ### Commit
+
+Uncommitted (agent did not create a commit).
 
 ## Next Recommended Task
 

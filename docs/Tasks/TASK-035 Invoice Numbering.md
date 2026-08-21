@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-035 — Invoice Numbering
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -71,7 +71,7 @@ Collision rejected.
 
 ### Unit
 
-N/A
+N/A (format helpers covered in unit tests)
 
 ### Integration
 
@@ -87,32 +87,57 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260821200000_invoice_numbering/migration.sql`
+- `src/domain/invoices/numbering.ts`
+- `src/server/invoices/invoice-number-repository.ts`
+- `src/server/invoices/invoice-number-service.ts`
+- `tests/unit/invoices-numbering.test.ts`
+- `tests/integration/invoices-numbering.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `companies.invoice_sequence_next`; `system_settings.invoice_number_include_year`
+- Draft create/update APIs/actions reject client `invoiceNumber`
+- System settings schema/UI for optional year flag
+- Invoice draft view shows read-only number / “Assigned on issue”
+- Audit action `invoices.number_assigned`
 
 ### Migrations
 
+`20260821200000_invoice_numbering` — applied via `pnpm prisma:migrate:deploy`
+
 ### APIs
+
+- `allocateNextInvoiceNumber` / `assignInvoiceNumber` (service + server actions; issue wiring is TASK-036)
+- Unique `(company_id, invoice_number)` already from TASK-030
 
 ### Tests
 
+- Unit: format + hand-edit rejection
+- Integration: concurrent allocation uniqueness; company isolation; assign to draft; hand-edit rejected
+
 ### Issues
 
+None. Lifecycle/issue transition remains TASK-036 (calls allocation when issuing).
+
 ### Commit
+
+Not committed in this session.
 
 ## Next Recommended Task
 

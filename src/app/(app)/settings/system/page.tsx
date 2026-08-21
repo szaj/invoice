@@ -42,6 +42,7 @@ export default async function SystemSettingsPage() {
               reportingCurrencyCode: result.data.reportingCurrencyCode,
               defaultTimezone: result.data.defaultTimezone,
               roundingTolerance: result.data.roundingTolerance,
+              invoiceNumberIncludeYear: result.data.invoiceNumberIncludeYear,
             }}
           />
         </CardContent>

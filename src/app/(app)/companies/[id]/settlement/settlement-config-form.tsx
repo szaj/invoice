@@ -117,8 +117,9 @@ function MethodPanel({
         </div>
         {inactiveAssigned.length > 0 ? (
           <p className="text-muted-foreground text-xs">
-            Historically enabled but now globally inactive:{" "}
-            {inactiveAssigned.map((currency) => currency.currencyCode).join(", ")}.
+            Historical visibility (not selectable for new settlement):{" "}
+            {inactiveAssigned.map((currency) => currency.currencyCode).join(", ")}. Re-activate in
+            the global catalog to enable again.
           </p>
         ) : null}
       </div>

@@ -105,15 +105,29 @@ function createDeps(
       _companyId: string,
       input: { enabledCurrencyIds: readonly string[]; defaultCurrencyId: string | null },
     ) {
+      const preservedInactiveIds = state.current.currencies
+        .filter((currency) => currency.globalStatus === "INACTIVE" && currency.enabled)
+        .map((currency) => currency.currencyId);
+      const mergedEnabled = [
+        ...input.enabledCurrencyIds,
+        ...preservedInactiveIds.filter((id) => !input.enabledCurrencyIds.includes(id)),
+      ];
       state.current = {
         ...state.current,
-        enabledCurrencyIds: [...input.enabledCurrencyIds],
+        enabledCurrencyIds: mergedEnabled,
         defaultCurrencyId: input.defaultCurrencyId,
-        currencies: state.current.currencies.map((currency) => ({
-          ...currency,
-          enabled: input.enabledCurrencyIds.includes(currency.currencyId),
-          isDefault: currency.currencyId === input.defaultCurrencyId,
-        })),
+        currencies: state.current.currencies.map((currency) => {
+          const preservedInactive =
+            currency.globalStatus === "INACTIVE" &&
+            preservedInactiveIds.includes(currency.currencyId);
+          const enabled =
+            input.enabledCurrencyIds.includes(currency.currencyId) || preservedInactive;
+          return {
+            ...currency,
+            enabled,
+            isDefault: preservedInactive ? false : currency.currencyId === input.defaultCurrencyId,
+          };
+        }),
       };
       return state.current;
     },
@@ -174,6 +188,65 @@ describe("company currency authorization and rules", () => {
       expect(result.status).toBe(400);
       expect(result.error).toBe(COMPANY_CURRENCY_INACTIVE_GLOBAL);
     }
+  });
+
+  it("preserves historically enabled inactive currencies when saving active subset", async () => {
+    const deps = createDeps(
+      baseConfig({
+        currencies: [
+          {
+            currencyId: USD_ID,
+            code: "USD",
+            name: "US Dollar",
+            symbol: "$",
+            decimalPrecision: 2,
+            globalStatus: "ACTIVE",
+            enabled: true,
+            isDefault: true,
+          },
+          {
+            currencyId: AED_ID,
+            code: "AED",
+            name: "UAE Dirham",
+            symbol: "AED",
+            decimalPrecision: 2,
+            globalStatus: "ACTIVE",
+            enabled: false,
+            isDefault: false,
+          },
+          {
+            currencyId: INACTIVE_ID,
+            code: "XXX",
+            name: "Inactive",
+            symbol: "X",
+            decimalPrecision: 2,
+            globalStatus: "INACTIVE",
+            enabled: true,
+            isDefault: false,
+          },
+        ],
+        enabledCurrencyIds: [USD_ID, INACTIVE_ID],
+        defaultCurrencyId: USD_ID,
+      }),
+    );
+
+    const result = await updateCompanyCurrencyConfiguration(
+      principal("ADMIN"),
+      COMPANY_ID,
+      { enabledCurrencyIds: [USD_ID, AED_ID], defaultCurrencyId: AED_ID },
+      deps,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("update failed");
+    }
+    expect(result.data.enabledCurrencyIds).toEqual(
+      expect.arrayContaining([USD_ID, AED_ID, INACTIVE_ID]),
+    );
+    expect(
+      result.data.currencies.find((currency) => currency.currencyId === INACTIVE_ID)?.enabled,
+    ).toBe(true);
+    expect(result.data.defaultCurrencyId).toBe(AED_ID);
   });
 
   it("persists an enabled subset with default and audits the change", async () => {

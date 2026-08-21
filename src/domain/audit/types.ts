@@ -62,6 +62,24 @@ export const AuditActions = {
   FIXED_RATE_EXPIRED: "fixed_rates.expired",
   FIXED_RATE_SUPERSEDED: "fixed_rates.superseded",
   SETTLEMENT_CURRENCIES_UPDATED: "settlement.currencies_updated",
+  CUSTOMER_CREATED: "customers.created",
+  CUSTOMER_UPDATED: "customers.updated",
+  CUSTOMER_STATUS_CHANGED: "customers.status_changed",
+  CUSTOMER_COMPANIES_UPDATED: "customers.companies_updated",
+  CUSTOMER_NOTE_CREATED: "customers.note_created",
+  INVOICE_CREATED: "invoices.created",
+  INVOICE_UPDATED: "invoices.updated",
+  INVOICE_LINE_ITEMS_UPDATED: "invoices.line_items_updated",
+  INVOICE_NUMBER_ASSIGNED: "invoices.number_assigned",
+  INVOICE_ISSUED: "invoices.issued",
+  INVOICE_OVERDUE_MARKED: "invoices.overdue_marked",
+  INVOICE_VERSION_CREATED: "invoices.version_created",
+  INVOICE_METADATA_UPDATED: "invoices.metadata_updated",
+  INVOICE_CANCELLED: "invoices.cancelled",
+  INVOICE_PDF_GENERATED: "invoices.pdf_generated",
+  INVOICE_EMAILED: "invoices.emailed",
+  INVOICE_EMAIL_FAILED: "invoices.email_failed",
+  INVOICE_DUPLICATED: "invoices.duplicated",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
@@ -74,4 +92,7 @@ export const AuditEntityTypes = {
   CURRENCY: "currency",
   FIXED_CONVERSION_RATE: "fixed_conversion_rate",
   PAYMENT_GATEWAY_CONFIG: "payment_gateway_config",
+  CUSTOMER: "customer",
+  INVOICE: "invoice",
+  PAYMENT: "payment",
 } as const;

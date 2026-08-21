@@ -18,7 +18,7 @@ Control: [[03 Implementation Plan]] · [[04 Implementation Status]] · [[01 Mast
 
 | ID | Task | Dependencies | Status |
 |---|---|---|---|
-| TASK-044 | [[TASK-044 Payment Domain Schema]] | TASK-030, TASK-019, TASK-020 | NOT STARTED |
+| TASK-044 | [[TASK-044 Payment Domain Schema]] | TASK-030, TASK-019, TASK-020 | COMPLETE |
 | TASK-045 | [[TASK-045 Payment Service]] | TASK-044, TASK-012 | NOT STARTED |
 | TASK-046 | [[TASK-046 Settlement Conversion Snapshot]] | TASK-018, TASK-045, TASK-019 | NOT STARTED |
 | TASK-047 | [[TASK-047 Merchant Fee Reconciliation Fields]] | TASK-044 | NOT STARTED |

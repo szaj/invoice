@@ -84,6 +84,22 @@ export function SystemSettingsForm({
         ) : null}
       </div>
 
+      <div className="flex items-start gap-3">
+        <input
+          id="invoiceNumberIncludeYear"
+          type="checkbox"
+          className="border-input mt-1 h-4 w-4 rounded"
+          {...form.register("invoiceNumberIncludeYear")}
+        />
+        <div className="grid gap-1">
+          <Label htmlFor="invoiceNumberIncludeYear">Include year in invoice numbers</Label>
+          <p className="text-muted-foreground text-xs">
+            When enabled, newly allocated numbers use {"{prefix}{YYYY}-{NNNNNN}"} (company sequence
+            still independent). Existing numbers are never changed.
+          </p>
+        </div>
+      </div>
+
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
 

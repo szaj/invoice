@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-034 — Invoice Totals
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -74,7 +74,7 @@ Totals with zero payments.
 
 ### Integration
 
-N/A
+N/A (covered via line-item nested write asserting stored totals).
 
 ### Authorization
 
@@ -86,32 +86,54 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260821190000_invoice_totals/migration.sql`
+- `src/domain/invoices/totals.ts`
+- `src/app/(app)/invoices/invoice-totals-panel.tsx`
+- `tests/unit/invoices-totals.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — stored total columns on `invoices`
+- `src/server/invoices/invoice-repository.ts` — persist totals with line replace
+- `src/server/invoices/invoice-line-item-service.ts` — recalculate on item change
+- Draft view/edit UI totals panels
+- Vault docs
 
 ### Migrations
 
+`20260821190000_invoice_totals` applied via `pnpm prisma:migrate:deploy`.
+
 ### APIs
+
+No new routes. Totals recalculated on `PUT /api/invoices/{id}/items` and returned on invoice GET payloads.
 
 ### Tests
 
+- Unit: zero-payment totals; discount forced 0; BR-009 paid applications; Decimal number rejection
+- Integration: nested line write persists subtotal/tax/invoice/outstanding
+
 ### Issues
 
+Discount total always 0 while ADR-010 OPEN (no discount model invented). Confirmed paid remains 0 until payment applications exist. ADR-009 / ADR-011 remain OPEN.
+
 ### Commit
+
+Not committed (awaiting explicit request).
 
 ## Next Recommended Task
 

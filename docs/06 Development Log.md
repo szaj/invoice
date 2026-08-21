@@ -29,6 +29,756 @@ Next task:
 
 ## Entries
 
+### 2026-08-21 — TASK-044
+
+Work completed:
+
+Provider-agnostic `payments` domain schema (Payments §10.3 / ADR-008). Prisma `Payment` + PENDING/SUCCESSFUL/FAILED status; Decimal amounts and rate snapshot; optional processor fee and actual received stored separately from converted settlement (BR-020); company/invoice/customer ownership; domain invariants for confirmed immutability (BR-004/005); internal `PrismaPaymentStore` only. No charges, webhooks, allocation, adapters, credentials, or UI.
+
+Files changed:
+
+`prisma/schema.prisma`, migration `20260821250000_payment_domain_schema`, `src/domain/payments/*`, `src/server/payments/payment-repository.ts`, unit + integration schema tests, prerequisite tests that previously forbade `payments`. Updated [[Payments]], [[Data Model]], [[Database]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 05 Payments]], this log, [[TASK-044 Payment Domain Schema]].
+
+Database changes:
+
+`payments` table applied via `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+Unit fee-vs-settlement + immutability + no vendor columns (268). Integration: payments table/columns + full suite 54 pass / 4 skipped. `typecheck` / `lint` / `format:check` / `build` pass.
+
+Decisions:
+
+None. ADR-008 followed; ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for schema scope. Payment service / charging remain TASK-045+.
+
+Next task:
+
+[[TASK-045 Payment Service]]
+
+### 2026-08-21 — TASK-043
+
+Work completed:
+
+Invoice Duplicate + Print/Export. `duplicateInvoice` creates a new DRAFT via existing draft + line-item services: copies company/customer/dates/currency/reference/notes/line items; resets id, invoice number (null), status DRAFT, compliance NOT_REVIEWED, payment totals, cancellation, versions, PDFs, email logs. Audits `invoices.duplicated`. `POST /api/invoices/{id}/duplicate` + Duplicate button on invoice detail. Print/Download reuse stored versioned PDF (TASK-040) — no second renderer.
+
+Files changed:
+
+`invoice-duplicate-service.ts`, duplicate API route, `invoice-duplicate-button.tsx`, invoice detail page, `invoice-pdf-panel.tsx` (Print), audit action, integration test. Updated [[Invoices]], [[PDF and Email]], [[Screen Inventory]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], this log, [[TASK-043 Invoice Duplicate and Print]].
+
+Database changes:
+
+None (new invoice row only).
+
+Tests:
+
+Integration: duplicate → Draft with new id, null number, copied lines, no versions/PDFs. `pnpm typecheck` / `lint` / `format:check` / `test` (262) / `test:integration` (53 pass / 4 skipped) / `e2e` (1 pass / 1 skipped live auth) / `build` pass.
+
+Decisions:
+
+None. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+Print requires a stored PDF; drafts without a generated PDF cannot print until after issue/generate.
+
+Next task:
+
+[[TASK-044 Payment Domain Schema]]
+
+### 2026-08-21 — TASK-042
+
+Work completed:
+
+Invoice email modal + delivery history on `/invoices/[id]`. Reuses TASK-041 `sendInvoiceEmail` / `listInvoiceEmailLogs` (no provider/PDF/audit duplication). Compose defaults via `prepareInvoiceEmailCompose`. To defaults to customer email (BR-017); subject/body from template merge fields (editable). Optional CC/BCC for actors with `invoice.edit_issued`; Staff CC rejected server-side. Stored PDF attached by server; failure shows error without un-issuing; retry re-opens send. Design system: Dialog, FormField, Alert, StatusBadge, Table, EmptyState.
+
+Files changed:
+
+`invoice-email-panel.tsx`, invoice detail page, email domain helpers, EmailProvider cc/bcc, invoice-email-service/actions/API route, unit tests, login `h1` a11y fix. Updated [[PDF and Email]], [[Screen Inventory]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[UI UX Design System]], this log, [[TASK-042 Email Invoice UI]].
+
+Database changes:
+
+None.
+
+Tests:
+
+Unit 262 (CC authz + list parse). Email integration pass. Full integration 52 pass / 4 skipped. Shell E2E pass (live auth skipped). typecheck / lint / format:check / build pass.
+
+Decisions:
+
+CC/BCC gated by existing `invoice.edit_issued` (no new permission / migration). ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+E2E-02 full Staff create→email path still requires AUTH_TEST_* credentials.
+
+Next task:
+
+[[TASK-043 Invoice Duplicate and Print]]
+
+### 2026-08-21 — UI/UX Foundation Refresh — before TASK-042
+
+Work completed:
+
+Non-numbered presentation checkpoint after TASK-041 and before TASK-042. Established professional reusable SaaS design system (tokens, shell/sidebar, page layout, tables, forms, status badges, feedback, detail patterns). Refreshed representative screens via shared components. Documented that all TASK-042+ frontend work must reuse the system. TASK-041 remains COMPLETE. TASK-042 remains NOT STARTED. No RBAC/tenant/financial/lifecycle/auth architecture changes.
+
+Files changed:
+
+`docs/Technical/UI UX Design System.md`, `.cursor/rules/ui-ux.mdc`, vault cross-links ([[00 Home]], [[03 Implementation Plan]], [[04 Implementation Status]], [[Engineering Rules]], this log), `src/app/globals.css`, `src/components/{ui,layout,data,forms,feedback}/*`, authenticated `AppShell`, representative pages (`/`, customers, invoices, create customer, currencies). Package: `@radix-ui/react-dialog`, `@radix-ui/react-separator`, `@radix-ui/react-visually-hidden`.
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` / `lint` / `format:check` / `test` (261, including `ui-design-system`) / `RUN_DB_INTEGRATION=true pnpm test:integration` (52 passed, 4 skipped) / `build` pass. E2E shell assertion updated for Home heading (live auth still env-gated).
+
+Decisions:
+
+Design system is authoritative for frontend presentation. Extensions must be reusable primitives, not page-specific hacks. See [[UI UX Design System]].
+
+Problems:
+
+Remaining UI debt: not every existing screen was hand-redesigned (companies list, users, reporting groups, fixed rates, invoice edit, branding, etc.); remaining pages should adopt shared primitives opportunistically or when next touched by a product task. Integration suite had no new failures attributable to this checkpoint.
+
+Next task:
+
+[[TASK-042 Email Invoice UI]] (still NOT STARTED)
+
+### 2026-08-21 — TASK-041
+
+Work completed:
+
+Invoice email delivery through EmailService → EmailProvider → ResendAdapter (ADR-007). Recipient defaults to customer email (BR-017). Subject/body from default templates + Notifications §14.1 merge fields; company `email_template_reference` noted when set. From uses `EMAIL_FROM` with company display name; Reply-To from company branding/contact. Attaches stored versioned `invoice_files` PDF (generates once if missing; never claims success without attachment). `email_logs` records SENT/FAILED+retryable; email failure does not un-issue. Queueable via inline dispatcher (BullMQ hardening TASK-099). No email modal UI (TASK-042). No customer portal notifications.
+
+Files changed:
+
+Email abstraction + Resend/Memory adapters, invoice email service/repository/queue, `POST/GET /api/invoices/{id}/email`, audit actions, unit + integration tests, `resend` dependency. Updated [[PDF and Email]], [[API and Integrations]], [[Database]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-041 Email Delivery]]. ADR-007 unchanged (already ACCEPTED).
+
+Database changes:
+
+`20260821240000_email_logs` — `email_logs` + `email_delivery_status`. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+Unit: templates/BR-017 + send/attach/fail/Staff deny. Integration: send records `email_logs`. `pnpm typecheck` / `lint` / `format:check` / `test` (259) / email integration / `build` pass. Full integration suite: 2 unrelated failures (companies-crud 5s timeout; customers-profile financial summary fixture). E2E-02 deferred pending TASK-042 UI.
+
+Decisions:
+
+None new. ADR-009 / ADR-010 / ADR-011 / US-011 remain OPEN.
+
+Problems:
+
+None for TASK-041. Full email template CRUD remains Settings later; CC/BCC UI is TASK-042.
+
+Next task:
+
+[[TASK-042 Email Invoice UI]]
+
+### 2026-08-21 — TASK-040
+
+Work completed:
+
+Invoice view PDF preview/download against stored `invoice_files` bytes via StorageService. `GET /api/invoices/{id}/pdf/files/{fileId}` streams PDF with inline or attachment disposition. Historical version files selectable. Does not regenerate when a file row exists; missing blob returns 404. Staff cannot download unassigned invoice PDFs (403). No email. No schema changes.
+
+Files changed:
+
+Download service + file-by-id repository, download API route, `InvoicePdfPanel` on `/invoices/[id]`, authorization unit test. Updated [[PDF and Email]], [[Invoices]], [[Screen Inventory]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-040 PDF Preview and Download]]. No ADR change.
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format` pass. `pnpm test` 256 passed. `pnpm build` pass.
+
+Decisions:
+
+None. Preview uses iframe to same-origin authorized byte stream.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-041 Email Delivery]]
+
+### 2026-08-21 — TASK-039
+
+Work completed:
+
+Server-side branded invoice PDFs via `@react-pdf/renderer` (ADR-013). Financial content from immutable `invoice_versions` snapshots. Branding/logo/terms and customer billing frozen into PDF bytes at first generation. One `invoice_files` row per version with SHA-256 checksum; blob via StorageService (R2/local). Internal notes never rendered. Existing PDF for a version is reused (no regenerate from today’s mutable data). Best-effort generate after issue; `POST/GET /api/invoices/{id}/pdf`. Queueable dispatcher port (inline default; BullMQ worker = TASK-099). No preview UI (TASK-040). No email.
+
+Files changed:
+
+Migration `20260821230000_invoice_files`, PDF domain/render/service/queue/file store, API route, issue wiring, unit + integration tests, `@react-pdf/renderer` dependency. Updated [[PDF and Email]], [[Invoices]], [[Data Model]], [[Database]], [[Testing]], [[API and Integrations]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-039 PDF Generation]]. ADR-005/006/013 unchanged (already ACCEPTED).
+
+Database changes:
+
+`invoice_files` metadata table. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format` pass. `pnpm test` 255 passed. Integration PDF pass (`RUN_DB_INTEGRATION=true`). `pnpm build` pass.
+
+Decisions:
+
+Inline PDF job dispatcher for TASK-039; dedicated worker hardening deferred to TASK-099. A4 default; Letter supported. No ADR status change.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-040 PDF Preview and Download]]
+
+### 2026-08-21 — TASK-038
+
+Work completed:
+
+Soft-cancel invoices (Draft/Issued/Overdue → CANCELLED) with mandatory reason. No hard delete. Invoice number, stored totals, and issue versions preserved. Staff cannot cancel (`invoice.cancel`). Cancelled invoices excluded from collectible customer outstanding (BR-019) via Prisma financial-summary source. Cancel UI with reason on invoice detail. Audit `invoices.cancelled`.
+
+Files changed:
+
+Migration `20260821220000_invoice_cancellation`, domain cancellation helpers, cancel service/API/action/UI, lifecycle transitions, Prisma financial summary source, unit + integration tests. Updated [[Invoices]], [[Data Model]], [[Database]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-038 Invoice Cancellation]]. No ADR change (ADR-009 still OPEN; no cancel-and-reissue).
+
+Database changes:
+
+`invoices.cancellation_reason`, `cancelled_at`, `cancelled_by_user_id`. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format` + format check. `pnpm test` 253 passed. Integration cancellation pass (`RUN_DB_INTEGRATION=true`). `pnpm build` pass. E2E-12 PDF preservation deferred until TASK-039.
+
+Decisions:
+
+Allowed cancel from Draft, Issued, Overdue only (state table). Partially Paid / Paid not cancellable here. Financial totals not rewritten on cancel. Cancel-and-reissue / credit notes not implemented.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-039 PDF Generation]]
+
+### 2026-08-21 — TASK-037
+
+Work completed:
+
+Added immutable `invoice_versions` snapshots on issue (header + line items + totals, reason, created_by). Version history UI on invoice view. Issued financial PATCH rejected. Non-financial metadata (reference/PO, assigned staff, compliance, notes) editable by Admin/Compliance with audit; Staff denied. Metadata edits do not create new versions. ADR-009 financial revision / cancel-and-reissue not chosen. No discounts (ADR-010 OPEN).
+
+Files changed:
+
+Migration `20260821210000_invoice_versions`, domain snapshot helpers, version store/service, versions API, issue wiring, PATCH routing, history + metadata UI, unit + integration tests. Updated [[Invoices]], [[Data Model]], [[Database]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-037 Invoice Versions]]. ADR-009 left OPEN (no decision change).
+
+Database changes:
+
+`invoice_versions` table. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 249 passed. Integration versions + lifecycle pass. `pnpm build` pass.
+
+Decisions:
+
+No new ADR. Versions = immutable issue snapshots only. Explicitly did not implement ADR-009 revision vs cancel-and-reissue.
+
+Problems:
+
+None for in-scope work.
+
+Next task:
+
+[[TASK-038 Invoice Cancellation]]
+
+### 2026-08-21 — TASK-036
+
+Work completed:
+
+Implemented invoice lifecycle issue path: Draft → ISSUED with delayed numbering at issue (TASK-035 allocate). BR-018 overdue evaluation (ISSUED/PARTIALLY_PAID → OVERDUE when due past and outstanding > 0); applied on list/detail load. Status filters on invoice list; Issue button on draft detail. Illegal transitions rejected. Paid/partial transitions not implemented (no payments). Cancel deferred to TASK-038. Issued financial edits blocked while ADR-009 OPEN. US-011 due-on-receipt not enabled — due date remains mandatory. No new migration.
+
+Files changed:
+
+Created `lifecycle.ts`, lifecycle service, `POST /api/invoices/{id}/issue`, issue button UI, unit + integration lifecycle tests. Updated access helpers, list/get for non-draft, status filters, line-item read for issued, [[Invoices]], [[Testing]], [[Unresolved Source Items]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-036 Invoice Lifecycle]].
+
+Database changes:
+
+None (status + due_date already present).
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 246 passed. Integration issue + overdue pass. `pnpm build` pass.
+
+Decisions:
+
+No new ADR. Cancel owned by TASK-038. US-011 left OPEN with mandatory due date. ADR-009 remains OPEN — no issued financial edit API.
+
+Problems:
+
+None for in-scope work. Cancel and paid/partial remain later tasks.
+
+Next task:
+
+[[TASK-037 Invoice Versions]]
+
+### 2026-08-21 — TASK-035
+
+Work completed:
+
+Implemented company-scoped invoice numbering (BR-003): `companies.invoice_sequence_next` with `SELECT … FOR UPDATE` allocation; format `{prefix}{NNNNNN}` or `{prefix}{YYYY}-{NNNNNN}` when system setting `invoice_number_include_year` is true. Reuses company branding `invoice_prefix` (TASK-010). Drafts keep `invoice_number` null until assign/issue (delayed numbering). Hand-edited numbers rejected on draft create/update. Read-only display on draft view. Collision / unique `(company_id, invoice_number)` enforced. No issue lifecycle (TASK-036). ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created numbering domain helpers, number store/service, migration `20260821200000_invoice_numbering`, unit + concurrency integration tests. Updated system settings (year flag), draft APIs/actions, invoice view copy, [[Invoices]], [[Settings]], [[Data Model]], [[Database]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-035 Invoice Numbering]].
+
+Database changes:
+
+`companies.invoice_sequence_next` (default 1); `system_settings.invoice_number_include_year` (default false). Unique constraint already from TASK-030. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 243 passed. Integration concurrency + isolation tests pass (`RUN_DB_INTEGRATION=true`). `pnpm build` pass.
+
+Decisions:
+
+No new ADR. Number assignment at issue remains TASK-036; TASK-035 provides allocate/assign primitives. Cancelled-number reuse remains excluded.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-036 Invoice Lifecycle]]
+
+### 2026-08-21 — TASK-034
+
+Work completed:
+
+Implemented server-side invoice totals (subtotal, discount_total=0 while ADR-010 OPEN, tax_total from line tax snapshots, invoice_total, confirmed_paid_amount, outstanding_amount via BR-009). Stored on `invoices` and recalculated when draft line items are replaced. Display-only totals panel on draft view/edit. No payment workflows; paid/outstanding use empty applications until payments exist. No discount model invented. ADR-009 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created `src/domain/invoices/totals.ts`, totals panel UI, unit totals tests, migration `20260821190000_invoice_totals`. Updated invoice repository/line-item service, draft UI, [[Invoices]], [[Data Model]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-034 Invoice Totals]].
+
+Database changes:
+
+Migration adds stored total columns on `invoices`. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 237 passed. Line-items integration asserts persisted totals. `pnpm build` pass.
+
+Decisions:
+
+`discount_total` always 0 while ADR-010 is OPEN. Tax total = sum of round(line_total × tax_rate_percent / 100). Invoice total = subtotal − discount + tax. Confirmed paid is never a manually edited source of truth.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-035 Invoice Numbering]]
+
+### 2026-08-21 — TASK-033
+
+Work completed:
+
+Implemented invoice line items on drafts: `invoice_items` table, nested replace API, server-side `line_total = round(qty × unitRate)` via Prisma Decimal (ADR-004). Optional tax name/rate snapshots stored; discount blocked while ADR-010 OPEN. Line editor on draft edit UI; read-only list on view. Issued invoices cannot mutate lines. Invoice-level totals deferred to TASK-034. ADR-009 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created migration `20260821180000_invoice_line_items`, domain line-total + schema, line-item service/repository methods, `/api/invoices/{id}/items`, line editor UI, unit + integration tests. Updated [[Invoices]], [[Data Model]], [[API and Integrations]], [[Authorization]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-033 Invoice Line Items]].
+
+Database changes:
+
+Migration adds `invoice_items` (quantity/unit_rate/line_total NUMERIC; optional tax snapshot; no discount columns). Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 233 passed. `RUN_DB_INTEGRATION=true pnpm test:integration -- tests/integration/invoices-line-items.test.ts` pass. `pnpm build` pass.
+
+Decisions:
+
+Line total excludes tax application until TASK-034. ADR-010 remains OPEN — discount fields rejected. Client previews use the same domain formula but saved totals are always server-written.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-034 Invoice Totals]]
+
+### 2026-08-21 — TASK-032
+
+Work completed:
+
+Implemented invoice draft UI: company-scoped list/filter, create draft, view draft, edit draft. Consumes TASK-031 Server Actions. Active customers + company-enabled currencies only. Internal notes labeled never customer-visible / never printed or emailed. Totals placeholder until TASK-034. No PDF/email/payment actions. No migrations. ADR-009 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created `/invoices` pages + draft form/filters, `src/server/invoices/actions.ts`. Extended currency picker `valueMode: "code"`, home/header nav, company-scope list authz test. Updated [[Invoices]], [[Screen Inventory]], [[Authorization]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-032 Invoice Draft UI]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 227 passed. `pnpm build` pass. Integration/E2E N/A per task.
+
+Decisions:
+
+Draft list defaults company from header context when set; Admin must select a concrete company when All Companies context is active. Edit button shown only when `canStaffEditDraftInvoice` allows.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-033 Invoice Line Items]]
+
+### 2026-08-21 — TASK-031
+
+Work completed:
+
+Implemented draft invoice create/list/get/update APIs on TASK-030 `invoices` header. Enforced BR-001 (company+customer linked), BR-002 (company-enabled ACTIVE currency), ACTIVE customer gate (TASK-028), company access, and Staff own/assigned draft edit. Assigned staff defaults to creator. Audit `invoices.created` / `invoices.updated`. No schema migration. No line items, totals, numbering, issue/send, or PDF. ADR-009 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created `src/domain/invoices/access.ts`, `src/server/invoices/invoice-draft-service.ts`, `/api/invoices` routes, unit + integration draft tests. Extended draft schema, invoice list store, `validateCurrencyCodeForNewDocument`, audit actions. Updated [[Invoices]], [[API and Integrations]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-031 Invoice Draft Service]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 226 passed. `RUN_DB_INTEGRATION=true pnpm test:integration -- tests/integration/invoices-draft.test.ts` pass. `pnpm build` pass.
+
+Decisions:
+
+Draft service exposes drafts only. Staff without `invoice.view_assigned` (US-008 denied) see/edit only own or assigned drafts. Admin/Compliance edit any draft in accessible companies. Currency validated by code against company configuration.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-032 Invoice Draft UI]]
+
+### 2026-08-21 — TASK-030
+
+Work completed:
+
+Implemented invoice header domain schema and persistence (Invoices §8.2). BR-001 company+customer required at Zod/Prisma. Draft status default; compliance placeholder; nullable invoice_number. Internal repository only (no public CRUD, issue, PDF, payments, line items, or totals). ADR-009 / ADR-011 remain OPEN.
+
+Files changed:
+
+Created `src/domain/invoices/{types,schema}.ts`, `src/server/invoices/invoice-repository.ts`, migration `20260821160000_invoice_domain_schema`, unit schema tests. Updated Prisma Invoice model + relations, prerequisite architecture/db/integration assertions, audit entity type, [[Invoices]], [[Data Model]], [[Database]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 04 Invoicing]], [[06 Development Log]], [[TASK-030 Invoice Domain Schema]].
+
+Database changes:
+
+Migration adds `invoice_status`, `invoice_compliance_status` enums and `invoices` table. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 221 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 43 passed, 4 skipped. `pnpm build` pass. Integration/Authorization/E2E N/A per task for new invoice APIs.
+
+Decisions:
+
+Defer BR-002 company currency enablement enforcement to TASK-031 draft service. Totals deferred to TASK-034. Numbering deferred to TASK-035.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-031 Invoice Draft Service]]
+
+### 2026-08-21 — TASK-029
+
+Work completed:
+
+Implemented currency-aware customer financial summary (Total Invoiced, Total Paid, Outstanding, Overdue) as by-currency buckets only (BR-013). Wired empty invoice source until Phase 04. Profile UI summary panel + `GET /api/customers/{id}/financial-summary`. Placeholder invoices/payments list endpoints. No invented totals. No reporting-currency conversion without stored snapshots. No new migrations. ADR-011 remains OPEN.
+
+Files changed:
+
+Created financial-summary domain, empty source adapter, summary service, financial-summary/invoices/payments API routes, profile summary panel, unit tests. Updated profile types/service, access helper, profile page, [[Customers]], [[API and Integrations]], [[Authorization]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-029 Customer Financial Summary]].
+
+Database changes:
+
+None (read aggregates only; invoice tables not present).
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 216 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 43 passed, 4 skipped (profile assertion updated for empty summary). `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Live amounts stay empty via `EmptyCustomerFinancialSummarySource` until invoice domain exists. Mixed currencies never collapse to one unlabeled total.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-030 Invoice Domain Schema]]
+
+### 2026-08-21 — TASK-028
+
+Work completed:
+
+Implemented non-blocking customer duplicate detection (email, phone, display name) on create/update. Admin/Compliance may acknowledge and proceed; Staff cannot. Soft ACTIVE/INACTIVE status controls clarified; `assertCustomerActiveForNewInvoice` gate ready for invoicing. No merge. No hard delete. No new migration (status already present). ADR-011 remains OPEN.
+
+Files changed:
+
+Created `src/domain/customers/duplicates.ts`, unit/integration duplicate tests. Updated customer schema/service/repository/actions, create/update APIs (409 warning payload), customer form warning UI, status controls copy, [[Customers]], [[API and Integrations]], [[Authorization]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-028 Customer Duplicate Detection and Status]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 212 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 43 passed, 4 skipped. `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Reuse existing `customers.status` as the deactivated flag. Invoice blocking is exposed as a domain gate; invoice create will enforce it when invoicing ships.
+
+Problems:
+
+None blocking.
+
+Next task:
+
+[[TASK-029 Customer Financial Summary]]
+
+### 2026-08-21 — TASK-027
+
+Work completed:
+
+Implemented internal-only customer notes (`customer_notes`) with author and timestamp. Create/list APIs and profile UI. Access reuses customer company-link scoping. Audits `customers.note_created`. PDF/email payload fixture omits notes. No portal notes. No edit/delete. ADR-011 remains OPEN.
+
+Files changed:
+
+Created migration `20260821140000_customer_notes`, note domain/schema/repository/service, notes API, profile notes panel, external-document payload fixture, unit/integration tests. Updated profile types/service, actions, audit types, [[Customers]], [[Data Model]], [[Database]], [[Authorization]], [[API and Integrations]], [[Audit Logs]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-027 Customer Notes]].
+
+Database changes:
+
+Migration adds `customer_note_visibility` enum and `customer_notes` table. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 204 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 42 passed, 4 skipped. `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Visibility is fixed INTERNAL. Create/list only. Body content is not stored in audit (length only).
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-028 Customer Duplicate Detection and Status]]
+
+### 2026-08-21 — TASK-026
+
+Work completed:
+
+Implemented the customer profile operational view. Profile summary endpoint returns identity, authorized linked companies, placeholders for financial/invoices/payments/notes (no invented mixed totals — BR-013), and scoped customer audit activity. UI at `/customers/[id]` with company filter. Unassigned company data omitted for Staff/Compliance. No schema migration. ADR-011 remains OPEN.
+
+Files changed:
+
+Created profile domain types, profile service, `GET /api/customers/{id}/profile`, profile company filter UI, unit/integration profile tests. Updated customer detail page, actions, audit repository `listByEntity`, [[Customers]], [[API and Integrations]], [[Authorization]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-026 Customer Profile]].
+
+Database changes:
+
+None (read model only).
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 201 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 41 passed, 4 skipped. `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Financial summary widgets stay placeholders until TASK-029. Threaded notes stay placeholder until TASK-027. Activity uses entity-scoped audit reads under `customer.edit` (not full `audit.read` viewer).
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-027 Customer Notes]]
+
+### 2026-08-21 — TASK-025
+
+Work completed:
+
+Implemented `customer_companies` multi-company linkage. Replaced TASK-023 interim access (`defaultCompanyId` / assignee) with linked-company ∩ `user_companies` for Staff/Compliance. Admin may link across companies. Link/unlink/set APIs; create/edit UI multi-select; list `companyId` filter. Backfilled existing `default_company_id` into links. Audits `customers.companies_updated`. ADR-011 remains OPEN.
+
+Files changed:
+
+Created migration `20260821120000_customer_companies`, companies API route. Updated Prisma Customer/Company relations, customer access/schema/repository/service, list/create/edit UI, audit types, unit/integration tests. Updated [[Customers]], [[Data Model]], [[Database]], [[Authorization]], [[Security]], [[API and Integrations]], [[Audit Logs]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-025 Customer Company Relationships]].
+
+Database changes:
+
+Migration adds `customer_companies` and backfills from `customers.default_company_id`. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 198 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 4 skipped. `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Access supersedes interim TASK-023 scoping. `defaultCompanyId` remains preference and must be among linked companies when set. Staff/Compliance merge preserves links outside their assignment.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-026 Customer Profile]]
+
+### 2026-08-21 — TASK-024
+
+Work completed:
+
+Implemented customer list/search/filter, create, edit, and master-summary screens. Server Actions wrap TASK-023 customer service (revalidate; no duplicated business logic). Soft-deactivate controls for Admin on detail. No financial totals (BR-013). No profile (TASK-026). No `customer_companies` (TASK-025). ADR-011 remains OPEN.
+
+Files changed:
+
+Created customer Server Actions, list-query helper, `/customers` pages (list/new/detail/edit), form + filters + status controls, unit list-query test. Updated home nav, [[Customers]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-024 Customer List and Form UI]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 196 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 4 skipped. `pnpm build` pass (after clearing stale `.next`). E2E N/A. Staff scope enforced by TASK-023 service used by UI.
+
+Decisions:
+
+Detail page is master summary only — not the §7.2 profile. Default company picker uses switcher-accessible companies; Staff/Compliance must pick an assigned company on create.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-025 Customer Company Relationships]]
+
+### 2026-08-21 — TASK-023
+
+Work completed:
+
+Implemented customer create/read/update/search APIs with role matrix and company-scoped access. Soft-deactivate via `customer.delete` (Admin); hard delete never. Staff/Compliance must supply an accessible `defaultCompanyId`; Staff limited/assigned via company assignment or `assignedStaffUserId`. Audits `customers.created` / `updated` / `status_changed`. No UI. No `customer_companies` (TASK-025). ADR-011 remains OPEN.
+
+Files changed:
+
+Created customer access helper, service, `/api/customers` routes (+ status), unit/integration tests. Updated repository list/search, audit types, [[Customers]], [[Authorization]], [[Security]], [[API and Integrations]], [[Audit Logs]], [[Testing]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-023 Customer CRUD Service]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 194 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 40 passed, 4 skipped. `pnpm build` pass. E2E N/A.
+
+Decisions:
+
+Until TASK-025, company scope uses `defaultCompanyId` and assignee matching (not invented `customer_companies`). Deactivation is not allowed through PATCH edit.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-024 Customer List and Form UI]]
+
+### 2026-08-21 — TASK-022
+
+Work completed:
+
+Implemented the customer master schema from Customers §7.1 on `customers`. Email is optional. Soft ACTIVE/INACTIVE status only (no hard-delete repository method). Domain Zod constraints and internal `PrismaCustomerStore` only — no public CRUD API, UI, or authorization service. Optional `default_company_id` is a preference, not ownership; `customer_companies` remains TASK-025. ADR-011 remains OPEN.
+
+Files changed:
+
+Created customer domain types/schema, internal repository, migration `20260821000000_customer_domain_schema`, unit schema tests. Updated Prisma User/Company relations, prerequisite foundation/authz tests, [[Customers]], [[Data Model]], [[Database]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 03 Customers]], [[06 Development Log]], [[TASK-022 Customer Domain Schema]].
+
+Database changes:
+
+Migration adds `customer_type` / `customer_status` enums and `customers` table. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 189 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 39 passed, 4 skipped. `pnpm build` pass. Integration/E2E N/A per task.
+
+Decisions:
+
+No new ADR. Payment preference stored as free text (no invented enum). Customer master is not single-company-owned.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-023 Customer CRUD Service]]
+
+### 2026-08-21 — TASK-021
+
+Work completed:
+
+Implemented currency disable vs historical visibility rules on existing catalog status flags. Domain `assertCurrencySelectableForNewDocument` / `currenciesForNewDocumentPicker` / `currencyLabelForHistoricalDisplay` separate new-selection (reject INACTIVE) from historical display (keep codes/labels). Server hooks `validateCurrencyForNewDocument`, `listCurrenciesForNewDocument`, and `resolveCurrencyForHistoricalDisplay` are ready for later invoice/payment callers (callers own authz). `NewDocumentCurrencyPicker` hides disabled currencies. Company currency save preserves historically enabled INACTIVE assignments. No new schema. ADR-011 remains OPEN.
+
+Files changed:
+
+Created selection domain, currency-selection service, new-document picker, unit tests. Updated company currency repository/service/form, settlement historical copy, Prisma comments, [[Currency and Conversion]], [[Error Handling]], [[Authorization]], [[Security]], [[API and Integrations]], [[Database]], [[Settings]], [[Testing]], ADR-011 note, [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 02 Financial Foundation]], [[06 Development Log]], [[TASK-021 Currency Disable and Historical Visibility]].
+
+Database changes:
+
+None (status flags only; TASK-014 `currencies.status`).
+
+Tests:
+
+`pnpm typecheck` pass. `pnpm lint` pass. `pnpm format:check` pass. `pnpm test` 181 passed. `RUN_DB_INTEGRATION=true pnpm test:integration` 39 passed, 4 skipped. `pnpm build` pass. Integration/E2E N/A per task.
+
+Decisions:
+
+No new ADR. Selection hooks follow TASK-018 pattern (no Admin gate). ADR-011 remains OPEN.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-022 Customer Domain Schema]]
+
 ### 2026-08-20 — TASK-020
 
 Work completed:

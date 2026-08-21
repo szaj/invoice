@@ -126,9 +126,11 @@ Depends on: Phases 01–08
 
 ## First Buildable Task
 
-[[TASK-001 Repository Foundation]] through [[TASK-020 Settlement Currency Configuration]] are COMPLETE.
+[[TASK-001 Repository Foundation]] through [[TASK-044 Payment Domain Schema]] are COMPLETE.
 
-[[TASK-021 Currency Disable and Historical Visibility]] is the next buildable task.
+**UI/UX Foundation Refresh — before TASK-042** remains the presentation checkpoint that established [[UI UX Design System]].
+
+[[TASK-045 Payment Service]] is the next buildable product task (NOT STARTED).
 
 ## Explicitly Not Planned for Version 1
 

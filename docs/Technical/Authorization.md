@@ -8,7 +8,7 @@ tags:
 
 # Authorization
 
-Application RBAC for TASK-005 through TASK-020 (including Admin system settings, currency master, company currencies, fixed conversion rate versions, and settlement currency configuration). Identity remains Supabase Auth. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]], [[Roles and Permissions]], and [[Authentication]].
+Application RBAC for TASK-005 through TASK-021 (including Admin system settings, currency master, company currencies, fixed conversion rate versions, settlement currency configuration, and currency disable/historical visibility). Identity remains Supabase Auth. See [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]], [[Roles and Permissions]], and [[Authentication]].
 
 ## Boundary
 
@@ -43,6 +43,18 @@ Do **not** read roles, permissions, or company access from Auth `user_metadata`,
 [[TASK-018 Effective Rate Selection]] provides `resolveFixedConversionRate` for later conversion paths (read model over `valid_from`/`valid_to`; same-currency 1; missing blocks). Not an Admin-only gate — callers enforce their own authorization.
 
 [[TASK-020 Settlement Currency Configuration]] stores method enablement and settlement currencies on `payment_gateway_configs` / `payment_gateway_settlement_currencies`. Admin manages under `gateway.credentials.manage`. Non-enabled settlement currencies are rejected (BR-006). Credentials/charges are not included.
+
+[[TASK-021 Currency Disable and Historical Visibility]] adds new-selection validation hooks and historical display helpers over existing `currencies.status` flags. Admin disables under `currency.manage` (TASK-014). Selection hooks are not Admin-only — callers enforce their own authz (same pattern as TASK-018). All roles may see disabled currencies on historical records later (BR-011).
+
+[[TASK-022 Customer Domain Schema]] adds the `customers` master table (Customers §7.1). No public API or authorization gate yet — TASK-023.
+
+[[TASK-023 Customer CRUD Service]] exposes `/api/customers` CRUD/search. Create: `customer.create` (Admin/Compliance/Staff). Edit/list/get: `customer.edit`. Soft-deactivate: `customer.delete` (Admin only). Hard delete never. [[TASK-028 Customer Duplicate Detection and Status]] adds duplicate warnings on create/update; only Admin/Compliance may set `acknowledgeDuplicates` to proceed.
+
+[[TASK-025 Customer Company Relationships]] adds `customer_companies`. Staff/Compliance access requires intersection of linked companies with assigned `user_companies` (interim `defaultCompanyId` / assignee scoping removed). Staff/Compliance must link ≥1 accessible company on create/update. Staff cannot link unauthorized companies (403). Admin may link across companies. List supports `companyId` filter among authorized companies.
+
+[[TASK-026 Customer Profile]] adds `GET /api/customers/{id}/profile`. Requires `customer.edit` and customer access. Profile company list and activity omit companies outside the actor’s assignment. Unauthorized `companyId` filter → 403.
+
+[[TASK-027 Customer Notes]] adds `GET/POST /api/customers/{id}/notes`. Internal-only (`visibility=INTERNAL`). Create/list require `customer.edit` and customer access via linked companies. Staff denied outside assignment → 403. Notes are never portal-visible and must not appear on PDF/email payloads.
 ## Roles
 
 | Code | Name | Company scope capability |
@@ -95,8 +107,10 @@ Representative protected actions:
 - Company branding GET/PATCH and logo GET/POST/DELETE under `/api/companies/{id}/branding` require `company.write`. Non-Admin → 403.
 - Reporting groups GET/POST/PATCH under `/settings/reporting-groups` and `/api/reporting-groups` require `company.write`. Non-Admin → 403. Membership is not authorization.
 - System settings GET/PATCH under `/settings/system` and `/api/system-settings` require `settings.manage`. Non-Admin → 403.
-- Currencies GET/POST/PATCH under `/settings/currencies` and `/api/currencies` require `currency.manage`. Non-Admin → 403. Soft-disable only.
-- Company currencies GET/PATCH under `/companies/{id}/currencies` and `/api/companies/{id}/currencies` require `company.write`. Non-Admin → 403. Globally inactive currencies cannot be enabled.
+- Currencies GET/POST/PATCH under `/settings/currencies` and `/api/currencies` require `currency.manage`. Non-Admin → 403. Soft-disable only. New-document selection rejects INACTIVE currencies via `validateCurrencyForNewDocument` (TASK-021); historical display resolves INACTIVE codes without rewrite.
+- Company currencies GET/PATCH under `/companies/{id}/currencies` and `/api/companies/{id}/currencies` require `company.write`. Non-Admin → 403. Globally inactive currencies cannot be newly enabled; historically enabled inactive assignments are preserved for visibility.
+- Customers GET/POST under `/api/customers`, GET/PATCH `/api/customers/{id}` require `customer.edit` / `customer.create`. POST `/api/customers/{id}/status` requires `customer.delete` (Admin soft-deactivate). Duplicate proceed (`acknowledgeDuplicates`) is Admin/Compliance only; Staff → 403. GET/PUT/POST/DELETE `/api/customers/{id}/companies` require `customer.edit` with company-link checks. GET `/api/customers/{id}/financial-summary`, `/invoices`, `/payments` reuse profile company scoping (`customer.edit`). Staff/Compliance denied outside linked+assigned company scope → 403.
+- Invoices GET/POST under `/api/invoices` require `invoice.create` with company access; GET/PATCH `/api/invoices/{id}` require `invoice.create` / `invoice.edit_draft`. Drafts only. Staff may edit only own or assigned drafts; unassigned → 403. Inactive customers blocked for new drafts. Currency must pass `validateCurrencyCodeForNewDocument` (BR-002). UI under `/invoices` (TASK-032) reuses the same gates; list is company-scoped. GET/PUT `/api/invoices/{id}/items` (TASK-033) uses the same draft-edit permissions; issued invoices cannot mutate lines here.
 - Settlement currencies GET under `/companies/{id}/settlement` and `/api/companies/{id}/settlement`, and PATCH `/api/companies/{id}/settlement/{methodCode}`, require `gateway.credentials.manage`. Non-Admin → 403. Non-enabled settlement currencies are rejected (BR-006). No credentials or live charges.
 - Fixed conversion rates GET/POST under `/settings/fixed-rates` and `/api/fixed-conversion-rates` require `currency.manage`. Non-Admin → 403. No market/gateway FX substitution. No PATCH of historical rate amounts; new versions expire prior ACTIVE rows.
 - `GET /api/companies/{id}` requires company access. Admin ALL; Compliance/Staff assigned only. Unassigned → 403.

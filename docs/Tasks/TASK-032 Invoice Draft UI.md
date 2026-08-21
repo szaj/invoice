@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-032 — Invoice Draft UI
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -68,7 +68,7 @@ N/A
 
 ### Unit
 
-N/A
+N/A (company-scope list authz covered in draft unit tests).
 
 ### Integration
 
@@ -84,32 +84,57 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/server/invoices/actions.ts`
+- `src/app/(app)/invoices/page.tsx`
+- `src/app/(app)/invoices/new/page.tsx`
+- `src/app/(app)/invoices/[id]/page.tsx`
+- `src/app/(app)/invoices/[id]/edit/page.tsx`
+- `src/app/(app)/invoices/invoice-draft-form.tsx`
+- `src/app/(app)/invoices/invoice-list-filters.tsx`
+
 ### Files Modified
+
+- `src/domain/invoices/schema.ts` — list searchParams helpers
+- `src/components/currencies/new-document-currency-picker.tsx` — `valueMode: "code"`
+- `src/app/(app)/app-header.tsx` / `page.tsx` — Invoices nav
+- `tests/unit/invoices-draft.test.ts` — company-scope list authz
+- Vault: task, status, home, plan, phase, Invoices, Screen Inventory, Testing, Authorization, Dev Log
 
 ### Migrations
 
+None.
+
 ### APIs
+
+Consumes TASK-031 `/api/invoices` via Server Actions (no new routes).
 
 ### Tests
 
+- Unit: company-scoped draft list denies unassigned company filter
+- typecheck / lint / format / unit / build pass
+
 ### Issues
 
+None blocking. Line items (TASK-033), totals (TASK-034), numbering, issue/PDF/payments remain later. ADR-009 / ADR-011 remain OPEN.
+
 ### Commit
+
+Not committed (awaiting explicit request).
 
 ## Next Recommended Task
 

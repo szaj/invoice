@@ -59,6 +59,7 @@ Internal development vault for the multi-brand invoicing and payment-management 
 - [[Deployment]]
 - [[Database]]
 - [[Engineering Rules]]
+- [[UI UX Design System]]
 - [[Authentication]]
 - [[Authorization]]
 
@@ -80,15 +81,15 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 ## Current Development
 
-Current Phase: Phase 02 — Financial Foundation
+Current Phase: Phase 05 — Payments
 
-Current Task: [[TASK-021 Currency Disable and Historical Visibility]]
+Current Task: [[TASK-045 Payment Service]] (NOT STARTED)
 
-Current Status: [[TASK-020 Settlement Currency Configuration]] is COMPLETE. Next buildable task is TASK-021 (currency disable and historical visibility). Per-method settlement currency enablement is available on company gateway config (no credentials/charges). ADR-011 remains OPEN.
+Current Status: [[TASK-044 Payment Domain Schema]] is COMPLETE. Next buildable task is [[TASK-045 Payment Service]]. ADR-009 / ADR-010 / ADR-011 remain OPEN.
 
-Next Task: [[TASK-021 Currency Disable and Historical Visibility]]
+Next Task: [[TASK-045 Payment Service]]
 
-Do not start TASK-021 until ready. TASK-021 depends on TASK-014 and TASK-015.
+Do not start TASK-045 until ready.
 
 ## Blocked Items
 

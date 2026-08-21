@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 2
 tags:
   - task
@@ -27,4 +27,4 @@ Control: [[03 Implementation Plan]] · [[04 Implementation Status]] · [[01 Mast
 | TASK-018 | [[TASK-018 Effective Rate Selection]] | TASK-017 | COMPLETE |
 | TASK-019 | [[TASK-019 Money Calculation Utilities]] | TASK-014, TASK-013 | COMPLETE |
 | TASK-020 | [[TASK-020 Settlement Currency Configuration]] | TASK-014, TASK-007 | COMPLETE |
-| TASK-021 | [[TASK-021 Currency Disable and Historical Visibility]] | TASK-014, TASK-015 | NOT STARTED |
+| TASK-021 | [[TASK-021 Currency Disable and Historical Visibility]] | TASK-014, TASK-015 | COMPLETE |

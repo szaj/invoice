@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-043 — Invoice Duplicate and Print
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -42,23 +42,23 @@ Copying invoice numbers. Changing historical PDFs. Copying payments.
 
 ## Database Changes
 
-New invoice row.
+New invoice row (no schema migration).
 
 ## Backend
 
-duplicate action.
+`duplicateInvoice` → new DRAFT via `createDraftInvoice` + line copy via `replaceDraftInvoiceLineItems`. `POST /api/invoices/{id}/duplicate`.
 
 ## Frontend
 
-Duplicate and export/print actions.
+Duplicate button on invoice detail; Download PDF + Print on PDF panel (stored file only).
 
 ## Authorization
 
-Same as create invoice.
+Same as create invoice (`invoice.create`); company access + `canViewInvoice` on source.
 
 ## Business Rules
 
-New draft; numbering rules still apply.
+New draft; numbering rules still apply (number null until issue). No copy of versions/PDFs/emails/payments/cancellation/audit history.
 
 ## Error Handling
 
@@ -72,44 +72,67 @@ N/A
 
 ### Integration
 
-Duplicate is Draft with a new number/id.
+Duplicate is Draft with a new number/id (`tests/integration/invoices-duplicate.test.ts`).
 
 ### Authorization
 
-N/A
+Covered by create + view checks on duplicate path.
 
 ### E2E
 
-N/A
+N/A (shell E2E still applies; E2E-02 live auth optional).
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/server/invoices/invoice-duplicate-service.ts`
+- `src/app/api/invoices/[id]/duplicate/route.ts`
+- `src/app/(app)/invoices/invoice-duplicate-button.tsx`
+- `tests/integration/invoices-duplicate.test.ts`
+
 ### Files Modified
+
+- `src/domain/audit/types.ts` (`invoices.duplicated`)
+- `src/domain/invoices/types.ts` (duplicate/print messages)
+- `src/server/invoices/actions.ts` (`duplicateInvoiceAction`)
+- `src/app/(app)/invoices/[id]/page.tsx`
+- `src/app/(app)/invoices/invoice-pdf-panel.tsx` (Print + download)
+- Vault: Home, Implementation Status/Plan, Phase 04, Invoices, PDF and Email, Screen Inventory, API, Development Log, this task
 
 ### Migrations
 
+None (new invoice row only).
+
 ### APIs
+
+- `POST /api/invoices/{id}/duplicate` — same-origin; returns new draft invoice
 
 ### Tests
 
+- Integration: duplicate → DRAFT, null number, copied lines, no versions/PDFs on copy
+- `pnpm typecheck` / `lint` / `format:check` / `test` (262) / `test:integration` (53 pass / 4 skipped) / `e2e` (1 pass / 1 skipped) / `build` pass
+
 ### Issues
 
+None for TASK-043. ADR-009 / ADR-010 / ADR-011 / US-011 remain OPEN. Print requires a stored PDF (TASK-040); drafts without PDF cannot print until generated after issue.
+
 ### Commit
+
+Uncommitted (await user request).
 
 ## Next Recommended Task
 

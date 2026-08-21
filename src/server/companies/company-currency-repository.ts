@@ -61,20 +61,43 @@ export class PrismaCompanyCurrencyStore {
     const prisma = getPrisma();
 
     await prisma.$transaction(async (tx) => {
+      // BR-011: keep company assignments for globally INACTIVE currencies so they
+      // remain visible as historical enablement; they are not selectable for new docs.
+      const historicallyInactive = await tx.companyCurrency.findMany({
+        where: {
+          companyId,
+          enabled: true,
+          currency: { status: "INACTIVE" },
+        },
+        select: { currencyId: true },
+      });
+      const preservedInactiveIds = historicallyInactive.map((row) => row.currencyId);
+      const preservedSet = new Set(preservedInactiveIds);
+
       await tx.companyCurrency.deleteMany({ where: { companyId } });
 
-      if (input.enabledCurrencyIds.length === 0) {
-        return;
-      }
-
-      await tx.companyCurrency.createMany({
-        data: input.enabledCurrencyIds.map((currencyId) => ({
+      const activeRows = input.enabledCurrencyIds
+        .filter((currencyId) => !preservedSet.has(currencyId))
+        .map((currencyId) => ({
           companyId,
           currencyId,
           enabled: true,
           isDefault: currencyId === input.defaultCurrencyId,
-        })),
-      });
+        }));
+
+      const inactiveRows = preservedInactiveIds.map((currencyId) => ({
+        companyId,
+        currencyId,
+        enabled: true,
+        isDefault: false,
+      }));
+
+      const rows = [...activeRows, ...inactiveRows];
+      if (rows.length === 0) {
+        return;
+      }
+
+      await tx.companyCurrency.createMany({ data: rows });
     });
 
     const refreshed = await this.getCompanyCurrencyConfiguration(companyId);

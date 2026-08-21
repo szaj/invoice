@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -13,7 +13,7 @@ tags:
 
 # TASK-030 — Invoice Domain Schema
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -87,32 +87,52 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/domain/invoices/{types,schema}.ts`
+- `src/server/invoices/invoice-repository.ts`
+- `prisma/migrations/20260821160000_invoice_domain_schema/`
+- `tests/unit/invoices-schema.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `Invoice` model + status/compliance enums; Company/Customer/User relations
+- Prerequisite tests that forbade any `Invoice` model/table
+- Audit entity type `invoice` reserved for later writers
+- Vault: Invoices, Data Model, Database, Testing, Home, Status, Plan, Phase 04, Dev Log
 
 ### Migrations
 
+`20260821160000_invoice_domain_schema` — `invoices` table (Invoices §8.2 header; company+customer required; currency code; dates; optional reference/PO, assigned staff, notes; draft status; compliance placeholder; nullable invoice_number). Applied with `pnpm prisma:migrate:deploy`. No line items, versions, payments, PDF, or public CRUD.
+
 ### APIs
+
+None. Internal `PrismaInvoiceStore` only (get/create/update; no hard-delete). Public draft service is TASK-031.
 
 ### Tests
 
+Unit: company+customer required (BR-001); currency/dates; rejects line items/totals/payments fields; migration SQL asserts no invoice_items/payments. Prerequisite architecture/db tests updated to allow Invoice, still forbid Payment.
+
 ### Issues
 
+BR-002 company enablement of currency is enforced at draft service (TASK-031), not in this schema-only task. Numbering lock remains TASK-035. Totals remain TASK-034. ADR-009 / ADR-011 remain OPEN.
+
 ### Commit
+
+Uncommitted (await explicit commit request).
 
 ## Next Recommended Task
 

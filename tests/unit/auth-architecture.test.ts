@@ -125,7 +125,9 @@ describe("authentication architecture boundary", () => {
     expect(schema).toMatch(/model Role\b/);
     expect(schema).toMatch(/model Permission\b/);
     expect(schema).toMatch(/model RolePermission\b/);
-    expect(schema).not.toMatch(/model\s+(Customer|Invoice|Payment)\b/);
+    // Invoice + payment domain schema exist; charging / webhooks remain later.
+    expect(schema).toMatch(/model Invoice\b/);
+    expect(schema).toMatch(/model Payment\b/);
   });
 
   it("does not log passwords or recovery tokens from auth services", () => {

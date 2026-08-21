@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-041 — Email Delivery
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -72,7 +72,7 @@ Missing email blocked. PDF failure does not send a claimed email.
 
 ### Unit
 
-N/A
+N/A (added template/BR-017 + delivery unit coverage beyond task minimum).
 
 ### Integration
 
@@ -84,36 +84,61 @@ N/A
 
 ### E2E
 
-E2E-02.
+E2E-02 (full browser flow deferred; API/domain coverage here; UI is TASK-042).
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/server/email/email-provider.ts`, `email-service.ts`, `create-email-provider.ts`, `resend-email-adapter.ts`, `memory-email-provider.ts`
+- `src/domain/invoices/email.ts`
+- `src/server/invoices/email-log-repository.ts`, `invoice-email-service.ts`, `invoice-email-queue.ts`
+- `src/app/api/invoices/[id]/email/route.ts`
+- `prisma/migrations/20260821240000_email_logs/migration.sql`
+- `tests/unit/invoices-email.test.ts`, `tests/unit/invoices-email-template.test.ts`
+- `tests/integration/invoices-email.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` (`EmailLog`, `EmailDeliveryStatus`)
+- `src/domain/audit/types.ts` (`invoices.emailed` / `invoices.email_failed`)
+- `src/server/invoices/actions.ts` (`sendInvoiceEmailAction`)
+- `package.json` / lockfile (`resend`)
+- Vault: TASK-041, Status, Dev Log, Home, Plan, Phase 04, PDF and Email, Database, API, Testing notes as needed
 
 ### Migrations
 
+`20260821240000_email_logs` — `email_logs` + `email_delivery_status`. Applied with `pnpm prisma:migrate:deploy`.
+
 ### APIs
+
+- `POST /api/invoices/{id}/email` — send (same-origin); attaches stored PDF
+- `GET /api/invoices/{id}/email` — list email_logs for invoice
 
 ### Tests
 
+Unit: merge fields / BR-017 + send/attach/fail/auth. Integration: send records `email_logs` with MemoryEmailProvider. `pnpm typecheck` / `lint` / `format:check` / `test` (259) / email integration pass / `build` pass. Full `RUN_DB_INTEGRATION=true test:integration`: email test pass; 2 unrelated failures (companies-crud timeout; customers-profile leftover financial summary). E2E-02 deferred to TASK-042 UI.
+
 ### Issues
 
+None for TASK-041 scope. ADR-009 / ADR-010 / ADR-011 / US-011 remain OPEN. Full email template CRUD and CC/BCC UI remain later (Settings / TASK-042). BullMQ worker hardening remains TASK-099 (inline dispatcher default).
+
 ### Commit
+
+Not created (agent does not commit unless asked).
 
 ## Next Recommended Task
 

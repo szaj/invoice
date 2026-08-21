@@ -33,7 +33,7 @@ No two source documents were found to contradict a financial, permission, paymen
 | US-008 | Staff view of assigned invoices | Roles matrix: "Optional by policy". TASK-005 recorded as **denied** (no invented grant). | Policy during later invoice access tasks |
 | US-009 | Staff report export | Roles matrix: "Optional". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-090 Report Exports]] |
 | US-010 | Staff audit visibility | Roles matrix: "Own activity only/none". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-076 Audit Log Viewer]] |
-| US-011 | Due-on-receipt invoices | Due date is mandatory unless company policy allows due-on-receipt. | Policy during [[TASK-036 Invoice Lifecycle]] |
+| US-011 | Due-on-receipt invoices | Due date is mandatory unless company policy allows due-on-receipt. | Remains OPEN after [[TASK-036 Invoice Lifecycle]]: due date stayed mandatory; due-on-receipt not enabled. |
 | US-015 | Overpayment | A payment cannot apply more than the open balance unless overpayment is explicitly supported and authorized. | Policy during [[TASK-059 Partial Payments]] / [[TASK-060 Payment Allocation]] |
 
 ## Deferred operational choices (not TASK-001 blockers)

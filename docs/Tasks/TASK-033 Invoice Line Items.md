@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -11,7 +11,7 @@ tags:
 
 # TASK-033 — Invoice Line Items
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -85,32 +85,59 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260821180000_invoice_line_items/migration.sql`
+- `src/domain/invoices/line-items.ts`
+- `src/domain/invoices/line-item-schema.ts`
+- `src/server/invoices/invoice-line-item-service.ts`
+- `src/app/api/invoices/[id]/items/route.ts`
+- `src/app/(app)/invoices/invoice-line-items-editor.tsx`
+- `tests/unit/invoices-line-items.test.ts`
+- `tests/integration/invoices-line-items.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `InvoiceItem` + relation
+- `src/server/invoices/invoice-repository.ts` — list/replace line items
+- `src/server/invoices/actions.ts` — line-item actions
+- Draft edit/view UI pages
+- `src/domain/audit/types.ts` — `INVOICE_LINE_ITEMS_UPDATED`
+- Vault docs
 
 ### Migrations
 
+`20260821180000_invoice_line_items` applied via `pnpm prisma:migrate:deploy`.
+
 ### APIs
+
+- `GET/PUT /api/invoices/{id}/items` — list/replace draft line items (`invoice.create` / `invoice.edit_draft`)
 
 ### Tests
 
+- Unit: line total Decimal math; qty ≤ 0 rejected; discount keys rejected
+- Integration: nested replace on draft with server totals
+
 ### Issues
 
+Discount blocked (ADR-010 OPEN). Tax snapshot stored but not applied into line total (invoice tax aggregation is TASK-034). ADR-009 / ADR-011 remain OPEN.
+
 ### Commit
+
+Not committed (awaiting explicit request).
 
 ## Next Recommended Task
 

@@ -6,6 +6,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { CompanyCurrencyConfiguration } from "@/domain/companies/company-currency-types";
+import { currencyLabelForHistoricalDisplay } from "@/domain/currencies/selection";
 import { updateCompanyCurrenciesAction } from "@/server/companies/company-currency-actions";
 
 export function CompanyCurrencyForm({
@@ -25,8 +26,18 @@ export function CompanyCurrencyForm({
     [configuration.currencies],
   );
 
-  const [enabledIds, setEnabledIds] = useState<string[]>([...configuration.enabledCurrencyIds]);
-  const [defaultId, setDefaultId] = useState<string | null>(configuration.defaultCurrencyId);
+  // New-selection state excludes globally disabled currencies (BR-011).
+  const initiallySelectableIds = configuration.enabledCurrencyIds.filter((id) =>
+    activeOptions.some((currency) => currency.currencyId === id),
+  );
+  const initialDefault =
+    configuration.defaultCurrencyId &&
+    initiallySelectableIds.includes(configuration.defaultCurrencyId)
+      ? configuration.defaultCurrencyId
+      : (initiallySelectableIds[0] ?? null);
+
+  const [enabledIds, setEnabledIds] = useState<string[]>([...initiallySelectableIds]);
+  const [defaultId, setDefaultId] = useState<string | null>(initialDefault);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -95,9 +106,18 @@ export function CompanyCurrencyForm({
         </div>
         {inactiveAssigned.length > 0 ? (
           <p className="text-muted-foreground text-xs">
-            Historically enabled but now globally inactive:{" "}
-            {inactiveAssigned.map((currency) => currency.code).join(", ")}. They cannot be
-            re-enabled until activated in the global catalog.
+            Historical visibility (not selectable for new invoices/payments):{" "}
+            {inactiveAssigned
+              .map((currency) =>
+                currencyLabelForHistoricalDisplay({
+                  code: currency.code,
+                  name: currency.name,
+                  symbol: currency.symbol,
+                  globalStatus: currency.globalStatus,
+                }),
+              )
+              .join("; ")}
+            . Re-activate in the global catalog to enable again.
           </p>
         ) : null}
       </div>

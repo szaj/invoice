@@ -51,6 +51,8 @@ TASK-019 provides centralized Prisma Decimal helpers in `src/domain/money`: `com
 
 TASK-020 stores per-company, per-payment-method settlement currency enablement on `payment_gateway_configs` / `payment_gateway_settlement_currencies` (method enablement + currency codes; no credentials). Initial USD/AED (BR-007); Admin may enable other ACTIVE catalog codes. Non-enabled settlement currencies are rejected (BR-006). Encrypted credentials remain TASK-049; live charges remain later.
 
+TASK-021 formalizes disable vs historical visibility: soft status flags only; `assertCurrencySelectableForNewDocument` / `validateCurrencyForNewDocument` reject disabled currencies for new invoice/payment selection; `currenciesForNewDocumentPicker` / `NewDocumentCurrencyPicker` hide INACTIVE codes; `resolveCurrencyForHistoricalDisplay` keeps disabled catalog metadata visible without rewriting stored codes (BR-011).
+
 ### 6.2 Currency Administration
 
 - Admin can add a new ISO-style currency record with code, name, symbol, decimal precision, and status.

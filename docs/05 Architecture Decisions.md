@@ -468,7 +468,7 @@ Direct Stripe/PayPal calls in domain/UI code; provider-name conditionals in allo
 
 ### Consequences
 
-[[TASK-048 Payment Provider Abstraction]] defines the registry, interface, and capabilities. Concrete adapters remain later tasks. Authorize.Net is an adapter-shaped future extension only.
+[[TASK-044 Payment Domain Schema]] persists the provider-agnostic `payments` core record. [[TASK-048 Payment Provider Abstraction]] defines the registry, interface, and capabilities. Concrete adapters remain later tasks. Authorize.Net is an adapter-shaped future extension only.
 
 ### Related Documents
 
@@ -478,6 +478,7 @@ Direct Stripe/PayPal calls in domain/UI code; provider-name conditionals in allo
 - [[Refunds Disputes Chargebacks]]
 - [[Dashboard and Reporting]]
 - [[Engineering Rules]]
+- [[TASK-044 Payment Domain Schema]]
 - [[TASK-048 Payment Provider Abstraction]]
 
 ---
@@ -571,7 +572,7 @@ USD as initial system default, with Admin configuration. Not formally accepted b
 
 Mixed-currency totals must still not be shown as a single unlabeled amount. Converted values use stored snapshots. Reporting remains provider-neutral. [[05 Architecture Decisions#ADR-008 — Payment provider architecture|ADR-008]]
 
-[[TASK-013 Core System Settings]] persists a configurable `reporting_currency_code` on `system_settings` with an initial USD seed matching the Definitions recommendation. That seed does **not** accept ADR-011; Admin may change the value. [[TASK-014 Currency Master]] adds the global currency catalog but does **not** lock reporting currency to a catalog FK or accept ADR-011. [[TASK-015 Company Currency Configuration]] adds per-company enabled invoice currencies and default; it does **not** accept ADR-011 or redefine reporting currency. [[TASK-016 Fixed Conversion Rate Schema]] stores Admin fixed rates only and does **not** accept ADR-011. [[TASK-017 Fixed Rate Versioning]] adds append-only version expiry and does **not** accept ADR-011. [[TASK-018 Effective Rate Selection]] selects Admin rates by effective window and does **not** accept ADR-011.
+[[TASK-013 Core System Settings]] persists a configurable `reporting_currency_code` on `system_settings` with an initial USD seed matching the Definitions recommendation. That seed does **not** accept ADR-011; Admin may change the value. [[TASK-014 Currency Master]] adds the global currency catalog but does **not** lock reporting currency to a catalog FK or accept ADR-011. [[TASK-015 Company Currency Configuration]] adds per-company enabled invoice currencies and default; it does **not** accept ADR-011 or redefine reporting currency. [[TASK-016 Fixed Conversion Rate Schema]] stores Admin fixed rates only and does **not** accept ADR-011. [[TASK-017 Fixed Rate Versioning]] adds append-only version expiry and does **not** accept ADR-011. [[TASK-018 Effective Rate Selection]] selects Admin rates by effective window and does **not** accept ADR-011. [[TASK-021 Currency Disable and Historical Visibility]] enforces disable vs historical display on catalog status flags and does **not** accept ADR-011.
 
 ### Related Documents
 

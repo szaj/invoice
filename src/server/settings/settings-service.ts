@@ -44,6 +44,7 @@ function settingsAuditSnapshot(settings: SystemSettingsRecord) {
     reportingCurrencyCode: settings.reportingCurrencyCode,
     defaultTimezone: settings.defaultTimezone,
     roundingTolerance: settings.roundingTolerance,
+    invoiceNumberIncludeYear: settings.invoiceNumberIncludeYear,
   };
 }
 

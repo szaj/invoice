@@ -1,6 +1,6 @@
 /**
- * Database conventions for later domain models.
- * Do not invent customers/invoices/payments here.
+ * Database conventions for domain models.
+ * Customers are TASK-022+; invoices/payments remain later.
  */
 
 export const DATABASE_CONVENTIONS = {

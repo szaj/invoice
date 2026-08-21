@@ -71,7 +71,9 @@ describe("prisma schema conventions", () => {
     expect(schema).toContain("company_id");
     expect(schema).toMatch(/model User\b/);
     expect(schema).toMatch(/model Company\b/);
-    expect(schema).not.toMatch(/model\s+(Customer|Invoice|Payment)\b/);
+    expect(schema).toMatch(/model Customer\b/);
+    expect(schema).toMatch(/model Invoice\b/);
+    expect(schema).toMatch(/model Payment\b/);
 
     const uncommented = schema
       .split("\n")

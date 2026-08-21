@@ -35,7 +35,8 @@ export default async function CompanyCurrenciesPage({
           <h1 className="text-lg font-semibold">Company currencies</h1>
           <CardDescription>
             Enabled invoice currencies and default for {result.data.companyDisplayName}. Globally
-            disabled currencies cannot be newly enabled (BR-002).
+            disabled currencies cannot be newly enabled (BR-002). Disabled currencies remain visible
+            for historical records but are hidden from new-document pickers (BR-011).
           </CardDescription>
         </CardHeader>
         <CardContent>

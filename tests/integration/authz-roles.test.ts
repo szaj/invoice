@@ -61,9 +61,9 @@ describe.skipIf(!runDbIntegration)("roles and permissions catalog", () => {
     expect(names).toEqual(
       expect.arrayContaining(["roles", "permissions", "role_permissions", "users"]),
     );
-    expect(names).not.toContain("customers");
-    expect(names).not.toContain("invoices");
-    expect(names).not.toContain("payments");
+    // Invoice + payment tables exist; charging/allocation remain later.
+    expect(names).toContain("invoices");
+    expect(names).toContain("payments");
   });
 
   afterAll(async () => {

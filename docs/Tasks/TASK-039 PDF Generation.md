@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 4
 module: invoicing
 depends_on:
@@ -14,7 +14,7 @@ tags:
 
 # TASK-039 — PDF Generation
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 4 ([[Phase 04 Invoicing]])
 
@@ -90,32 +90,60 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260821230000_invoice_files/migration.sql`
+- `src/domain/invoices/pdf.ts`
+- `src/server/invoices/invoice-pdf-document.tsx`
+- `src/server/invoices/invoice-pdf-render.tsx`
+- `src/server/invoices/invoice-pdf-service.ts`
+- `src/server/invoices/invoice-pdf-queue.ts`
+- `src/server/invoices/invoice-file-repository.ts`
+- `src/app/api/invoices/[id]/pdf/route.ts`
+- `tests/unit/invoices-pdf.test.ts`
+- `tests/integration/invoices-pdf.test.ts`
+
 ### Files Modified
+
+- `package.json` — `@react-pdf/renderer`
+- `prisma/schema.prisma` — `invoice_files`
+- Issue path best-effort PDF enqueue; audit `invoices.pdf_generated`
+- Vault: TASK-039, Status, Home, Plan, Phase 04, Dev Log, Invoices, Data Model, Database, PDF and Email, Testing, API
 
 ### Migrations
 
+`20260821230000_invoice_files` — applied via `pnpm prisma:migrate:deploy`.
+
 ### APIs
+
+- `POST /api/invoices/[id]/pdf` — generate (or reuse) PDF for latest/specified version
+- `GET /api/invoices/[id]/pdf` — list file metadata (download bytes = TASK-040)
+- Server Action `generateInvoicePdfAction`
 
 ### Tests
 
+Unit: render model omits internal notes; PDF bytes/%PDF; marker absent from bytes. Integration: stores `invoice_files` row + StorageService object; idempotent reuse. `pnpm typecheck` / `lint` / `format` / `test` (255) / integration PDF / `build` pass.
+
 ### Issues
 
+Inline dispatcher used now (queueable port ready). Dedicated BullMQ worker hardening remains [[TASK-099 Queue Hardening]]. Preview/download UI is [[TASK-040 PDF Preview and Download]].
+
 ### Commit
+
+Not committed (await explicit request).
 
 ## Next Recommended Task
 

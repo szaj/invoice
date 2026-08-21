@@ -38,7 +38,7 @@ const nullableInvoicePrefix = z.preprocess(
 
 /**
  * Branding write payload. Identity/address/status remain on company CRUD.
- * Invoice sequence is excluded (TASK-035).
+ * Sequence counter lives on the company row; allocation is TASK-035.
  */
 export const companyBrandingWriteSchema = z.strictObject({
   email: nullableEmail,

@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 5
 module: payments
 depends_on:
@@ -13,7 +13,7 @@ tags:
 
 # TASK-044 — Payment Domain Schema
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 5 ([[Phase 05 Payments]])
 
@@ -58,7 +58,7 @@ None required.
 
 ## Authorization
 
-Modify confirmed payment: adjustment workflow only (Phase 06).
+Modify confirmed payment: adjustment workflow only (Phase 06). Domain invariants enforce BR-004/005; public payment APIs remain TASK-045+.
 
 ## Business Rules
 
@@ -76,7 +76,7 @@ Fee stored separately from converted amount.
 
 ### Integration
 
-N/A
+payments table + NUMERIC money columns present (light schema check).
 
 ### Authorization
 
@@ -88,32 +88,55 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/domain/payments/{types,schema,invariants}.ts`
+- `src/server/payments/payment-repository.ts`
+- `prisma/migrations/20260821250000_payment_domain_schema/`
+- `tests/unit/payments-schema.test.ts`
+- `tests/integration/payments-schema.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `Payment` + status/source/rate-source enums; Company/Customer/Invoice/User/FixedConversionRate relations
+- `src/domain/audit/types.ts` — `PAYMENT` entity type reserved
+- Prerequisite tests that forbade any `Payment` / `payments` table
+- Vault: Payments, Data Model, Database, Testing, Home, Status, Plan, Phase 05, Dev Log, this task
 
 ### Migrations
 
+`20260821250000_payment_domain_schema` — `payments` table (Payments §10.3; provider-agnostic method code; Decimal amounts/rates; optional fee/actual received; rate snapshot placeholders). Applied with `pnpm prisma:migrate:deploy`. No charges, webhooks, allocation, adjustments, or credentials.
+
 ### APIs
+
+None (schema/domain foundation only).
 
 ### Tests
 
+- Unit: company/invoice/customer required; method codes; fee separate from converted settlement; JS number rejected; SUCCESSFUL immutable / no hard-delete; no Stripe-only columns
+- Integration: `payments` table + NUMERIC columns
+- `pnpm typecheck` / `lint` / `format:check` / `test` (268) / `test:integration` (54 pass / 4 skipped) / `build` pass
+
 ### Issues
 
+None for TASK-044. ADR-009 / ADR-010 / ADR-011 remain OPEN. Charging, webhooks, allocation, provider adapters, and payment UI are later Phase 05 tasks. TASK-047 will harden fee/actual-received reconciliation behavior on top of these columns.
+
 ### Commit
+
+Uncommitted (await user request).
 
 ## Next Recommended Task
 

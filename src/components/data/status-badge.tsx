@@ -1,0 +1,56 @@
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+export type StatusTone = "neutral" | "success" | "warning" | "destructive" | "info" | "muted";
+
+const TONE_TO_VARIANT = {
+  neutral: "secondary",
+  success: "success",
+  warning: "warning",
+  destructive: "destructive",
+  info: "info",
+  muted: "muted",
+} as const;
+
+/** Canonical product status → tone mapping for reusable badges. */
+export const STATUS_TONES: Record<string, StatusTone> = {
+  ACTIVE: "success",
+  INACTIVE: "muted",
+  DRAFT: "neutral",
+  ISSUED: "info",
+  OVERDUE: "warning",
+  CANCELLED: "destructive",
+  PAID: "success",
+  PARTIALLY_PAID: "warning",
+  PENDING: "warning",
+  FAILED: "destructive",
+  SUCCESSFUL: "success",
+  SUCCESS: "success",
+  SENT: "success",
+  // Compliance-ish
+  CLEAR: "success",
+  UNDER_REVIEW: "warning",
+  FLAGGED: "destructive",
+};
+
+function humanizeStatus(status: string): string {
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+type StatusBadgeProps = {
+  status: string;
+  label?: string;
+  className?: string;
+};
+
+export function StatusBadge({ status, label, className }: StatusBadgeProps) {
+  const tone = STATUS_TONES[status] ?? "neutral";
+  return (
+    <Badge variant={TONE_TO_VARIANT[tone]} className={cn(className)} data-status={status}>
+      {label ?? humanizeStatus(status)}
+    </Badge>
+  );
+}
