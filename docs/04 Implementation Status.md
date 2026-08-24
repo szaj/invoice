@@ -17,11 +17,14 @@ Every task ID appears exactly once in this file.
 - PLANNED
 - IN PROGRESS
 - BLOCKED
+- DEFERRED
 - COMPLETE
+
+**DEFERRED** means the task is formally out of the current Version 1 build path pending an accepted product/architecture decision (for example a concrete vendor/API). It is **not** COMPLETE and must not be treated as implemented functionality.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001 through [[TASK-046 Settlement Conversion Snapshot]] are COMPLETE. The next buildable task is [[TASK-047 Merchant Fee Reconciliation Fields]] (NOT STARTED). **UI/UX Foundation Refresh — before TASK-042** remains COMPLETE as a non-numbered presentation checkpoint; see [[UI UX Design System]]. All later application tasks remain NOT STARTED.
+TASK-001 through [[TASK-058 Hosted Checkout]] are COMPLETE. [[TASK-056 Bank Processor Adapter]] and [[TASK-057 Bank Processor Webhook]] remain **DEFERRED** (no live bank processor until a concrete vendor/API is selected; no fictional adapter). The next buildable task is [[TASK-059 Partial Payments]]. **UI/UX Foundation Refresh — before TASK-042** remains COMPLETE as a non-numbered presentation checkpoint; see [[UI UX Design System]].
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -105,18 +108,18 @@ Phase index: [[Phase 05 Payments]]
 | [[TASK-044 Payment Domain Schema]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `payments` §10.3; provider-agnostic; Decimal; fee separate; no charges. |
 | [[TASK-045 Payment Service]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Domain service + GET/confirm/fail APIs; BR-004/005 lock; no charges/UI. |
 | [[TASK-046 Settlement Conversion Snapshot]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Admin fixed-rate snapshot + `rate_effective_at`; BR-020/021 lock; no market FX. |
-| [[TASK-047 Merchant Fee Reconciliation Fields]] | NOT STARTED | | | |  |
-| [[TASK-048 Payment Provider Abstraction]] | NOT STARTED | | | |  |
-| [[TASK-049 Gateway Configuration Per Company]] | NOT STARTED | | | |  |
-| [[TASK-050 Manual Payment Recording]] | NOT STARTED | | | |  |
-| [[TASK-051 Manual Payment UI]] | NOT STARTED | | | |  |
-| [[TASK-052 Stripe Adapter]] | NOT STARTED | | | |  |
-| [[TASK-053 Stripe Webhook]] | NOT STARTED | | | |  |
-| [[TASK-054 PayPal Adapter]] | NOT STARTED | | | |  |
-| [[TASK-055 PayPal Webhook]] | NOT STARTED | | | |  |
-| [[TASK-056 Bank Processor Adapter]] | NOT STARTED | | | |  |
-| [[TASK-057 Bank Processor Webhook]] | NOT STARTED | | | |  |
-| [[TASK-058 Hosted Checkout]] | NOT STARTED | | | |  |
+| [[TASK-047 Merchant Fee Reconciliation Fields]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Optional fee/actual received stored only; excluded from conversion and outstanding (BR-020). |
+| [[TASK-048 Payment Provider Abstraction]] | COMPLETE | 2026-08-24 | 2026-08-24 | | PaymentProvider registry + capabilities; Manual/Fake adapters; no live SDKs. |
+| [[TASK-049 Gateway Configuration Per Company]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Per-company gateway config on `payment_gateway_configs`; ADR-022 envelope encryption; Admin `gateway.credentials.manage`; safe metadata only. |
+| [[TASK-050 Manual Payment Recording]] | COMPLETE | 2026-08-24 | 2026-08-24 | | `POST /api/payments/manual` create→confirm SUCCESSFUL; Manual adapter path; Staff denied (US-007); no invoice balance mutation. |
+| [[TASK-051 Manual Payment UI]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Invoice Record payment + `/payments/manual`; reuses TASK-050; design-system forms; Staff denied; no balance mutation. |
+| [[TASK-052 Stripe Adapter]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Stripe PaymentProvider adapter (Checkout request/status); ADR-022 credentials; no webhook pipeline. |
+| [[TASK-053 Stripe Webhook]] | COMPLETE | 2026-08-24 | 2026-08-24 | | `payment_events` + Stripe webhook route; signature auth; idempotent confirm/fail; E2E-10. |
+| [[TASK-054 PayPal Adapter]] | COMPLETE | 2026-08-24 | 2026-08-24 | | PayPal PaymentProvider adapter (Orders request/status); ADR-022 credentials; no webhook pipeline. |
+| [[TASK-055 PayPal Webhook]] | COMPLETE | 2026-08-24 | 2026-08-24 | | PayPal webhook route; signature auth; idempotent confirm/fail; E2E-10. |
+| [[TASK-056 Bank Processor Adapter]] | DEFERRED | 2026-08-24 | | | No live bank adapter until concrete vendor/API selected; do not invent. |
+| [[TASK-057 Bank Processor Webhook]] | DEFERRED | 2026-08-24 | | | Deferred with TASK-056 (no adapter → no webhook). |
+| [[TASK-058 Hosted Checkout]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Hosted checkout + PENDING snapshot; email method selection; no Paid before webhook. |
 | [[TASK-059 Partial Payments]] | NOT STARTED | | | |  |
 | [[TASK-060 Payment Allocation]] | NOT STARTED | | | |  |
 | [[TASK-061 Payment List UI]] | NOT STARTED | | | |  |

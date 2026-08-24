@@ -51,14 +51,28 @@ export const PAYMENT_HARD_DELETE_FORBIDDEN =
   "Paid or confirmed payments must not be hard-deleted (BR-004).";
 export const PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT =
   "Processor fee must not change converted settlement amount (BR-020).";
+export const PAYMENT_FEE_MUST_NOT_AFFECT_BALANCE =
+  "Processor fee must not change invoice outstanding or applied amount (BR-020).";
 export const PAYMENT_JS_NUMBER_FORBIDDEN =
   "JavaScript number is not allowed for authoritative payment money fields.";
 export const PAYMENT_ILLEGAL_TRANSITION = "That payment status change is not allowed.";
 export const PAYMENT_INVOICE_NOT_PAYABLE =
   "Payments cannot be recorded against draft or cancelled invoices.";
 export const PAYMENT_AMOUNT_NOT_POSITIVE = "Invoice amount applied must be greater than zero.";
+export const PAYMENT_EXCEEDS_OPEN_BALANCE =
+  "Payment amount cannot exceed the open invoice balance.";
 export const PAYMENT_RECORD_FORBIDDEN = "You do not have permission to record or confirm payments.";
 export const PAYMENT_COMPANY_SCOPE_REQUIRED = "Select a company before listing payments.";
+export const PAYMENT_MANUAL_PROVIDER_MISCONFIGURED =
+  "Manual payment recording is misconfigured for gateway-style processing.";
+export const PAYMENT_CHECKOUT_METHOD_UNSUPPORTED =
+  "That payment method does not support hosted checkout for this company.";
+export const PAYMENT_CHECKOUT_CREDENTIALS_REQUIRED =
+  "Configure gateway credentials before creating a hosted checkout.";
+export const PAYMENT_CHECKOUT_NO_OUTSTANDING =
+  "There is no outstanding invoice balance to collect.";
+export const PAYMENT_CHECKOUT_PROVIDER_FAILED =
+  "The payment provider could not create a hosted checkout. Try again.";
 
 /**
  * Provider-agnostic payment record (Payments §10.3 / TASK-044).

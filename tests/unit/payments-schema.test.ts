@@ -8,7 +8,11 @@ import {
   assertPaymentHardDeleteAllowed,
   assertProcessorFeeExcludedFromSettlement,
 } from "@/domain/payments/invariants";
-import { paymentCreatePendingSchema, paymentWriteSchema } from "@/domain/payments/schema";
+import {
+  paymentCreatePendingSchema,
+  paymentManualRecordSchema,
+  paymentWriteSchema,
+} from "@/domain/payments/schema";
 import {
   PAYMENT_CONFIRMED_IMMUTABLE,
   PAYMENT_HARD_DELETE_FORBIDDEN,
@@ -161,6 +165,84 @@ describe("payment create-pending schema (TASK-045)", () => {
       companyId: COMPANY_ID,
       fixedConversionRate: "2",
       convertedSettlementAmount: "20",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts optional reconciliation fee and actual received without outstanding fields", () => {
+    const parsed = paymentCreatePendingSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      methodCode: "MANUAL",
+      invoiceAmountApplied: "10.00",
+      settlementCurrencyCode: "USD",
+      paymentDate: "2026-08-24",
+      processorFeeAmount: "0.30",
+      actualReceivedAmount: "12.20",
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      throw new Error("expected success");
+    }
+    expect(parsed.data.processorFeeAmount).toBe("0.30");
+    expect(parsed.data.actualReceivedAmount).toBe("12.20");
+
+    const smuggleOutstanding = paymentCreatePendingSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      methodCode: "MANUAL",
+      invoiceAmountApplied: "10.00",
+      settlementCurrencyCode: "USD",
+      paymentDate: "2026-08-24",
+      processorFeeAmount: "0.30",
+      outstandingAmount: "90",
+      invoiceTotal: "100",
+    });
+    expect(smuggleOutstanding.success).toBe(false);
+  });
+});
+
+describe("payment manual record schema (TASK-050)", () => {
+  it("accepts record fields without method/source/company/customer/rate", () => {
+    const parsed = paymentManualRecordSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      invoiceAmountApplied: "25.00",
+      settlementCurrencyCode: "AED",
+      paymentDate: "2026-08-24",
+      externalTransactionId: "wire-77",
+      notes: "Cash desk",
+      processorFeeAmount: "1.00",
+      actualReceivedAmount: "90.00",
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      throw new Error("expected success");
+    }
+    expect(parsed.data.externalTransactionId).toBe("wire-77");
+    expect(parsed.data.processorFeeAmount).toBe("1.00");
+  });
+
+  it("rejects method, source, company, customer, rate, and converted settlement smuggling", () => {
+    const parsed = paymentManualRecordSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      invoiceAmountApplied: "25.00",
+      settlementCurrencyCode: "AED",
+      paymentDate: "2026-08-24",
+      methodCode: "STRIPE",
+      source: "GATEWAY_API",
+      companyId: COMPANY_ID,
+      customerId: CUSTOMER_ID,
+      fixedConversionRate: "3.67",
+      convertedSettlementAmount: "91.75",
+      status: "SUCCESSFUL",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects JavaScript numbers for applied amount", () => {
+    const parsed = paymentManualRecordSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      invoiceAmountApplied: 25 as unknown as string,
+      settlementCurrencyCode: "USD",
+      paymentDate: "2026-08-24",
     });
     expect(parsed.success).toBe(false);
   });

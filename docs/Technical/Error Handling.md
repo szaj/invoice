@@ -12,8 +12,9 @@ tags:
 
 | Scenario | Required Behavior |
 | --- | --- |
-| Fixed conversion rate missing | Block the cross-currency payment/conversion and show a clear Admin configuration message. Never fetch, guess, or substitute a market/gateway rate. TASK-018 `resolveFixedConversionRate` returns `FIXED_RATE_MISSING_FOR_CONVERSION` when no Admin version covers `at`. TASK-046 also blocks cross-currency confirm when the snapshot is incomplete and no Admin rate exists at `payment_date`. |
+| Fixed conversion rate missing | Block the cross-currency payment/conversion and show a clear Admin configuration message. Never fetch, guess, or substitute a market/gateway rate. TASK-018 `resolveFixedConversionRate` returns `FIXED_RATE_MISSING_FOR_CONVERSION` when no Admin version covers `at`. TASK-046 also blocks cross-currency confirm when the snapshot is incomplete and no Admin rate exists at `payment_date`. TASK-050 manual record inherits the same create-path block. |
 | Gateway timeout | Keep payment Pending/Unknown; reconcile via webhook/status check; do not mark Paid optimistically. |
+| Overpayment / open balance | TASK-050 rejects manual applied amount above open balance from SUCCESSFUL applications (`PAYMENT_EXCEEDS_OPEN_BALANCE`, BR-010). Overpayment *allow* workflow remains US-015 (TASK-059/060). |
 | Duplicate webhook | Recognize event ID and process idempotently. |
 | Email failure | Invoice remains issued; email log marked Failed with retry action. |
 | PDF generation failure | Show generation error; do not claim email sent with missing attachment. |

@@ -29,8 +29,8 @@ flowchart LR
 | Dashboard | KPI cards, trend charts, recent invoices/payments, filters, company switcher. | [[Dashboard and Reporting]] · [[Companies and Brands]] |
 | Companies | List, Create, Edit, View, Gateway Settings, Invoice Branding. | [[Companies and Brands]] · [[Payments]] |
 | Customers | List/search/filter, Create, Edit, Profile. | [[Customers]] |
-| Invoices | List/filter, Create/Edit Draft, View Invoice (TASK-032: `/invoices`, `/invoices/new`, `/invoices/{id}`, `/invoices/{id}/edit`). PDF Preview/Download/Print on invoice view (TASK-040/043). Duplicate Draft action (TASK-043). Email Modal + history on invoice view (TASK-042). Record Payment later. | [[Invoices]] · [[PDF and Email]] · [[Payments]] |
-| Payments | Transaction list, Payment detail, Manual payment entry, Refund/Adjustment view. | [[Payments]] · [[Refunds Disputes Chargebacks]] |
+| Invoices | List/filter, Create/Edit Draft, View Invoice (TASK-032: `/invoices`, `/invoices/new`, `/invoices/{id}`, `/invoices/{id}/edit`). PDF Preview/Download/Print on invoice view (TASK-040/043). Duplicate Draft action (TASK-043). Email Modal + history on invoice view (TASK-042); optional hosted checkout method selection on send (TASK-058). Record Payment on invoice view (TASK-051). | [[Invoices]] · [[PDF and Email]] · [[Payments]] |
+| Payments | Manual payment entry (TASK-051: `/payments/manual`). Transaction list, Payment detail, Refund/Adjustment view remain later. | [[Payments]] · [[Refunds Disputes Chargebacks]] |
 | Compliance | Review queue, record detail, approve/flag, notes. | [[Compliance]] |
 | Reports | Report selector, filters, tables/charts, export. | [[Dashboard and Reporting]] |
 | Audit Logs | Filterable read-only log viewer. | [[Audit Logs]] |

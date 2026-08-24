@@ -62,6 +62,8 @@ export const AuditActions = {
   FIXED_RATE_EXPIRED: "fixed_rates.expired",
   FIXED_RATE_SUPERSEDED: "fixed_rates.superseded",
   SETTLEMENT_CURRENCIES_UPDATED: "settlement.currencies_updated",
+  GATEWAY_CONFIG_UPDATED: "gateway.config_updated",
+  GATEWAY_CREDENTIALS_REPLACED: "gateway.credentials_replaced",
   CUSTOMER_CREATED: "customers.created",
   CUSTOMER_UPDATED: "customers.updated",
   CUSTOMER_STATUS_CHANGED: "customers.status_changed",

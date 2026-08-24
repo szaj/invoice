@@ -99,6 +99,23 @@ export class PrismaPaymentStore {
     return this.listPayments({ companyIds: [companyId] });
   }
 
+  async getPaymentByExternalTransaction(input: {
+    readonly companyId: string;
+    readonly methodCode: PaymentMethodCode;
+    readonly externalTransactionId: string;
+  }): Promise<PaymentRecord | null> {
+    const prisma = getPrisma();
+    const row = await prisma.payment.findFirst({
+      where: {
+        companyId: input.companyId,
+        methodCode: input.methodCode,
+        externalTransactionId: input.externalTransactionId,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    return row ? mapRow(row as PaymentRow) : null;
+  }
+
   async listPayments(filters: {
     readonly companyIds: readonly string[];
     readonly invoiceId?: string;
@@ -153,8 +170,8 @@ export class PrismaPaymentStore {
   }
 
   /**
-   * Lifecycle update (TASK-045 / TASK-046). Never writes amounts, currencies, or the stored rate.
-   * Confirm may complete snapshot lock fields (`rateEffectiveAt`, `rateVersionId`) while PENDING.
+   * Lifecycle update (TASK-045 / TASK-046 / TASK-047). Never writes amounts, currencies, rate,
+   * processor fee, or actual received. Confirm may complete snapshot lock fields while PENDING.
    * Concurrent confirm/fail is rejected when the row is no longer PENDING.
    */
   async updatePaymentLifecycle(

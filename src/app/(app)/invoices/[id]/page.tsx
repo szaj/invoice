@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authorizePermission } from "@/domain/authz/authorize";
 import { canIssueDraftInvoice, canStaffEditDraftInvoice } from "@/domain/invoices/access";
-import { canCancelInvoiceStatus } from "@/domain/invoices/cancellation";
+import { canCancelInvoiceStatus, isCollectibleInvoiceStatus } from "@/domain/invoices/cancellation";
 import { toDateInputValue } from "@/domain/invoices/schema";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
 import { loadCustomerForUi } from "@/server/customers/actions";
@@ -19,6 +19,7 @@ import {
   loadInvoicePdfFilesForUi,
   loadInvoiceVersionsForUi,
 } from "@/server/invoices/actions";
+import { loadManualPaymentFormContext } from "@/server/payments/actions";
 import { InvoiceCancelControls } from "@/app/(app)/invoices/invoice-cancel-controls";
 import { InvoiceDuplicateButton } from "@/app/(app)/invoices/invoice-duplicate-button";
 import { InvoiceEmailPanel } from "@/app/(app)/invoices/invoice-email-panel";
@@ -28,6 +29,7 @@ import { InvoicePdfPanel } from "@/app/(app)/invoices/invoice-pdf-panel";
 import { InvoiceTotalsPanel } from "@/app/(app)/invoices/invoice-totals-panel";
 import { InvoiceVersionHistoryPanel } from "@/app/(app)/invoices/invoice-version-history-panel";
 import { IssuedInvoiceMetadataForm } from "@/app/(app)/invoices/issued-invoice-metadata-form";
+import { InvoiceRecordPaymentPanel } from "@/app/(app)/payments/invoice-record-payment-panel";
 import { StatusBadge } from "@/components/data/status-badge";
 import { DetailField, DetailSection } from "@/components/layout/detail";
 import { PageFrame } from "@/components/layout/page-frame";
@@ -73,6 +75,7 @@ export default async function InvoiceDraftViewPage({
     pdfFilesResult,
     emailLogsResult,
     emailComposeResult,
+    manualPaymentContextResult,
   ] = await Promise.all([
     loadInvoiceFormOptions(invoice.companyId),
     loadCustomerForUi(invoice.customerId),
@@ -82,6 +85,10 @@ export default async function InvoiceDraftViewPage({
     loadInvoicePdfFilesForUi(invoice.id),
     loadInvoiceEmailLogsForUi(invoice.id),
     loadInvoiceEmailComposeForUi(invoice.id),
+    authorizePermission(actor, "payment.manual.record").allowed &&
+    isCollectibleInvoiceStatus(invoice.status)
+      ? loadManualPaymentFormContext(invoice.id)
+      : Promise.resolve(null),
   ]);
   const companyName = options.ok
     ? (options.companies.find((company) => company.id === invoice.companyId)?.displayName ??
@@ -110,6 +117,16 @@ export default async function InvoiceDraftViewPage({
     authorizePermission(actor, "invoice.edit_issued").allowed;
   const canCancel =
     authorizePermission(actor, "invoice.cancel").allowed && canCancelInvoiceStatus(invoice.status);
+  const canRecordPayment = authorizePermission(actor, "payment.manual.record").allowed;
+  const collectible = isCollectibleInvoiceStatus(invoice.status);
+  const manualPaymentContext =
+    manualPaymentContextResult && manualPaymentContextResult.ok
+      ? manualPaymentContextResult.data
+      : null;
+  const manualPaymentContextError =
+    canRecordPayment && collectible && manualPaymentContextResult && !manualPaymentContextResult.ok
+      ? manualPaymentContextResult.error
+      : null;
 
   const title = invoice.invoiceNumber ?? `Draft ${invoice.id.slice(0, 8)}`;
   const description =
@@ -227,6 +244,13 @@ export default async function InvoiceDraftViewPage({
         compose={emailCompose}
         composeError={emailComposeError}
         initialLogs={emailLogs}
+      />
+
+      <InvoiceRecordPaymentPanel
+        canRecord={canRecordPayment}
+        collectible={collectible}
+        context={manualPaymentContext ?? null}
+        contextError={manualPaymentContextError}
       />
 
       {canEditIssuedMetadata ? (

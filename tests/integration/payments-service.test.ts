@@ -232,6 +232,7 @@ describe.skipIf(!runDbIntegration)("payment service integration", () => {
     expect(pending.data.customerId).toBe(customer.data.id);
     expect(pending.data.convertedSettlementAmount).toBe("40");
     expect(pending.data.processorFeeAmount).toBe("1.5");
+    expect(pending.data.actualReceivedAmount).toBeNull();
     expect(pending.data.convertedSettlementAmount).not.toBe("38.5");
     expect(pending.data.rateSource).toBe("SAME_CURRENCY");
     expect(pending.data.rateEffectiveAt?.toISOString().slice(0, 10)).toBe("2026-08-24");
@@ -252,6 +253,7 @@ describe.skipIf(!runDbIntegration)("payment service integration", () => {
     expect(confirmed.data.invoiceAmountApplied).toBe(pending.data.invoiceAmountApplied);
     expect(confirmed.data.convertedSettlementAmount).toBe(pending.data.convertedSettlementAmount);
     expect(confirmed.data.processorFeeAmount).toBe(pending.data.processorFeeAmount);
+    expect(confirmed.data.actualReceivedAmount).toBeNull();
     expect(confirmed.data.rateEffectiveAt?.toISOString()).toBe(
       pending.data.rateEffectiveAt?.toISOString(),
     );

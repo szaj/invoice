@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 5
 module: payments
 depends_on:
@@ -13,7 +13,7 @@ tags:
 
 # TASK-053 — Stripe Webhook
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 5 ([[Phase 05 Payments]])
 
@@ -89,32 +89,65 @@ E2E-10.
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `prisma/migrations/20260824280000_payment_events/migration.sql`
+- `src/domain/payments/events/types.ts`
+- `src/server/payments/payment-event-repository.ts`
+- `src/server/payments/providers/stripe/stripe-webhook-map.ts`
+- `src/server/payments/stripe-webhook-queue.ts`
+- `src/server/payments/stripe-webhook-service.ts`
+- `src/app/api/webhooks/stripe/[companyId]/route.ts`
+- `tests/unit/payments-stripe-webhook.test.ts`
+- `tests/integration/payments-stripe-webhook.test.ts`
+
 ### Files Modified
+
+- `prisma/schema.prisma` — `PaymentEvent`, `PaymentEventProcessingStatus`, relations on `Payment` / `Company`
+- `src/server/payments/providers/stripe/{stripe-client,stripe-payment-adapter}.ts` — `parseWebhook` + event object typing
+- `src/server/payments/payment-service.ts` — `applyGatewayWebhookPaymentStatus` (WEBHOOK actor; match by external transaction; no invoice balance mutation)
+- `src/server/payments/payment-repository.ts` — `getPaymentByExternalTransaction`
+- `src/domain/payments/providers/errors.ts` — `PROVIDER_EVENT_UNSUPPORTED`
+- `src/domain/auth/https.ts` — public path for `/api/webhooks/stripe/[companyId]`
+- Gateway settings copy (request/status + webhooks)
+- Unit/integration auth + payment service mocks
+- Vault: Payments, API, Testing, Database, Security, ADR-008 note, Home, Status, Plan, Phase 05, Dev Log, this task
 
 ### Migrations
 
+`20260824280000_payment_events` — `payment_events` table; unique `(method_code, external_event_id)`; processing status enum; optional `payment_id` for orphan events before TASK-058 creates PENDING payments.
+
 ### APIs
+
+- `POST /api/webhooks/stripe/[companyId]` — signature auth via company webhook secret (ADR-022); no session/RBAC. Returns 401 on unsigned/invalid signature; 200 on processed/duplicate/ignored orphan. Does not create payments (TASK-058). Does not mutate invoice paid/outstanding (TASK-060).
 
 ### Tests
 
+- Unit: unsigned reject; E2E-10 duplicate event ID → one SUCCESSFUL; orphan event IGNORED; `parseWebhook` mapping; already-terminal idempotency
+- Integration: migration present; unsigned 401; confirm once on duplicate; audit `actorType=WEBHOOK`; secrets absent from audit JSON
+- Full Playwright Stripe E2E not required (shell smoke only); E2E-10 covered by unit + integration
+- `pnpm typecheck` / `lint` / `format:check` / `test` (349) / `RUN_DB_INTEGRATION=true test:integration` (61 pass, 4 skip) / `build` pass
+
 ### Issues
 
+Does not create PENDING payments from webhooks (TASK-058). Allocation / invoice paid status remains TASK-060. Full BullMQ worker remains TASK-099 (inline dispatcher used, same pattern as PDF/email). PayPal/bank webhooks remain later. ADR-009 / ADR-010 / ADR-011 remain OPEN. US-007 / US-015 unchanged.
+
 ### Commit
+
+Not created (not requested).
 
 ## Next Recommended Task
 

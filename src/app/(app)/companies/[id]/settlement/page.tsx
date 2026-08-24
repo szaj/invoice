@@ -36,7 +36,8 @@ export default async function CompanySettlementPage({
           <CardDescription>
             Per payment-method settlement currency enablement for {result.data.companyDisplayName}.
             Initial Version 1 currencies are USD and AED; Admin may enable other globally ACTIVE
-            catalog codes (BR-006 / BR-007). Credentials and live charges are not configured here.
+            catalog codes (BR-006 / BR-007). Encrypted credentials are configured under Gateway
+            settings.
           </CardDescription>
         </CardHeader>
         <CardContent>

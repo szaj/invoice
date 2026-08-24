@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AuthorizationPrincipal } from "@/domain/authz/authorize";
+import { assertCompanyAccess } from "@/domain/authz/company-access";
 import { GENERIC_FORBIDDEN } from "@/domain/authz/errors";
 import type { RoleCode } from "@/domain/authz/roles";
 import type { CurrencyRecord } from "@/domain/currencies/types";
@@ -17,6 +18,7 @@ import {
   PAYMENT_AMOUNT_NOT_POSITIVE,
   PAYMENT_COMPANY_SCOPE_REQUIRED,
   PAYMENT_CONFIRMED_IMMUTABLE,
+  PAYMENT_EXCEEDS_OPEN_BALANCE,
   PAYMENT_ILLEGAL_TRANSITION,
   PAYMENT_INVOICE_NOT_PAYABLE,
   PAYMENT_RECORD_FORBIDDEN,
@@ -32,6 +34,7 @@ import {
   failPayment,
   getPayment,
   listPayments,
+  recordManualPayment,
   type PaymentServiceDependencies,
 } from "@/server/payments/payment-service";
 import { createMemoryAuditWriter } from "../helpers/memory-audit-writer";
@@ -234,9 +237,23 @@ function createDeps(seed: {
   return {
     auditWriter,
     now: () => new Date("2026-08-24T15:00:00.000Z"),
+    enforceTransactionalCompanyScope: async (actor, companyId) => {
+      assertCompanyAccess(actor, companyId);
+      return { ok: true as const, data: true as const };
+    },
     payments: {
       async getPaymentById(id: string) {
         return payments.find((row) => row.id === id) ?? null;
+      },
+      async getPaymentByExternalTransaction(query) {
+        return (
+          payments.find(
+            (row) =>
+              row.companyId === query.companyId &&
+              row.methodCode === query.methodCode &&
+              row.externalTransactionId === query.externalTransactionId,
+          ) ?? null
+        );
       },
       async listPayments(filters) {
         return payments.filter(
@@ -813,5 +830,311 @@ describe("payment settlement snapshot (TASK-046)", () => {
     expect(confirmed.data.processorFeeAmount).toBe("9.99");
     expect(confirmed.data.rateVersionId).toBe(RATE_VERSION_ID);
     expect(confirmed.data.rateEffectiveAt).not.toBeNull();
+  });
+});
+
+describe("payment merchant fee reconciliation (TASK-047)", () => {
+  it("does not auto-derive actual received and does not let fee change settlement or applied amount", async () => {
+    const deps = createDeps({
+      invoices: [invoiceRecord({ currencyCode: "GBP", invoiceTotal: "200" })],
+    });
+    const admin = principal("ADMIN");
+
+    const omittedActual = await createPendingPayment(
+      admin,
+      {
+        invoiceId: INVOICE_ID,
+        methodCode: "MANUAL",
+        invoiceAmountApplied: "100.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        processorFeeAmount: "9.99",
+      },
+      deps,
+    );
+    expect(omittedActual.ok).toBe(true);
+    if (!omittedActual.ok) {
+      throw new Error(omittedActual.error);
+    }
+    expect(omittedActual.data.convertedSettlementAmount).toBe("125");
+    expect(omittedActual.data.invoiceAmountApplied).toBe("100");
+    expect(omittedActual.data.processorFeeAmount).toBe("9.99");
+    expect(omittedActual.data.actualReceivedAmount).toBeNull();
+    expect(omittedActual.data.convertedSettlementAmount).not.toBe("115.01");
+
+    const withActual = await createPendingPayment(
+      admin,
+      {
+        invoiceId: INVOICE_ID,
+        methodCode: "MANUAL",
+        invoiceAmountApplied: "100.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        processorFeeAmount: "9.99",
+        actualReceivedAmount: "120.00",
+      },
+      deps,
+    );
+    expect(withActual.ok).toBe(true);
+    if (!withActual.ok) {
+      throw new Error(withActual.error);
+    }
+    expect(withActual.data.convertedSettlementAmount).toBe("125");
+    expect(withActual.data.actualReceivedAmount).toBe("120");
+    expect(withActual.data.actualReceivedAmount).not.toBe("115.01");
+
+    const confirmed = await confirmPayment(admin, withActual.data.id, deps);
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) {
+      throw new Error(confirmed.error);
+    }
+    expect(confirmed.data.invoiceAmountApplied).toBe("100");
+    expect(confirmed.data.convertedSettlementAmount).toBe("125");
+    expect(confirmed.data.fixedConversionRate).toBe("1.25");
+    expect(confirmed.data.processorFeeAmount).toBe("9.99");
+    expect(confirmed.data.actualReceivedAmount).toBe("120");
+
+    const negativeFee = await createPendingPayment(
+      admin,
+      {
+        invoiceId: INVOICE_ID,
+        methodCode: "MANUAL",
+        invoiceAmountApplied: "100.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        processorFeeAmount: "-1",
+      },
+      deps,
+    );
+    expect(negativeFee.ok).toBe(false);
+
+    const staff = await createPendingPayment(
+      principal("STAFF"),
+      {
+        invoiceId: INVOICE_ID,
+        methodCode: "MANUAL",
+        invoiceAmountApplied: "100.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        processorFeeAmount: "9.99",
+      },
+      deps,
+    );
+    expect(staff.ok).toBe(false);
+    if (!staff.ok) {
+      expect(staff.status).toBe(403);
+      expect(staff.error).toBe(PAYMENT_RECORD_FORBIDDEN);
+    }
+  });
+});
+
+describe("manual payment recording (TASK-050)", () => {
+  it("records SUCCESSFUL via create→confirm, uses Admin rate, and locks the snapshot", async () => {
+    const deps = createDeps({
+      invoices: [
+        invoiceRecord({ currencyCode: "GBP", invoiceTotal: "100", outstandingAmount: "100" }),
+      ],
+      gbpUsdRate: "1.250000000000",
+    });
+    const admin = principal("ADMIN");
+    const beforeOutstanding = deps.invoices
+      ? (await deps.invoices.getInvoiceById(INVOICE_ID))?.outstandingAmount
+      : null;
+
+    const recorded = await recordManualPayment(
+      admin,
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "40.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        externalTransactionId: "bank-ref-1001",
+        notes: "Received by wire",
+        processorFeeAmount: "2.00",
+        actualReceivedAmount: "48.00",
+      },
+      deps,
+    );
+    expect(recorded.ok).toBe(true);
+    if (!recorded.ok) {
+      throw new Error(recorded.error);
+    }
+
+    expect(recorded.data.status).toBe("SUCCESSFUL");
+    expect(recorded.data.methodCode).toBe("MANUAL");
+    expect(recorded.data.source).toBe("MANUAL");
+    expect(recorded.data.companyId).toBe(COMPANY_A);
+    expect(recorded.data.customerId).toBe(CUSTOMER_ID);
+    expect(recorded.data.invoiceCurrencyCode).toBe("GBP");
+    expect(recorded.data.settlementCurrencyCode).toBe("USD");
+    expect(recorded.data.fixedConversionRate).toBe("1.25");
+    expect(recorded.data.rateSource).toBe("ADMIN_FIXED_RATE");
+    expect(recorded.data.rateVersionId).toBe(RATE_VERSION_ID);
+    expect(recorded.data.convertedSettlementAmount).toBe("50");
+    expect(recorded.data.processorFeeAmount).toBe("2");
+    expect(recorded.data.actualReceivedAmount).toBe("48");
+    expect(recorded.data.convertedSettlementAmount).not.toBe("48");
+    expect(recorded.data.externalTransactionId).toBe("bank-ref-1001");
+    expect(recorded.data.confirmedByUserId).toBe(ADMIN_ID);
+    expect(recorded.data.receivedAt?.toISOString()).toBe("2026-08-24T15:00:00.000Z");
+
+    assertConfirmedFinancialFieldsUnchanged(recorded.data, {
+      invoiceAmountApplied: "40",
+      convertedSettlementAmount: "50",
+      fixedConversionRate: "1.25",
+      processorFeeAmount: "2",
+      actualReceivedAmount: "48",
+    });
+
+    const afterInvoice = await deps.invoices.getInvoiceById(INVOICE_ID);
+    expect(afterInvoice?.outstandingAmount).toBe(beforeOutstanding);
+    expect(afterInvoice?.confirmedPaidAmount).toBe("0");
+
+    const createdAudit = deps.auditWriter.events.find(
+      (event) => event.action === AuditActions.PAYMENT_CREATED,
+    );
+    const confirmedAudit = deps.auditWriter.events.find(
+      (event) => event.action === AuditActions.PAYMENT_CONFIRMED,
+    );
+    expect(createdAudit).toBeDefined();
+    expect(confirmedAudit).toBeDefined();
+  });
+
+  it("uses same-currency rate 1 and does not invent a gateway transaction id", async () => {
+    const deps = createDeps({});
+    const recorded = await recordManualPayment(
+      principal("COMPLIANCE"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "25.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+      },
+      deps,
+    );
+    expect(recorded.ok).toBe(true);
+    if (!recorded.ok) {
+      throw new Error(recorded.error);
+    }
+    expect(recorded.data.fixedConversionRate).toBe("1");
+    expect(recorded.data.rateSource).toBe("SAME_CURRENCY");
+    expect(recorded.data.rateVersionId).toBeNull();
+    expect(recorded.data.externalTransactionId).toBeNull();
+    expect(recorded.data.methodCode).toBe("MANUAL");
+    expect(recorded.data.source).toBe("MANUAL");
+  });
+
+  it("blocks cross-currency manual recording when Admin rate is missing", async () => {
+    const deps = createDeps({
+      invoices: [invoiceRecord({ currencyCode: "GBP" })],
+      missingRate: true,
+    });
+    const recorded = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "10.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+      },
+      deps,
+    );
+    expect(recorded.ok).toBe(false);
+    if (!recorded.ok) {
+      expect(recorded.status).toBe(400);
+      expect(recorded.error).toBe(FIXED_RATE_MISSING_FOR_CONVERSION);
+    }
+  });
+
+  it("rejects amounts above open balance without inventing overpayment allow (BR-010 / US-015)", async () => {
+    const deps = createDeps({
+      existingPayments: [
+        {
+          id: "00000000-0000-4000-8000-000000000099",
+          companyId: COMPANY_A,
+          invoiceId: INVOICE_ID,
+          customerId: CUSTOMER_ID,
+          methodCode: "MANUAL",
+          externalTransactionId: null,
+          status: "SUCCESSFUL",
+          invoiceCurrencyCode: "USD",
+          invoiceAmountApplied: "60",
+          settlementCurrencyCode: "USD",
+          fixedConversionRate: "1",
+          rateVersionId: null,
+          rateSource: "SAME_CURRENCY",
+          rateEffectiveAt: new Date("2026-08-20T00:00:00.000Z"),
+          convertedSettlementAmount: "60",
+          processorFeeAmount: null,
+          actualReceivedAmount: null,
+          paymentDate: new Date("2026-08-20T00:00:00.000Z"),
+          receivedAt: new Date("2026-08-20T00:00:00.000Z"),
+          source: "MANUAL",
+          notes: null,
+          createdByUserId: ADMIN_ID,
+          confirmedByUserId: ADMIN_ID,
+          createdAt: new Date("2026-08-20T00:00:00.000Z"),
+          updatedAt: new Date("2026-08-20T00:00:00.000Z"),
+        },
+      ],
+    });
+
+    const recorded = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "50.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+        processorFeeAmount: "99.00",
+      },
+      deps,
+    );
+    expect(recorded.ok).toBe(false);
+    if (!recorded.ok) {
+      expect(recorded.status).toBe(400);
+      expect(recorded.error).toBe(PAYMENT_EXCEEDS_OPEN_BALANCE);
+    }
+  });
+
+  it("denies Staff manual recording while US-007 remains default-deny", async () => {
+    const deps = createDeps({});
+    const recorded = await recordManualPayment(
+      principal("STAFF"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "10.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+      },
+      deps,
+    );
+    expect(recorded.ok).toBe(false);
+    if (!recorded.ok) {
+      expect(recorded.status).toBe(403);
+      expect(recorded.error).toBe(PAYMENT_RECORD_FORBIDDEN);
+    }
+  });
+
+  it("rejects client-supplied company/customer overrides and non-manual method fields", async () => {
+    const deps = createDeps({});
+    const withCompany = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        companyId: COMPANY_B,
+        customerId: "99999999-9999-4999-8999-999999999999",
+        methodCode: "STRIPE",
+        source: "GATEWAY_WEBHOOK",
+        invoiceAmountApplied: "10.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+      },
+      deps,
+    );
+    expect(withCompany.ok).toBe(false);
+    if (!withCompany.ok) {
+      expect(withCompany.status).toBe(400);
+    }
   });
 });

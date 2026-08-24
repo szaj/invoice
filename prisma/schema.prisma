@@ -15,6 +15,7 @@
 // TASK-017 expires prior ACTIVE versions on create (append-only; retained permanently).
 // TASK-018 selects effective rate by valid_from/valid_to at a timestamp (no payment conversion).
 // TASK-020 adds payment_gateway_configs settlement-currency enablement (no credentials/charges).
+// TASK-049 extends payment_gateway_configs with ADR-022 encrypted credentials, environment, provider config.
 // TASK-021 formalizes currency disable vs historical visibility (status flags only).
 // TASK-022 adds customers master (fields from Customers §7.1).
 // TASK-025 adds customer_companies (multi-company linkage; access via linked companies).
@@ -249,6 +250,7 @@ model Company {
   invoices               Invoice[]
   emailLogs              EmailLog[]
   payments               Payment[]
+  paymentEvents          PaymentEvent[]
 
   @@index([reportingGroupId])
   @@map("companies")
@@ -381,19 +383,44 @@ enum PaymentMethodCode {
   @@map("payment_method_code")
 }
 
+/// Sandbox vs live operating mode for a company gateway method (TASK-049).
+enum GatewayEnvironment {
+  SANDBOX
+  LIVE
+
+  @@map("gateway_environment")
+}
+
 /// Company payment-method / gateway config shape.
 /// Settlement currency enablement is TASK-020 (BR-006 / BR-007).
-/// Encrypted credentials, environment, webhooks are TASK-049 — not stored here yet.
+/// TASK-048 resolves PaymentProvider adapters by methodCode against this shape.
+/// TASK-049 stores ADR-022 envelope-encrypted credentials + sandbox/live + non-secret provider config.
+/// Never store plaintext credentials. Never put credentials on `payments`.
 model PaymentGatewayConfig {
-  id                   String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId            String                             @map("company_id") @db.Uuid
-  methodCode           PaymentMethodCode                  @map("method_code")
+  id                        String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                 String                             @map("company_id") @db.Uuid
+  methodCode                PaymentMethodCode                  @map("method_code")
   /// Whether this payment method is enabled for the company (modes on/off).
-  enabled              Boolean                            @default(false)
-  createdAt            DateTime                           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime                           @updatedAt @map("updated_at") @db.Timestamptz
-  company              Company                            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  settlementCurrencies PaymentGatewaySettlementCurrency[]
+  enabled                   Boolean                            @default(false)
+  /// Sandbox/Test vs Live. Null until Admin sets an environment.
+  environment               GatewayEnvironment?                @map("environment")
+  /// Non-secret provider-specific configuration (opaque JSON). Never credentials.
+  providerConfig            Json?                              @map("provider_config")
+  /// ADR-022 envelope: encrypted credential JSON (includes webhook secret when present).
+  credentialsCiphertext     Bytes?                             @map("credentials_ciphertext")
+  credentialsNonce          Bytes?                             @map("credentials_nonce")
+  credentialsAuthTag        Bytes?                             @map("credentials_auth_tag")
+  wrappedDek                Bytes?                             @map("wrapped_dek")
+  dekWrapNonce              Bytes?                             @map("dek_wrap_nonce")
+  dekWrapAuthTag            Bytes?                             @map("dek_wrap_auth_tag")
+  /// KEK version used to wrap the DEK (for rotation).
+  kekKeyVersion             Int?                               @map("kek_key_version")
+  /// Envelope format version for future crypto migrations.
+  encryptionFormatVersion   Int?                               @map("encryption_format_version")
+  createdAt                 DateTime                           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime                           @updatedAt @map("updated_at") @db.Timestamptz
+  company                   Company                            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  settlementCurrencies      PaymentGatewaySettlementCurrency[]
 
   @@unique([companyId, methodCode])
   @@index([companyId])
@@ -772,6 +799,7 @@ model Payment {
   rateVersion              FixedConversionRate? @relation(fields: [rateVersionId], references: [id], onDelete: SetNull)
   createdBy                User?             @relation("PaymentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   confirmedBy              User?             @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  events                   PaymentEvent[]
 
   @@index([companyId, status])
   @@index([invoiceId])
@@ -779,4 +807,46 @@ model Payment {
   @@index([methodCode, externalTransactionId])
   @@index([paymentDate])
   @@map("payments")
+}
+
+enum PaymentEventProcessingStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+
+  @@map("payment_event_processing_status")
+}
+
+/// Gateway webhook/event idempotency store (Data Model / TASK-053).
+/// Unique external event ID prevents duplicate processing. Never store secrets or raw card data.
+model PaymentEvent {
+  id                     String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId              String                        @map("company_id") @db.Uuid
+  methodCode             PaymentMethodCode             @map("method_code")
+  /// Linked payment when matched; null when event arrives before a PENDING payment exists (TASK-058).
+  paymentId              String?                       @map("payment_id") @db.Uuid
+  /// Provider external event id (e.g. Stripe evt_…). Unique per method for idempotency.
+  externalEventId        String                        @map("external_event_id")
+  externalTransactionId  String?                       @map("external_transaction_id")
+  /// Normalized application payment status derived from the provider event.
+  normalizedStatus       PaymentStatus?                @map("normalized_status")
+  /// Optional fee from provider — reconciliation metadata only (BR-020); not applied to balance.
+  processorFeeAmount     Decimal?                      @map("processor_fee_amount") @db.Decimal(19, 4)
+  processingStatus       PaymentEventProcessingStatus  @default(RECEIVED) @map("processing_status")
+  correlationId          String                        @map("correlation_id")
+  /// Safe diagnostic message only — never secrets, signatures, or credential material.
+  errorMessage           String?                       @map("error_message")
+  processedAt            DateTime?                     @map("processed_at") @db.Timestamptz
+  createdAt              DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
+  company                Company                       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  payment                Payment?                      @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([methodCode, externalEventId])
+  @@index([companyId, methodCode])
+  @@index([paymentId])
+  @@index([correlationId])
+  @@index([createdAt])
+  @@map("payment_events")
 }

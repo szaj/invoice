@@ -66,7 +66,7 @@ Financial history is immutable. The original invoice amount/currency, fixed conv
 - Admin-defined fixed conversion rates with effective dates, version history, scheduling, and immutable payment snapshots.
 - Invoice lifecycle from Draft through Sent/Issued, Partially Paid, Paid, Overdue, and Cancelled.
 - Branded, versioned PDF invoices and per-brand email delivery.
-- Stripe, PayPal, generic bank/card processor adapter, and manual payments.
+- Stripe, PayPal, and manual payments (Version 1 live). `BANK_PROCESSOR` is a configuration slot only until a concrete vendor/API is selected (TASK-056/057 deferred).
 - Partial payments, hosted checkout links, webhook processing, idempotency, and settlement reconciliation.
 - Disputes, full/partial refunds, chargeback debit/loss, chargeback won/reversal, and adjustment history.
 - Compliance review queues, approvals/flags, notes, reason codes, filters, and exports.

@@ -22,7 +22,7 @@ This note is the architecture overview. Accepted stack and payment rules live in
 | Jobs | BullMQ + Redis + dedicated worker | [[05 Architecture Decisions#ADR-005 — Background jobs]] |
 | Storage | Cloudflare R2 via S3-compatible StorageService | [[05 Architecture Decisions#ADR-006 — Object storage]] |
 | Email | Resend via EmailService | [[05 Architecture Decisions#ADR-007 — Transactional email]] |
-| Payments | Provider registry + capability adapters | [[05 Architecture Decisions#ADR-008 — Payment provider architecture]] |
+| Payments | Provider registry + capability adapters; gateway credentials via envelope encryption | [[05 Architecture Decisions#ADR-008 — Payment provider architecture]], [[05 Architecture Decisions#ADR-022 — Gateway credential encryption]] |
 | PDF | React-pdf (`@react-pdf/renderer`) | [[05 Architecture Decisions#ADR-013 — PDF generation]] |
 | Logging | Pino | [[05 Architecture Decisions#ADR-014 — Logging]] |
 | Monitoring | Sentry | [[05 Architecture Decisions#ADR-015 — Monitoring]] |
@@ -140,7 +140,7 @@ authenticated ≠ authorized
 - Application DB/domain: what may they do, and for which company?
 - RBAC: Admin, Compliance, Staff, plus company assignment.
 - MFA remains strongly recommended for Admin and Compliance.
-- Processor credentials only for backend services and authorized Admin configuration.
+- Processor credentials only for backend services and authorized Admin configuration. Encrypted at rest per [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]].
 
 Sources: [[Roles and Permissions]], [[Security]], [[05 Architecture Decisions#ADR-003 — Authentication|ADR-003]]
 
@@ -164,15 +164,17 @@ Sources: [[Product Overview]], [[Currency and Conversion]], [[Payments]], [[Data
 
 ## Payment Provider Abstraction
 
-Version 1 providers: Stripe, PayPal, generic bank/card processor, Manual Payment.
+Version 1 **live** providers: Stripe, PayPal, Manual Payment.
 
-Future providers (not Version 1 scope) may include Authorize.Net, Adyen, Braintree, Checkout.com, Square, and local acquirers. Adding one must not redesign the payment domain.
+`BANK_PROCESSOR` remains a company gateway configuration method-code **slot**. No live bank/card processor adapter is shipped until a concrete vendor and API contract are selected ([[TASK-056 Bank Processor Adapter]] / [[TASK-057 Bank Processor Webhook]] **DEFERRED**). Do not invent a fictional bank API or Fake adapter that pretends to process payments.
+
+Future providers (Authorize.Net, Adyen, Braintree, Checkout.com, Square, local acquirers, and others) are added as independent `PaymentProvider` adapters. Adding one must not redesign the payment domain.
 
 ```text
 Payment Domain → Payment Application Service → PaymentProvider Registry → Adapters
 ```
 
-Capabilities instead of provider-name conditionals in core logic. Normalized Pending/Successful/Failed. Adjustments for refunds/disputes/chargebacks. Manual payments use the same domain without fake webhooks.
+Capabilities instead of provider-name conditionals in core logic. Normalized Pending/Successful/Failed. Adjustments for refunds/disputes/chargebacks. Manual payments use the same domain without fake webhooks. TASK-048 implements the TypeScript contract, registry, and Manual + Fake (test-only) adapters; live Stripe and PayPal adapters are registered; bank live adapter deferred.
 
 Merchant fees never change invoice balance, rate, or converted settlement.
 
@@ -242,6 +244,7 @@ Store authoritative timestamps in UTC. Display in user/company timezone. Payment
 | [[05 Architecture Decisions#ADR-009 — Issued invoice financial edit policy]] | Issued invoice financial edit policy | OPEN |
 | [[05 Architecture Decisions#ADR-010 — Discount model]] | Discount model | OPEN |
 | [[05 Architecture Decisions#ADR-011 — Reporting/base currency default]] | Reporting/base currency default | OPEN |
+| [[05 Architecture Decisions#ADR-022 — Gateway credential encryption]] | Gateway credential envelope encryption | ACCEPTED |
 | Operational | Exact VPS vendor, DNS/domain | OPEN |
 | Deferred | Future gateways, alt email/S3 vendors | Adapter-shaped; not Version 1 |
 

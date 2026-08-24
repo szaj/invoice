@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: deferred
 phase: 5
 module: payments
 depends_on:
@@ -12,7 +12,7 @@ tags:
 
 # TASK-056 — Bank Processor Adapter
 
-Status: NOT STARTED
+Status: DEFERRED
 
 Phase: 5 ([[Phase 05 Payments]])
 
@@ -97,22 +97,51 @@ N/A
 - [ ] [[04 Implementation Status]] updated
 - [ ] [[05 Architecture Decisions]] updated if required
 
+> DoD checkboxes remain unchecked. This task is **DEFERRED**, not COMPLETE. No live bank processor adapter was implemented.
+
+## Deferral Decision (2026-08-24)
+
+**Product/architecture decision:** Do not invent a fictional/generic banking API for Version 1.
+
+- The `PaymentProvider` architecture remains the extension point for additional providers.
+- Version 1 concrete live adapters: **MANUAL**, **STRIPE**, **PAYPAL**.
+- `BANK_PROCESSOR` remains a provider **slot / configuration method code** on company gateway config (TASK-020 / TASK-049). No live `BankProcessorAdapter` is registered until a concrete vendor and API contract are selected.
+- Do **not** create a Fake/Generic `BankProcessorAdapter` that pretends to process payments.
+- Future named processors (Authorize.Net, Adyen, Checkout.com, Braintree, local acquirers, others) are added as independent `PaymentProvider` adapters + registry registration + tests — **without** redesigning the core payment domain (ADR-008).
+- [[TASK-057 Bank Processor Webhook]] is deferred with this task (no adapter → no webhook pipeline).
+
+Re-open when: concrete bank/card processor brand + API contract (create/status, credentials, sandbox/live, status mapping, capability flags) are accepted in the vault.
+
 ## Cursor Implementation Result
 
 ### Files Created
 
+None (deferred; no invented adapter).
+
 ### Files Modified
+
+Vault only: this task, [[TASK-057 Bank Processor Webhook]], [[03 Implementation Plan]], [[04 Implementation Status]], [[Phase 05 Payments]], [[Payments]], [[02 Architecture]], ADR-008 consequences, [[Unresolved Source Items]], [[06 Development Log]], [[00 Home]].
 
 ### Migrations
 
+None.
+
 ### APIs
+
+None.
 
 ### Tests
 
+None for a live bank adapter (none implemented).
+
 ### Issues
+
+Blocked on missing concrete vendor/API selection. Formal deferral recorded 2026-08-24. Do not invent a required processor.
 
 ### Commit
 
+Not created (docs-only deferral; commit not requested).
+
 ## Next Recommended Task
 
-[[TASK-057 Bank Processor Webhook]]
+[[TASK-058 Hosted Checkout]] (next buildable; does not depend on TASK-056/057)

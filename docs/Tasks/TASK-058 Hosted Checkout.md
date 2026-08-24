@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 5
 module: payments
 depends_on:
@@ -14,7 +14,7 @@ tags:
 
 # TASK-058 — Hosted Checkout
 
-Status: NOT STARTED
+Status: COMPLETE
 
 Phase: 5 ([[Phase 05 Payments]])
 
@@ -46,37 +46,37 @@ Customer login dashboard. Marking Paid before webhook/status confirmation.
 
 ## Database Changes
 
-Pending payment rows with snapshot fields.
+Pending payment rows with snapshot fields (existing `payments` schema — no new migration).
 
 ## Backend
 
-createPaymentRequest in settlement currency using converted amount from fixed rate.
+`createHostedCheckout` → provider `createPaymentRequest` in settlement currency using Admin fixed-rate converted amount; persist PENDING + `GATEWAY_API` + external session/order id. `listHostedCheckoutOptions` omits disabled / uncredentialed / non-hosted methods (BANK_PROCESSOR deferred).
 
 ## Frontend
 
-Payment method selection when sending invoice.
+Payment method (+ settlement currency) selection when sending invoice email; injects checkout URL(s) into `paymentLink`. Public return landing at `/payments/checkout/return` (not a portal).
 
 ## Authorization
 
-Company-enabled methods only.
+`invoice.create` + company access. Company-enabled methods only.
 
 ## Business Rules
 
-Snapshot stored at request time.
+Snapshot stored at request time. Does not confirm SUCCESSFUL or allocate invoice balance.
 
 ## Error Handling
 
-Gateway timeout keeps Pending/Unknown.
+Provider create failure returns error without SUCCESSFUL payment. Gateway timeout / orphan webhooks remain Pending/Ignored as before.
 
 ## Tests
 
 ### Unit
 
-Checkout uses Admin rate not gateway FX.
+Checkout uses Admin rate not gateway FX; Staff may create via `invoice.create`; disabled gateway omitted; company isolation.
 
 ### Integration
 
-Pending payment created.
+Pending payment created; disabled gateway omitted from options.
 
 ### Authorization
 
@@ -88,32 +88,55 @@ N/A
 
 ## Definition of Done
 
-- [ ] Required schema changes completed
-- [ ] Backend/domain implementation completed
-- [ ] UI completed where applicable
-- [ ] Server-side authorization enforced
-- [ ] Business rules enforced
-- [ ] Tests added
-- [ ] Relevant tests passing
-- [ ] Documentation updated
-- [ ] [[04 Implementation Status]] updated
-- [ ] [[05 Architecture Decisions]] updated if required
+- [x] Required schema changes completed
+- [x] Backend/domain implementation completed
+- [x] UI completed where applicable
+- [x] Server-side authorization enforced
+- [x] Business rules enforced
+- [x] Tests added
+- [x] Relevant tests passing
+- [x] Documentation updated
+- [x] [[04 Implementation Status]] updated
+- [x] [[05 Architecture Decisions]] updated if required
 
 ## Cursor Implementation Result
 
 ### Files Created
 
+- `src/app/api/payments/checkout/route.ts`
+- `src/app/api/payments/checkout-options/route.ts`
+- `src/app/payments/checkout/return/page.tsx`
+- `tests/unit/payments-hosted-checkout.test.ts`
+- `tests/integration/payments-hosted-checkout.test.ts`
+
 ### Files Modified
+
+- `src/server/payments/payment-service.ts` (`createHostedCheckout`, `listHostedCheckoutOptions`, shared `persistPendingPayment`)
+- `src/server/payments/actions.ts`
+- `src/domain/payments/schema.ts`, `types.ts`
+- `src/app/(app)/invoices/invoice-email-panel.tsx`
+- Stripe/PayPal webhook orphan copy (no longer references TASK-058 as pending)
 
 ### Migrations
 
+None.
+
 ### APIs
+
+- `GET /api/payments/checkout-options?invoiceId=`
+- `POST /api/payments/checkout`
 
 ### Tests
 
+Unit + integration hosted checkout; full `RUN_DB_INTEGRATION=true test:integration`; typecheck; lint; format:check; build. E2E N/A. Live Stripe/PayPal checkout not exercised.
+
 ### Issues
 
+None blocking. Live-provider hosted checkout not performed in this environment.
+
 ### Commit
+
+Uncommitted (user did not request commit).
 
 ## Next Recommended Task
 

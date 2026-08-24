@@ -3,7 +3,17 @@ import type { AuditJson } from "@/domain/audit/types";
 const SENSITIVE_KEY_PATTERN =
   /(password|secret|token|authorization|cookie|api[_-]?key|access[_-]?key|webhook|credential|private[_-]?key|card|cvv|pan)/i;
 
+/** Safe metadata keys that look sensitive but must remain auditable (ADR-022 / TASK-049). */
+const SAFE_AUDIT_KEY_EXCEPTIONS = new Set(["credentialsconfigured"]);
+
 const REDACTED = "[Redacted]";
+
+function isSensitiveAuditKey(key: string): boolean {
+  if (SAFE_AUDIT_KEY_EXCEPTIONS.has(key.toLowerCase())) {
+    return false;
+  }
+  return SENSITIVE_KEY_PATTERN.test(key);
+}
 
 /**
  * Recursively masks sensitive keys before audit persistence.
@@ -29,7 +39,7 @@ export function maskSensitiveAuditValues(value: unknown): AuditJson {
   if (typeof value === "object") {
     const result: Record<string, AuditJson> = {};
     for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
+      if (isSensitiveAuditKey(key)) {
         result[key] = REDACTED;
         continue;
       }

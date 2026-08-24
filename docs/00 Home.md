@@ -83,17 +83,17 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 Current Phase: Phase 05 — Payments
 
-Current Task: [[TASK-047 Merchant Fee Reconciliation Fields]] (NOT STARTED)
+Current Task: [[TASK-059 Partial Payments]] (NOT STARTED)
 
-Current Status: [[TASK-046 Settlement Conversion Snapshot]] is COMPLETE. Next buildable task is [[TASK-047 Merchant Fee Reconciliation Fields]]. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+Current Status: [[TASK-058 Hosted Checkout]] is COMPLETE. [[TASK-056 Bank Processor Adapter]] and [[TASK-057 Bank Processor Webhook]] remain **DEFERRED** (no live bank processor until a concrete vendor/API is selected; do not invent a fictional adapter). Version 1 live providers: MANUAL, STRIPE, PAYPAL. Next buildable task is [[TASK-059 Partial Payments]]. ADR-009 / ADR-010 / ADR-011 remain OPEN.
 
-Next Task: [[TASK-047 Merchant Fee Reconciliation Fields]]
+Next Task: [[TASK-059 Partial Payments]]
 
-Do not start TASK-047 until ready.
+Do not start TASK-059 until ready.
 
 ## Blocked Items
 
-None currently recorded.
+None currently blocking the next buildable task. Prior TASK-049 encryption/key-management blocker cleared by ADR-022 (2026-08-24). Bank processor live integration formally **DEFERRED** (US-017 / TASK-056–057) pending concrete vendor/API selection.
 
 ## Critical Rules
 

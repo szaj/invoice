@@ -11,15 +11,30 @@ export type InvoiceOutstandingInput = {
   readonly decimalPrecision: number;
   /** Optional system-settings tolerance for zero-balance checks. */
   readonly roundingTolerance?: DecimalInput;
+  /**
+   * Optional merchant/processor fee (reconciliation only).
+   * Must never affect invoice outstanding (BR-020).
+   */
+  readonly processorFee?: DecimalInput | null;
+  /**
+   * Optional actual received (reconciliation only).
+   * Must never be subtracted from outstanding and is not an application.
+   */
+  readonly actualReceivedAmount?: DecimalInput | null;
 };
 
 /**
  * invoice_outstanding = invoice_total − sum(confirmed payment applications in invoice currency)
  * (BR-009 — not a manually edited paid total.)
+ * Merchant fee and actual received are excluded (BR-020).
  */
 export function computeInvoiceOutstanding(input: InvoiceOutstandingInput): MonetaryValue & {
   readonly isSettledWithinTolerance: boolean;
 } {
+  // Deliberately ignore reconciliation fields — they must never change balance.
+  void input.processorFee;
+  void input.actualReceivedAmount;
+
   const currencyCode = normalizeCurrencyCode(input.invoiceCurrencyCode);
   const applied = sumMoney(input.confirmedApplications);
   const outstanding = roundMoney(

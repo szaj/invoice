@@ -80,6 +80,9 @@ export default async function CompanyViewPage({ params }: { params: Promise<{ id
               <Link href={`/companies/${company.id}/settlement`}>Settlement</Link>
             </Button>
             <Button asChild variant="outline">
+              <Link href={`/companies/${company.id}/gateways`}>Gateways</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/companies">Back to list</Link>
             </Button>
           </div>

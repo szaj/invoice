@@ -28,22 +28,28 @@ describe.skipIf(!runDbIntegration)("customer company relationships integration",
     const companyDeps = { store: new PrismaCompanyStore() };
 
     const adminId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee51";
+    const adminAuthId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee52";
     const admin: AuthorizationPrincipal = {
       userId: adminId,
       status: "ACTIVE",
       roleCode: "ADMIN",
     };
 
-    await prisma.user.upsert({
-      where: { id: adminId },
-      create: {
+    // Clear leftover fixture rows (including auth-UUID collisions from other suites).
+    await prisma.user.deleteMany({
+      where: {
+        OR: [{ id: adminId }, { supabaseAuthUserId: adminAuthId }],
+      },
+    });
+
+    await prisma.user.create({
+      data: {
         id: adminId,
         name: "TASK-025 Admin",
         email: `task025-admin-${Date.now()}@example.com`,
-        supabaseAuthUserId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeee52",
+        supabaseAuthUserId: adminAuthId,
         status: "ACTIVE",
       },
-      update: {},
     });
 
     const company = await createCompany(

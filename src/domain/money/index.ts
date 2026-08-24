@@ -23,6 +23,12 @@ export {
 } from "@/domain/money/outstanding";
 export { formatMoneyForDisplay } from "@/domain/money/format";
 export {
+  toMinorUnits,
+  toProviderAmountInteger,
+  toProviderAmountDecimalString,
+  normalizeProviderCurrencyCode,
+} from "@/domain/money/minor-units";
+export {
   DEFAULT_MONEY_ROUNDING_MODE,
   MONEY_INVALID_CURRENCY_CODE,
   MONEY_INVALID_DECIMAL,

@@ -126,11 +126,13 @@ Depends on: Phases 01–08
 
 ## First Buildable Task
 
-[[TASK-001 Repository Foundation]] through [[TASK-046 Settlement Conversion Snapshot]] are COMPLETE.
+[[TASK-001 Repository Foundation]] through [[TASK-058 Hosted Checkout]] are COMPLETE.
+
+[[TASK-056 Bank Processor Adapter]] and [[TASK-057 Bank Processor Webhook]] are **DEFERRED** (Version 1 live providers: MANUAL, STRIPE, PAYPAL; `BANK_PROCESSOR` remains a config slot only until a concrete vendor/API is accepted — do not invent a fictional bank API).
 
 **UI/UX Foundation Refresh — before TASK-042** remains the presentation checkpoint that established [[UI UX Design System]].
 
-[[TASK-047 Merchant Fee Reconciliation Fields]] is the next buildable product task (NOT STARTED).
+[[TASK-059 Partial Payments]] is the next buildable product task (NOT STARTED).
 
 ## Explicitly Not Planned for Version 1
 

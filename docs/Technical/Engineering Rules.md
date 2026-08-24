@@ -68,6 +68,23 @@ Corrections must use controlled adjustment, reversal, refund, chargeback, or ver
 
 See [[Invoices]], [[Payments]], [[Refunds Disputes Chargebacks]], [[Business Rules]].
 
+## Gateway Credential Encryption Rule
+
+Gateway credentials use application-managed envelope encryption ([[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]).
+
+- Algorithm: AES-256-GCM via Node.js `node:crypto` or a well-maintained library — never custom crypto.
+- KEK from versioned server-only env keyring (`GATEWAY_CREDENTIALS_KEY_VERSION`, `GATEWAY_CREDENTIALS_KEY_Vn`); never PostgreSQL; never `NEXT_PUBLIC_*`.
+- Per-credential random DEK; wrap DEK with active KEK; persist ciphertext + nonces + auth tags + key/format versions only.
+- Normal APIs return metadata such as `credentialsConfigured` — never plaintext, ciphertext, wrapped DEKs, nonces, tags, or keys.
+- Decrypt only through server-only `GatewayCredentialService` → `CredentialCipher` → `KeyProvider`. Routes, Server Actions, RSC/client components, audit writers, and generic serializers must not decrypt.
+- Explicit secret replacement; non-secret config updates must not erase credentials.
+- Never log, audit, Sentry, or return plaintext credentials; never store them on `payments` or in Auth metadata.
+- Fail closed on decrypt/auth failure. Production fails closed without a valid active KEK.
+
+Cursor rule: `.cursor/rules/gateway-credentials.mdc`.
+
+See [[Security]], [[Payments]], BR-008.
+
 ## Related
 
 - [[02 Architecture]]

@@ -13,8 +13,10 @@ import { CURRENCY_DISABLED_FOR_NEW_SELECTION } from "@/domain/currencies/types";
 import { FIXED_RATE_MISSING_FOR_CONVERSION } from "@/domain/fixed-rates/types";
 import { isCollectibleInvoiceStatus } from "@/domain/invoices/cancellation";
 import { INVOICE_NOT_FOUND, type InvoiceRecord } from "@/domain/invoices/types";
+import { requireApplicationBaseUrl } from "@/config/env";
 import {
   computeConvertedSettlementAmount,
+  computeInvoiceOutstanding,
   moneyDecimal,
   roundMoney,
   toDecimalString,
@@ -25,10 +27,34 @@ import {
   assertProcessorFeeExcludedFromSettlement,
 } from "@/domain/payments/invariants";
 import {
+  assertReconciliationExcludedFromFinancialFormulas,
+  confirmedInvoiceApplicationsFromPayments,
+  normalizePaymentReconciliationFields,
+} from "@/domain/payments/reconciliation";
+import { assertManualPaymentWithinOpenBalance } from "@/domain/payments/manual";
+import {
+  PROVIDER_CAPABILITY_UNSUPPORTED,
+  PROVIDER_CONFIGURATION_ERROR,
+  PROVIDER_CREDENTIALS_MISSING,
+  PROVIDER_INVALID_INPUT,
+  PROVIDER_INVALID_RESPONSE,
+  PROVIDER_METHOD_DISABLED,
+  PROVIDER_NOT_REGISTERED,
+  PROVIDER_REQUEST_REJECTED,
+  PROVIDER_UNAVAILABLE,
+} from "@/domain/payments/providers/errors";
+import {
+  resolvePaymentProvider,
+  type PaymentProviderRegistry,
+} from "@/domain/payments/providers/registry";
+import {
   paymentCreatePendingSchema,
+  paymentHostedCheckoutSchema,
   paymentIdSchema,
   paymentListQuerySchema,
+  paymentManualRecordSchema,
   paymentWriteSchema,
+  type PaymentCreatePendingInput,
 } from "@/domain/payments/schema";
 import {
   confirmSnapshotLock,
@@ -39,47 +65,66 @@ import {
 import { assertPaymentStatusTransition } from "@/domain/payments/transitions";
 import {
   PAYMENT_AMOUNT_NOT_POSITIVE,
+  PAYMENT_CHECKOUT_CREDENTIALS_REQUIRED,
+  PAYMENT_CHECKOUT_METHOD_UNSUPPORTED,
+  PAYMENT_CHECKOUT_NO_OUTSTANDING,
+  PAYMENT_CHECKOUT_PROVIDER_FAILED,
   PAYMENT_COMPANY_SCOPE_REQUIRED,
   PAYMENT_CONFIRMED_IMMUTABLE,
+  PAYMENT_EXCEEDS_OPEN_BALANCE,
+  PAYMENT_FEE_MUST_NOT_AFFECT_BALANCE,
   PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT,
   PAYMENT_ILLEGAL_TRANSITION,
   PAYMENT_INVALID_INPUT,
   PAYMENT_INVOICE_NOT_PAYABLE,
+  PAYMENT_MANUAL_PROVIDER_MISCONFIGURED,
   PAYMENT_NOT_FOUND,
   PAYMENT_RECORD_FORBIDDEN,
   PAYMENT_UNAVAILABLE,
   type PaymentRateSource,
   type PaymentRecord,
+  type PaymentStatus,
 } from "@/domain/payments/types";
 import { assertSettlementCurrencyEnabled } from "@/domain/settlement/assert-enabled";
-import { SETTLEMENT_CURRENCY_NOT_ENABLED } from "@/domain/settlement/types";
+import { SETTLEMENT_CURRENCY_NOT_ENABLED, type PaymentMethodCode } from "@/domain/settlement/types";
 import {
   getAuditWriter,
   recordAuditEventRequired,
   type AuditWriter,
 } from "@/server/audit/audit-service";
+import { assertTransactionalCompanyRequest } from "@/server/company-context/transactional";
 import { PrismaCurrencyStore } from "@/server/currencies/currency-repository";
 import { PrismaCustomerStore } from "@/server/customers/customer-repository";
 import {
   resolveFixedConversionRate,
   type ResolveRateDependencies,
 } from "@/server/fixed-rates/resolve-rate-service";
+import { PrismaGatewayConfigStore } from "@/server/gateway-config/gateway-config-repository";
 import { PrismaInvoiceStore } from "@/server/invoices/invoice-repository";
 import { PrismaPaymentStore } from "@/server/payments/payment-repository";
+import { createPaymentProviderRegistry } from "@/server/payments/providers/create-payment-provider-registry";
 import { PrismaSettlementConfigStore } from "@/server/settlement/settlement-repository";
 
 export type PaymentServiceResult<T> =
-  { ok: true; data: T } | { ok: false; status: 400 | 403 | 404 | 503; error: string };
+  { ok: true; data: T } | { ok: false; status: 400 | 401 | 403 | 404 | 503; error: string };
 
 export interface PaymentServiceDependencies {
   readonly payments: Pick<
     PrismaPaymentStore,
-    "getPaymentById" | "listPayments" | "createPayment" | "updatePaymentLifecycle"
+    | "getPaymentById"
+    | "getPaymentByExternalTransaction"
+    | "listPayments"
+    | "createPayment"
+    | "updatePaymentLifecycle"
   >;
   readonly invoices: Pick<PrismaInvoiceStore, "getInvoiceById" | "listInvoices">;
   readonly customers: Pick<PrismaCustomerStore, "getCustomerById">;
   readonly settlement: Pick<PrismaSettlementConfigStore, "getCompanySettlementConfiguration">;
   readonly currencies: Pick<PrismaCurrencyStore, "findByCode">;
+  readonly gatewayConfigs?: Pick<
+    PrismaGatewayConfigStore,
+    "getMethodRow" | "getCompanyGatewayConfiguration"
+  >;
   readonly resolveRate?: (
     fromCurrency: string,
     toCurrency: string,
@@ -88,7 +133,27 @@ export interface PaymentServiceDependencies {
   readonly resolveRateDeps?: ResolveRateDependencies;
   readonly auditWriter?: AuditWriter;
   readonly now?: () => Date;
+  /** Override for tests; production uses assertTransactionalCompanyRequest. */
+  readonly enforceTransactionalCompanyScope?: (
+    actor: AuthorizationPrincipal,
+    companyId: string,
+  ) => Promise<PaymentServiceResult<true>>;
+  readonly providerRegistry?: PaymentProviderRegistry;
+  /** Override APP_URL-derived return URLs in tests. */
+  readonly checkoutReturnBaseUrl?: string;
 }
+
+export type HostedCheckoutOption = {
+  readonly methodCode: PaymentMethodCode;
+  readonly label: string;
+  readonly enabledSettlementCurrencyCodes: readonly string[];
+};
+
+export type HostedCheckoutResult = {
+  readonly payment: PaymentRecord;
+  readonly checkoutUrl: string;
+  readonly externalTransactionId: string;
+};
 
 export function createDefaultPaymentServiceDependencies(): PaymentServiceDependencies {
   return {
@@ -97,7 +162,41 @@ export function createDefaultPaymentServiceDependencies(): PaymentServiceDepende
     customers: new PrismaCustomerStore(),
     settlement: new PrismaSettlementConfigStore(),
     currencies: new PrismaCurrencyStore(),
+    gatewayConfigs: new PrismaGatewayConfigStore(),
   };
+}
+
+function gatewayConfigsOf(
+  deps: PaymentServiceDependencies,
+): Pick<PrismaGatewayConfigStore, "getMethodRow" | "getCompanyGatewayConfiguration"> {
+  return deps.gatewayConfigs ?? new PrismaGatewayConfigStore();
+}
+
+function hostedCheckoutLabel(methodCode: PaymentMethodCode): string {
+  switch (methodCode) {
+    case "STRIPE":
+      return "Stripe";
+    case "PAYPAL":
+      return "PayPal";
+    case "BANK_PROCESSOR":
+      return "Bank processor";
+    case "MANUAL":
+      return "Manual";
+    default: {
+      const _exhaustive: never = methodCode;
+      return _exhaustive;
+    }
+  }
+}
+
+function checkoutReturnUrls(
+  deps: PaymentServiceDependencies,
+  invoiceId: string,
+): { successUrl: string; cancelUrl: string } {
+  const base = (deps.checkoutReturnBaseUrl ?? requireApplicationBaseUrl()).replace(/\/$/, "");
+  const successUrl = `${base}/payments/checkout/return?status=success&invoiceId=${encodeURIComponent(invoiceId)}`;
+  const cancelUrl = `${base}/payments/checkout/return?status=cancel&invoiceId=${encodeURIComponent(invoiceId)}`;
+  return { successUrl, cancelUrl };
 }
 
 function auditWriterOf(deps: PaymentServiceDependencies): AuditWriter {
@@ -154,6 +253,37 @@ async function resolveRateOf(
     return deps.resolveRate(fromCurrency, toCurrency, at);
   }
   return resolveFixedConversionRate(fromCurrency, toCurrency, at, deps.resolveRateDeps);
+}
+
+async function enforceTransactionalCompanyScopeOf(
+  actor: AuthorizationPrincipal,
+  companyId: string,
+  deps: PaymentServiceDependencies,
+): Promise<PaymentServiceResult<true>> {
+  if (deps.enforceTransactionalCompanyScope) {
+    return deps.enforceTransactionalCompanyScope(actor, companyId);
+  }
+  const scope = await assertTransactionalCompanyRequest(actor, companyId);
+  if (!scope.ok) {
+    return { ok: false, status: scope.status, error: scope.error };
+  }
+  return { ok: true, data: true };
+}
+
+/**
+ * Manual recording uses ManualPaymentAdapter without hosted checkout or fake webhooks (ADR-008).
+ */
+function assertManualProviderPath(deps: PaymentServiceDependencies): PaymentServiceResult<true> {
+  const registry = deps.providerRegistry ?? createPaymentProviderRegistry();
+  const provider = registry.require("MANUAL");
+  if (
+    provider.capabilities.supportsHostedCheckout ||
+    provider.capabilities.supportsWebhooks ||
+    provider.capabilities.supportsPaymentStatusLookup
+  ) {
+    return { ok: false, status: 503, error: PAYMENT_MANUAL_PROVIDER_MISCONFIGURED };
+  }
+  return { ok: true, data: true };
 }
 
 async function loadVisibleInvoiceForPayment(
@@ -256,10 +386,182 @@ export async function getPayment(
 }
 
 /**
+ * Persist a PENDING payment with Admin fixed-rate snapshot (TASK-045 / TASK-046).
+ * Caller must already enforce authorization. Does not charge gateways or allocate.
+ */
+async function persistPendingPayment(
+  actor: AuthorizationPrincipal,
+  parsed: PaymentCreatePendingInput,
+  deps: PaymentServiceDependencies,
+): Promise<PaymentServiceResult<PaymentRecord>> {
+  const invoice = await deps.invoices.getInvoiceById(parsed.invoiceId);
+  if (!invoice) {
+    return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+  }
+
+  assertCompanyAccess(actor, invoice.companyId);
+  if (!canViewPayment(actor, { companyId: invoice.companyId }, invoice)) {
+    return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+  }
+
+  if (!isCollectibleInvoiceStatus(invoice.status)) {
+    return { ok: false, status: 400, error: PAYMENT_INVOICE_NOT_PAYABLE };
+  }
+
+  const customer = await deps.customers.getCustomerById(invoice.customerId);
+  if (!customer || !customer.companyIds.includes(invoice.companyId)) {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+
+  const settlementConfig = await deps.settlement.getCompanySettlementConfiguration(
+    invoice.companyId,
+  );
+  if (!settlementConfig) {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+  const method = settlementConfig.methods.find((row) => row.methodCode === parsed.methodCode);
+  const settlementCheck = assertSettlementCurrencyEnabled(method, parsed.settlementCurrencyCode);
+  if (!settlementCheck.ok) {
+    return { ok: false, status: 400, error: SETTLEMENT_CURRENCY_NOT_ENABLED };
+  }
+
+  const settlementCurrency = await deps.currencies.findByCode(parsed.settlementCurrencyCode);
+  if (!settlementCurrency) {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+  if (settlementCurrency.status !== "ACTIVE") {
+    return { ok: false, status: 400, error: CURRENCY_DISABLED_FOR_NEW_SELECTION };
+  }
+
+  const invoiceCurrency = await deps.currencies.findByCode(invoice.currencyCode);
+  const invoicePrecision = invoiceCurrency?.decimalPrecision ?? 2;
+
+  let applied;
+  try {
+    applied = moneyDecimal(parsed.invoiceAmountApplied);
+  } catch {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+  if (!applied.gt(0)) {
+    return { ok: false, status: 400, error: PAYMENT_AMOUNT_NOT_POSITIVE };
+  }
+  const invoiceAmountApplied = toDecimalString(roundMoney(applied, invoicePrecision));
+
+  let reconciliation;
+  try {
+    reconciliation = normalizePaymentReconciliationFields({
+      processorFeeAmount: parsed.processorFeeAmount,
+      actualReceivedAmount: parsed.actualReceivedAmount,
+      convertedSettlementAmount: null,
+    });
+  } catch {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+
+  const rateResult = await resolveRateOf(
+    deps,
+    invoice.currencyCode,
+    settlementCurrency.code,
+    parsed.paymentDate,
+  );
+  if (!rateResult.ok) {
+    return { ok: false, status: 400, error: FIXED_RATE_MISSING_FOR_CONVERSION };
+  }
+
+  const converted = computeConvertedSettlementAmount({
+    invoiceAmountApplied,
+    invoiceCurrencyCode: invoice.currencyCode,
+    settlementCurrencyCode: settlementCurrency.code,
+    fixedConversionRate: rateResult.fixedRate,
+    settlementDecimalPrecision: settlementCurrency.decimalPrecision,
+    processorFee: reconciliation.processorFeeAmount,
+  });
+
+  const rateSource = mapRateSource(converted.rateSource);
+  const writeParsed = paymentWriteSchema.safeParse({
+    companyId: invoice.companyId,
+    invoiceId: invoice.id,
+    customerId: invoice.customerId,
+    methodCode: parsed.methodCode,
+    externalTransactionId: parsed.externalTransactionId,
+    status: "PENDING",
+    invoiceCurrencyCode: invoice.currencyCode,
+    invoiceAmountApplied,
+    settlementCurrencyCode: settlementCurrency.code,
+    fixedConversionRate: converted.fixedConversionRateApplied,
+    rateVersionId: rateResult.rateVersionId,
+    rateSource,
+    rateEffectiveAt: snapshotRateEffectiveAt({
+      rateSource,
+      paymentDate: parsed.paymentDate,
+      rateValidFrom: rateResult.validFrom,
+    }),
+    convertedSettlementAmount: converted.convertedSettlementAmount.amount,
+    processorFeeAmount: reconciliation.processorFeeAmount,
+    actualReceivedAmount: reconciliation.actualReceivedAmount,
+    paymentDate: parsed.paymentDate,
+    receivedAt: null,
+    source: parsed.source,
+    notes: parsed.notes,
+    createdByUserId: actor.userId,
+    confirmedByUserId: null,
+  });
+  if (!writeParsed.success) {
+    return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+  }
+
+  assertProcessorFeeExcludedFromSettlement(writeParsed.data, settlementCurrency.decimalPrecision);
+  assertReconciliationExcludedFromFinancialFormulas({
+    invoiceAmountApplied,
+    invoiceCurrencyCode: invoice.currencyCode,
+    settlementCurrencyCode: settlementCurrency.code,
+    fixedConversionRate: converted.fixedConversionRateApplied,
+    settlementDecimalPrecision: settlementCurrency.decimalPrecision,
+    convertedSettlementAmount: converted.convertedSettlementAmount.amount,
+    processorFeeAmount: reconciliation.processorFeeAmount,
+    actualReceivedAmount: reconciliation.actualReceivedAmount,
+    invoiceTotal: invoice.invoiceTotal,
+    invoiceDecimalPrecision: invoicePrecision,
+    confirmedApplications: [invoiceAmountApplied],
+  });
+
+  const created = await deps.payments.createPayment(writeParsed.data);
+
+  await recordAuditEventRequired(
+    {
+      actorType: "USER",
+      actorUserId: actor.userId,
+      companyId: created.companyId,
+      entityType: AuditEntityTypes.PAYMENT,
+      entityId: created.id,
+      action: AuditActions.PAYMENT_CREATED,
+      newValues: paymentAuditSnapshot(created),
+    },
+    auditWriterOf(deps),
+  );
+
+  logger.info(
+    {
+      event: "payments.created",
+      actorUserId: actor.userId,
+      paymentId: created.id,
+      invoiceId: created.invoiceId,
+      companyId: created.companyId,
+      status: created.status,
+    },
+    "Pending payment created",
+  );
+
+  return { ok: true, data: created };
+}
+
+/**
  * Create a PENDING payment (TASK-045).
  * authorization → company scope → invoice/customer → currency/settlement → conversion → persist → audit.
- * Stores the Admin fixed-rate snapshot including rateEffectiveAt (TASK-046). Does not charge gateways,
- * allocate, or mutate invoice outstanding (later tasks).
+ * Stores the Admin fixed-rate snapshot including rateEffectiveAt (TASK-046).
+ * Optional processor fee / actual received are stored as reconciliation only (TASK-047 / BR-020).
+ * Does not charge gateways, allocate, or mutate invoice outstanding (later tasks).
+ * Gateway HTTP/webhooks resolve through PaymentProviderRegistry (TASK-048 / ADR-008), not this service.
  */
 export async function createPendingPayment(
   actor: AuthorizationPrincipal | null,
@@ -277,7 +579,34 @@ export async function createPendingPayment(
       return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
     }
 
-    const invoice = await deps.invoices.getInvoiceById(parsed.data.invoiceId);
+    return persistPendingPayment(actor, parsed.data, deps);
+  } catch (error) {
+    return toPaymentError(error, "write");
+  }
+}
+
+/**
+ * List company-enabled hosted checkout methods for an invoice (TASK-058).
+ * Disabled / uncredentialed / unsupported (e.g. BANK_PROCESSOR deferred) methods are omitted.
+ * Authorization: invoice.create (same family as send-invoice UI).
+ */
+export async function listHostedCheckoutOptions(
+  actor: AuthorizationPrincipal | null,
+  invoiceId: string,
+  deps: PaymentServiceDependencies = createDefaultPaymentServiceDependencies(),
+): Promise<PaymentServiceResult<HostedCheckoutOption[]>> {
+  try {
+    assertPermission(actor, "invoice.create");
+    if (!actor) {
+      throw new AuthorizationError("unauthenticated");
+    }
+
+    const parsedId = paymentIdSchema.safeParse(invoiceId);
+    if (!parsedId.success) {
+      return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+    }
+
+    const invoice = await deps.invoices.getInvoiceById(parsedId.data);
     if (!invoice) {
       return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
     }
@@ -287,38 +616,341 @@ export async function createPendingPayment(
       return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
     }
 
+    const registry = deps.providerRegistry ?? createPaymentProviderRegistry();
+    const gatewayStore = gatewayConfigsOf(deps);
+    const [companyGateways, settlementConfig] = await Promise.all([
+      gatewayStore.getCompanyGatewayConfiguration(invoice.companyId),
+      deps.settlement.getCompanySettlementConfiguration(invoice.companyId),
+    ]);
+    if (!companyGateways || !settlementConfig) {
+      return { ok: true, data: [] };
+    }
+
+    const options: HostedCheckoutOption[] = [];
+    for (const method of companyGateways.methods) {
+      if (!method.methodEnabled || !method.credentialsConfigured) {
+        continue;
+      }
+      const provider = registry.get(method.methodCode);
+      if (!provider?.capabilities.supportsHostedCheckout) {
+        continue;
+      }
+      const settlementMethod = settlementConfig.methods.find(
+        (row) => row.methodCode === method.methodCode,
+      );
+      if (!settlementMethod?.methodEnabled) {
+        continue;
+      }
+      const settlementCodes = settlementMethod.enabledSettlementCurrencyCodes.filter((code) =>
+        method.enabledSettlementCurrencyCodes.includes(code),
+      );
+      if (settlementCodes.length === 0) {
+        continue;
+      }
+      options.push({
+        methodCode: method.methodCode,
+        label: hostedCheckoutLabel(method.methodCode),
+        enabledSettlementCurrencyCodes: settlementCodes,
+      });
+    }
+
+    return { ok: true, data: options };
+  } catch (error) {
+    return toPaymentError(error, "read");
+  }
+}
+
+/**
+ * Create hosted checkout + PENDING payment with Admin rate snapshot (TASK-058).
+ * Does not confirm SUCCESSFUL (webhooks / status later). Does not allocate invoice balance (TASK-060).
+ * Credentials resolve only inside PaymentProvider adapters (ADR-022).
+ */
+export async function createHostedCheckout(
+  actor: AuthorizationPrincipal | null,
+  input: unknown,
+  deps: PaymentServiceDependencies = createDefaultPaymentServiceDependencies(),
+): Promise<PaymentServiceResult<HostedCheckoutResult>> {
+  try {
+    assertPermission(actor, "invoice.create");
+    if (!actor) {
+      throw new AuthorizationError("unauthenticated");
+    }
+
+    const parsed = paymentHostedCheckoutSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+    }
+
+    const invoice = await deps.invoices.getInvoiceById(parsed.data.invoiceId);
+    if (!invoice) {
+      return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+    }
+
+    const scope = await enforceTransactionalCompanyScopeOf(actor, invoice.companyId, deps);
+    if (!scope.ok) {
+      return scope;
+    }
+
+    if (!canViewPayment(actor, { companyId: invoice.companyId }, invoice)) {
+      return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+    }
+
     if (!isCollectibleInvoiceStatus(invoice.status)) {
       return { ok: false, status: 400, error: PAYMENT_INVOICE_NOT_PAYABLE };
     }
 
-    const customer = await deps.customers.getCustomerById(invoice.customerId);
-    if (!customer || !customer.companyIds.includes(invoice.companyId)) {
-      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
-    }
-
-    const settlementConfig = await deps.settlement.getCompanySettlementConfiguration(
+    const registry = deps.providerRegistry ?? createPaymentProviderRegistry();
+    const gatewayRow = await gatewayConfigsOf(deps).getMethodRow(
       invoice.companyId,
+      parsed.data.methodCode,
     );
-    if (!settlementConfig) {
-      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+    const gatewayConfig = gatewayRow
+      ? {
+          companyId: gatewayRow.companyId,
+          methodCode: gatewayRow.methodCode,
+          enabled: gatewayRow.enabled,
+          environment: gatewayRow.environment,
+          enabledSettlementCurrencyCodes: gatewayRow.enabledSettlementCurrencyCodes,
+          credentialsConfigured: gatewayRow.credentialsConfigured,
+        }
+      : null;
+    if (!gatewayConfig?.enabled) {
+      return { ok: false, status: 400, error: PAYMENT_CHECKOUT_METHOD_UNSUPPORTED };
     }
-    const method = settlementConfig.methods.find(
-      (row) => row.methodCode === parsed.data.methodCode,
-    );
-    const settlementCheck = assertSettlementCurrencyEnabled(
-      method,
-      parsed.data.settlementCurrencyCode,
-    );
-    if (!settlementCheck.ok) {
-      return { ok: false, status: 400, error: SETTLEMENT_CURRENCY_NOT_ENABLED };
+    if (!gatewayConfig.credentialsConfigured) {
+      return { ok: false, status: 400, error: PAYMENT_CHECKOUT_CREDENTIALS_REQUIRED };
     }
 
+    let provider;
+    try {
+      provider = resolvePaymentProvider(registry, gatewayConfig);
+    } catch (error) {
+      if (error instanceof Error && error.message === PROVIDER_METHOD_DISABLED) {
+        return { ok: false, status: 400, error: PAYMENT_CHECKOUT_METHOD_UNSUPPORTED };
+      }
+      if (error instanceof Error && error.message === PROVIDER_NOT_REGISTERED) {
+        return { ok: false, status: 400, error: PAYMENT_CHECKOUT_METHOD_UNSUPPORTED };
+      }
+      throw error;
+    }
+
+    if (!provider.capabilities.supportsHostedCheckout) {
+      return { ok: false, status: 400, error: PAYMENT_CHECKOUT_METHOD_UNSUPPORTED };
+    }
+
+    const invoiceCurrency = await deps.currencies.findByCode(invoice.currencyCode);
+    const invoicePrecision = invoiceCurrency?.decimalPrecision ?? 2;
     const settlementCurrency = await deps.currencies.findByCode(parsed.data.settlementCurrencyCode);
-    if (!settlementCurrency) {
+    if (!settlementCurrency || settlementCurrency.status !== "ACTIVE") {
       return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
     }
-    if (settlementCurrency.status !== "ACTIVE") {
-      return { ok: false, status: 400, error: CURRENCY_DISABLED_FOR_NEW_SELECTION };
+
+    const existingPayments = await deps.payments.listPayments({
+      companyIds: [invoice.companyId],
+      invoiceId: invoice.id,
+    });
+    const applications = confirmedInvoiceApplicationsFromPayments(existingPayments);
+    const outstanding = computeInvoiceOutstanding({
+      invoiceTotal: invoice.invoiceTotal,
+      invoiceCurrencyCode: invoice.currencyCode,
+      confirmedApplications: applications,
+      decimalPrecision: invoicePrecision,
+    });
+
+    let invoiceAmountApplied: string;
+    if (parsed.data.invoiceAmountApplied !== undefined) {
+      let applied;
+      try {
+        applied = moneyDecimal(parsed.data.invoiceAmountApplied);
+      } catch {
+        return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+      }
+      if (!applied.gt(0)) {
+        return { ok: false, status: 400, error: PAYMENT_AMOUNT_NOT_POSITIVE };
+      }
+      invoiceAmountApplied = toDecimalString(roundMoney(applied, invoicePrecision));
+      assertManualPaymentWithinOpenBalance({
+        invoiceTotal: invoice.invoiceTotal,
+        invoiceCurrencyCode: invoice.currencyCode,
+        invoiceDecimalPrecision: invoicePrecision,
+        invoiceAmountApplied,
+        existingPayments,
+      });
+    } else {
+      if (!moneyDecimal(outstanding.amount).gt(0)) {
+        return { ok: false, status: 400, error: PAYMENT_CHECKOUT_NO_OUTSTANDING };
+      }
+      invoiceAmountApplied = outstanding.amount;
+    }
+
+    const paymentDate = nowOf(deps);
+    const rateResult = await resolveRateOf(
+      deps,
+      invoice.currencyCode,
+      settlementCurrency.code,
+      paymentDate,
+    );
+    if (!rateResult.ok) {
+      return { ok: false, status: 400, error: FIXED_RATE_MISSING_FOR_CONVERSION };
+    }
+
+    const converted = computeConvertedSettlementAmount({
+      invoiceAmountApplied,
+      invoiceCurrencyCode: invoice.currencyCode,
+      settlementCurrencyCode: settlementCurrency.code,
+      fixedConversionRate: rateResult.fixedRate,
+      settlementDecimalPrecision: settlementCurrency.decimalPrecision,
+      processorFee: null,
+    });
+
+    const { successUrl, cancelUrl } = checkoutReturnUrls(deps, invoice.id);
+
+    let providerResult;
+    try {
+      providerResult = await provider.createPaymentRequest({
+        companyId: invoice.companyId,
+        invoiceId: invoice.id,
+        customerId: invoice.customerId,
+        invoiceCurrencyCode: invoice.currencyCode,
+        invoiceAmountApplied,
+        settlementCurrencyCode: settlementCurrency.code,
+        settlementDecimalPrecision: settlementCurrency.decimalPrecision,
+        convertedSettlementAmount: converted.convertedSettlementAmount.amount,
+        successUrl,
+        cancelUrl,
+      });
+    } catch (error) {
+      return mapProviderCheckoutError(error);
+    }
+
+    if (!providerResult.checkoutUrl?.trim()) {
+      return { ok: false, status: 503, error: PAYMENT_CHECKOUT_PROVIDER_FAILED };
+    }
+
+    const pending = await persistPendingPayment(
+      actor,
+      {
+        invoiceId: invoice.id,
+        methodCode: parsed.data.methodCode,
+        invoiceAmountApplied,
+        settlementCurrencyCode: settlementCurrency.code,
+        paymentDate,
+        externalTransactionId: providerResult.externalTransactionId,
+        source: "GATEWAY_API",
+        notes: null,
+        processorFeeAmount: null,
+        actualReceivedAmount: null,
+      },
+      deps,
+    );
+    if (!pending.ok) {
+      return pending;
+    }
+
+    logger.info(
+      {
+        event: "payments.hosted_checkout_created",
+        actorUserId: actor.userId,
+        paymentId: pending.data.id,
+        invoiceId: pending.data.invoiceId,
+        companyId: pending.data.companyId,
+        methodCode: pending.data.methodCode,
+        externalTransactionId: pending.data.externalTransactionId,
+      },
+      "Hosted checkout payment created",
+    );
+
+    return {
+      ok: true,
+      data: {
+        payment: pending.data,
+        checkoutUrl: providerResult.checkoutUrl,
+        externalTransactionId: providerResult.externalTransactionId,
+      },
+    };
+  } catch (error) {
+    return toPaymentError(error, "write");
+  }
+}
+
+function mapProviderCheckoutError(error: unknown): {
+  ok: false;
+  status: 400 | 503;
+  error: string;
+} {
+  if (error instanceof Error) {
+    switch (error.message) {
+      case PROVIDER_METHOD_DISABLED:
+      case PROVIDER_CAPABILITY_UNSUPPORTED:
+      case PROVIDER_NOT_REGISTERED:
+        return { ok: false, status: 400, error: PAYMENT_CHECKOUT_METHOD_UNSUPPORTED };
+      case PROVIDER_CREDENTIALS_MISSING:
+        return { ok: false, status: 400, error: PAYMENT_CHECKOUT_CREDENTIALS_REQUIRED };
+      case PROVIDER_INVALID_INPUT:
+      case PROVIDER_CONFIGURATION_ERROR:
+        return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+      case PROVIDER_REQUEST_REJECTED:
+      case PROVIDER_INVALID_RESPONSE:
+      case PROVIDER_UNAVAILABLE:
+        return { ok: false, status: 503, error: PAYMENT_CHECKOUT_PROVIDER_FAILED };
+      default:
+        break;
+    }
+  }
+  logger.error(
+    {
+      event: "payments.hosted_checkout_provider_failed",
+      err: error instanceof Error ? error.message : "unknown",
+    },
+    "Hosted checkout provider create failed",
+  );
+  return { ok: false, status: 503, error: PAYMENT_CHECKOUT_PROVIDER_FAILED };
+}
+
+/**
+ * Record a manual payment (TASK-050 / Payments §10.6).
+ * Reuses TASK-045 create PENDING → confirm SUCCESSFUL lifecycle on the same payment domain.
+ * Forces method MANUAL + source MANUAL. Does not invent gateway transaction IDs or fake webhooks.
+ * Does not allocate or mutate invoice paid/outstanding (TASK-060).
+ * Staff remains denied (US-007 default deny). Overpayment allow-workflow remains US-015.
+ */
+export async function recordManualPayment(
+  actor: AuthorizationPrincipal | null,
+  input: unknown,
+  deps: PaymentServiceDependencies = createDefaultPaymentServiceDependencies(),
+): Promise<PaymentServiceResult<PaymentRecord>> {
+  try {
+    assertPermission(actor, "payment.manual.record");
+    if (!actor) {
+      throw new AuthorizationError("unauthenticated");
+    }
+
+    const parsed = paymentManualRecordSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+    }
+
+    const providerCheck = assertManualProviderPath(deps);
+    if (!providerCheck.ok) {
+      return providerCheck;
+    }
+
+    const invoice = await deps.invoices.getInvoiceById(parsed.data.invoiceId);
+    if (!invoice) {
+      return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+    }
+
+    const scope = await enforceTransactionalCompanyScopeOf(actor, invoice.companyId, deps);
+    if (!scope.ok) {
+      return scope;
+    }
+
+    if (!canViewPayment(actor, { companyId: invoice.companyId }, invoice)) {
+      return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+    }
+
+    if (!isCollectibleInvoiceStatus(invoice.status)) {
+      return { ok: false, status: 400, error: PAYMENT_INVOICE_NOT_PAYABLE };
     }
 
     const invoiceCurrency = await deps.currencies.findByCode(invoice.currencyCode);
@@ -335,104 +967,58 @@ export async function createPendingPayment(
     }
     const invoiceAmountApplied = toDecimalString(roundMoney(applied, invoicePrecision));
 
-    if (parsed.data.processorFeeAmount != null) {
-      try {
-        if (moneyDecimal(parsed.data.processorFeeAmount).lt(0)) {
-          return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
-        }
-      } catch {
-        return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
-      }
-    }
-
-    const rateResult = await resolveRateOf(
-      deps,
-      invoice.currencyCode,
-      settlementCurrency.code,
-      parsed.data.paymentDate,
-    );
-    if (!rateResult.ok) {
-      return { ok: false, status: 400, error: FIXED_RATE_MISSING_FOR_CONVERSION };
-    }
-
-    const converted = computeConvertedSettlementAmount({
-      invoiceAmountApplied,
-      invoiceCurrencyCode: invoice.currencyCode,
-      settlementCurrencyCode: settlementCurrency.code,
-      fixedConversionRate: rateResult.fixedRate,
-      settlementDecimalPrecision: settlementCurrency.decimalPrecision,
-      processorFee: parsed.data.processorFeeAmount,
-    });
-
-    const rateSource = mapRateSource(converted.rateSource);
-    const writeParsed = paymentWriteSchema.safeParse({
-      companyId: invoice.companyId,
+    const existingPayments = await deps.payments.listPayments({
+      companyIds: [invoice.companyId],
       invoiceId: invoice.id,
-      customerId: invoice.customerId,
-      methodCode: parsed.data.methodCode,
-      externalTransactionId: parsed.data.externalTransactionId,
-      status: "PENDING",
-      invoiceCurrencyCode: invoice.currencyCode,
-      invoiceAmountApplied,
-      settlementCurrencyCode: settlementCurrency.code,
-      fixedConversionRate: converted.fixedConversionRateApplied,
-      rateVersionId: rateResult.rateVersionId,
-      rateSource,
-      rateEffectiveAt: snapshotRateEffectiveAt({
-        rateSource,
-        paymentDate: parsed.data.paymentDate,
-        rateValidFrom: rateResult.validFrom,
-      }),
-      convertedSettlementAmount: converted.convertedSettlementAmount.amount,
-      processorFeeAmount:
-        parsed.data.processorFeeAmount != null
-          ? toDecimalString(parsed.data.processorFeeAmount)
-          : null,
-      actualReceivedAmount:
-        parsed.data.actualReceivedAmount != null
-          ? toDecimalString(parsed.data.actualReceivedAmount)
-          : null,
-      paymentDate: parsed.data.paymentDate,
-      receivedAt: null,
-      source: parsed.data.source,
-      notes: parsed.data.notes,
-      createdByUserId: actor.userId,
-      confirmedByUserId: null,
     });
-    if (!writeParsed.success) {
-      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+    assertManualPaymentWithinOpenBalance({
+      invoiceTotal: invoice.invoiceTotal,
+      invoiceCurrencyCode: invoice.currencyCode,
+      invoiceDecimalPrecision: invoicePrecision,
+      invoiceAmountApplied,
+      existingPayments,
+      processorFeeAmount: parsed.data.processorFeeAmount,
+      actualReceivedAmount: parsed.data.actualReceivedAmount,
+    });
+
+    const created = await createPendingPayment(
+      actor,
+      {
+        invoiceId: invoice.id,
+        methodCode: "MANUAL",
+        invoiceAmountApplied,
+        settlementCurrencyCode: parsed.data.settlementCurrencyCode,
+        paymentDate: parsed.data.paymentDate,
+        externalTransactionId: parsed.data.externalTransactionId,
+        source: "MANUAL",
+        notes: parsed.data.notes,
+        processorFeeAmount: parsed.data.processorFeeAmount,
+        actualReceivedAmount: parsed.data.actualReceivedAmount,
+      },
+      deps,
+    );
+    if (!created.ok) {
+      return created;
     }
 
-    assertProcessorFeeExcludedFromSettlement(writeParsed.data, settlementCurrency.decimalPrecision);
-
-    const created = await deps.payments.createPayment(writeParsed.data);
-
-    await recordAuditEventRequired(
-      {
-        actorType: "USER",
-        actorUserId: actor.userId,
-        companyId: created.companyId,
-        entityType: AuditEntityTypes.PAYMENT,
-        entityId: created.id,
-        action: AuditActions.PAYMENT_CREATED,
-        newValues: paymentAuditSnapshot(created),
-      },
-      auditWriterOf(deps),
-    );
+    const confirmed = await confirmPayment(actor, created.data.id, deps);
+    if (!confirmed.ok) {
+      return confirmed;
+    }
 
     logger.info(
       {
-        event: "payments.created",
+        event: "payments.manual_recorded",
         actorUserId: actor.userId,
-        paymentId: created.id,
-        invoiceId: created.invoiceId,
-        companyId: created.companyId,
-        status: created.status,
+        paymentId: confirmed.data.id,
+        invoiceId: confirmed.data.invoiceId,
+        companyId: confirmed.data.companyId,
+        status: confirmed.data.status,
       },
-      "Pending payment created",
+      "Manual payment recorded",
     );
 
-    return { ok: true, data: created };
+    return { ok: true, data: confirmed.data };
   } catch (error) {
     return toPaymentError(error, "write");
   }
@@ -512,6 +1098,28 @@ export async function confirmPayment(
 
     const settlementCurrency = await deps.currencies.findByCode(updated.settlementCurrencyCode);
     assertProcessorFeeExcludedFromSettlement(updated, settlementCurrency?.decimalPrecision ?? 2);
+    assertReconciliationExcludedFromFinancialFormulas({
+      invoiceAmountApplied: updated.invoiceAmountApplied,
+      invoiceCurrencyCode: updated.invoiceCurrencyCode,
+      settlementCurrencyCode: updated.settlementCurrencyCode,
+      fixedConversionRate: updated.fixedConversionRate,
+      settlementDecimalPrecision: settlementCurrency?.decimalPrecision ?? 2,
+      convertedSettlementAmount: updated.convertedSettlementAmount,
+      processorFeeAmount: updated.processorFeeAmount,
+      actualReceivedAmount: updated.actualReceivedAmount,
+      invoiceTotal: invoiceResult.data.invoiceTotal,
+      invoiceDecimalPrecision: 2,
+      confirmedApplications: [updated.invoiceAmountApplied],
+    });
+    assertConfirmedFinancialFieldsUnchanged(updated, {
+      invoiceAmountApplied: payment.invoiceAmountApplied,
+      convertedSettlementAmount: payment.convertedSettlementAmount,
+      fixedConversionRate: payment.fixedConversionRate,
+      processorFeeAmount: payment.processorFeeAmount,
+      actualReceivedAmount: payment.actualReceivedAmount,
+      invoiceCurrencyCode: payment.invoiceCurrencyCode,
+      settlementCurrencyCode: payment.settlementCurrencyCode,
+    });
 
     await recordAuditEventRequired(
       {
@@ -535,6 +1143,7 @@ export async function confirmPayment(
           rateEffectiveAt: updated.rateEffectiveAt?.toISOString() ?? null,
           convertedSettlementAmount: updated.convertedSettlementAmount,
           processorFeeAmount: updated.processorFeeAmount,
+          actualReceivedAmount: updated.actualReceivedAmount,
         },
       },
       auditWriterOf(deps),
@@ -623,12 +1232,195 @@ export async function failPayment(
   }
 }
 
+/**
+ * Apply a verified gateway webhook status to an existing PENDING payment (TASK-053).
+ * Signature verification is the authorization boundary — no user RBAC.
+ * Does not create payments (TASK-058) and does not rewrite confirmed financial fields.
+ * Does not mutate invoice paid/outstanding (TASK-060).
+ */
+export async function applyGatewayWebhookPaymentStatus(
+  input: {
+    readonly companyId: string;
+    readonly methodCode: PaymentMethodCode;
+    readonly externalTransactionId: string;
+    readonly status: PaymentStatus;
+    readonly correlationId: string;
+  },
+  deps: PaymentServiceDependencies = createDefaultPaymentServiceDependencies(),
+): Promise<
+  PaymentServiceResult<{
+    readonly payment: PaymentRecord | null;
+    readonly outcome: "confirmed" | "failed" | "already_terminal" | "pending_noop" | "not_found";
+  }>
+> {
+  try {
+    if (input.status !== "SUCCESSFUL" && input.status !== "FAILED" && input.status !== "PENDING") {
+      return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
+    }
+
+    const payment = await deps.payments.getPaymentByExternalTransaction({
+      companyId: input.companyId,
+      methodCode: input.methodCode,
+      externalTransactionId: input.externalTransactionId,
+    });
+
+    if (!payment) {
+      return { ok: true, data: { payment: null, outcome: "not_found" } };
+    }
+
+    if (payment.companyId !== input.companyId) {
+      return { ok: true, data: { payment: null, outcome: "not_found" } };
+    }
+
+    if (payment.status === "SUCCESSFUL" || payment.status === "FAILED") {
+      return { ok: true, data: { payment, outcome: "already_terminal" } };
+    }
+
+    if (input.status === "PENDING") {
+      return { ok: true, data: { payment, outcome: "pending_noop" } };
+    }
+
+    if (payment.status !== "PENDING") {
+      return { ok: false, status: 400, error: PAYMENT_ILLEGAL_TRANSITION };
+    }
+
+    assertPaymentStatusTransition(payment.status, input.status);
+    assertConfirmedFinancialFieldsUnchanged(payment, {});
+
+    if (input.status === "SUCCESSFUL") {
+      let snapshotPatch: {
+        readonly rateEffectiveAt?: Date;
+        readonly rateVersionId?: string | null;
+      } = {};
+
+      if (!isConversionSnapshotComplete(payment)) {
+        if (isCrossCurrencyPayment(payment)) {
+          const rateResult = await resolveRateOf(
+            deps,
+            payment.invoiceCurrencyCode,
+            payment.settlementCurrencyCode,
+            payment.paymentDate,
+          );
+          if (!rateResult.ok) {
+            return { ok: false, status: 400, error: FIXED_RATE_MISSING_FOR_CONVERSION };
+          }
+          snapshotPatch = confirmSnapshotLock(payment, {
+            rateEffectiveAt: snapshotRateEffectiveAt({
+              rateSource: "ADMIN_FIXED_RATE",
+              paymentDate: payment.paymentDate,
+              rateValidFrom: rateResult.validFrom,
+            }),
+            rateVersionId: rateResult.rateVersionId,
+          });
+        } else {
+          snapshotPatch = {
+            rateEffectiveAt: payment.rateEffectiveAt ?? payment.paymentDate,
+            rateVersionId: payment.rateVersionId,
+          };
+        }
+      }
+
+      const receivedAt = nowOf(deps);
+      const updated = await deps.payments.updatePaymentLifecycle(payment.id, payment.status, {
+        status: "SUCCESSFUL",
+        receivedAt,
+        confirmedByUserId: null,
+        ...snapshotPatch,
+      });
+      if (!updated) {
+        // Concurrent webhook/confirm won the race — treat as idempotent terminal.
+        const again = await deps.payments.getPaymentById(payment.id);
+        if (again && (again.status === "SUCCESSFUL" || again.status === "FAILED")) {
+          return { ok: true, data: { payment: again, outcome: "already_terminal" } };
+        }
+        return { ok: false, status: 400, error: PAYMENT_ILLEGAL_TRANSITION };
+      }
+
+      await recordAuditEventRequired(
+        {
+          actorType: "WEBHOOK",
+          actorUserId: null,
+          companyId: updated.companyId,
+          entityType: AuditEntityTypes.PAYMENT,
+          entityId: updated.id,
+          action: AuditActions.PAYMENT_CONFIRMED,
+          correlationId: input.correlationId,
+          oldValues: { status: payment.status },
+          newValues: {
+            status: updated.status,
+            receivedAt: updated.receivedAt?.toISOString() ?? null,
+            source: updated.source,
+            externalTransactionId: updated.externalTransactionId,
+          },
+        },
+        auditWriterOf(deps),
+      );
+
+      logger.info(
+        {
+          event: "payments.confirmed",
+          paymentId: updated.id,
+          invoiceId: updated.invoiceId,
+          companyId: updated.companyId,
+          correlationId: input.correlationId,
+          via: "gateway_webhook",
+        },
+        "Payment confirmed via gateway webhook",
+      );
+
+      return { ok: true, data: { payment: updated, outcome: "confirmed" } };
+    }
+
+    const updated = await deps.payments.updatePaymentLifecycle(payment.id, payment.status, {
+      status: "FAILED",
+    });
+    if (!updated) {
+      const again = await deps.payments.getPaymentById(payment.id);
+      if (again && (again.status === "SUCCESSFUL" || again.status === "FAILED")) {
+        return { ok: true, data: { payment: again, outcome: "already_terminal" } };
+      }
+      return { ok: false, status: 400, error: PAYMENT_ILLEGAL_TRANSITION };
+    }
+
+    await recordAuditEventRequired(
+      {
+        actorType: "WEBHOOK",
+        actorUserId: null,
+        companyId: updated.companyId,
+        entityType: AuditEntityTypes.PAYMENT,
+        entityId: updated.id,
+        action: AuditActions.PAYMENT_FAILED,
+        correlationId: input.correlationId,
+        oldValues: { status: payment.status },
+        newValues: { status: updated.status },
+      },
+      auditWriterOf(deps),
+    );
+
+    logger.info(
+      {
+        event: "payments.failed",
+        paymentId: updated.id,
+        invoiceId: updated.invoiceId,
+        companyId: updated.companyId,
+        correlationId: input.correlationId,
+        via: "gateway_webhook",
+      },
+      "Payment marked failed via gateway webhook",
+    );
+
+    return { ok: true, data: { payment: updated, outcome: "failed" } };
+  } catch (error) {
+    return toPaymentError(error, "write");
+  }
+}
+
 function toPaymentError(
   error: unknown,
   kind: "read" | "write" = "write",
 ): {
   ok: false;
-  status: 400 | 403 | 404 | 503;
+  status: 400 | 401 | 403 | 404 | 503;
   error: string;
 } {
   if (error instanceof AuthorizationError) {
@@ -644,6 +1436,8 @@ function toPaymentError(
       error.message === PAYMENT_CONFIRMED_IMMUTABLE ||
       error.message === PAYMENT_INVOICE_NOT_PAYABLE ||
       error.message === PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT ||
+      error.message === PAYMENT_FEE_MUST_NOT_AFFECT_BALANCE ||
+      error.message === PAYMENT_EXCEEDS_OPEN_BALANCE ||
       error.message === FIXED_RATE_MISSING_FOR_CONVERSION
     ) {
       return { ok: false, status: 400, error: error.message };

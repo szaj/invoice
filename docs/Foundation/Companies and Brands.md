@@ -44,7 +44,7 @@ flowchart LR
 | Terms & Conditions | Brand-specific default invoice terms. |
 | Email Template | Brand-specific invoice email template. |
 | Payment Modes | Each payment mode individually enabled/disabled. TASK-020: `payment_gateway_configs.enabled` per method. |
-| Gateway Credentials | Stored encrypted and isolated to company. TASK-049 (not yet). |
+| Gateway Credentials | Stored encrypted and isolated to company per [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]. TASK-049: envelope columns on `payment_gateway_configs`; Admin `/companies/{id}/gateways`. |
 | Settlement Currencies | Per method/company enablement. TASK-020: `payment_gateway_settlement_currencies` (USD/AED initial; Admin may expand ACTIVE catalog codes). |
 | Status | Active / Inactive. |
 

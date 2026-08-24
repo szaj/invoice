@@ -33,6 +33,7 @@ Index of architecture decisions. Accepted items are authoritative for implementa
 | ADR-019 | Code quality: ESLint, Prettier, strict TypeScript | ACCEPTED |
 | ADR-020 | Next.js server layer; no separate Express/Nest backend | ACCEPTED |
 | ADR-021 | Centralized typed environment/configuration | ACCEPTED |
+| ADR-022 | Gateway credential encryption (application-managed envelope) | ACCEPTED |
 
 Use [[Architecture Decision]] to add new ADRs. Permanent engineering rules: [[Engineering Rules]].
 
@@ -402,7 +403,7 @@ Date: 2026-08-20 (extended)
 
 ### Context
 
-Version 1 must support Stripe, PayPal, a generic bank/card processor adapter, and manual payments. Future providers must be addable without redesigning the payment domain.
+Version 1 must support Stripe, PayPal, Manual Payment, and a **provider-extensible** registry that can host a bank/card processor adapter. The `BANK_PROCESSOR` method code remains available for company gateway configuration. A **live** bank/card processor adapter is **not** implemented until a concrete vendor and API contract are accepted (see Consequences / [[TASK-056 Bank Processor Adapter]] DEFERRED). Do not invent a required processor brand for Version 1.
 
 ### Decision
 
@@ -452,7 +453,7 @@ Webhooks: signature verification where supported, unique external event IDs, ide
 
 **Future providers** (Authorize.Net, Adyen, Braintree, Checkout.com, Square, local acquirers, and others) are **not** Version 1 scope. Adding one should mean: adapter, capabilities, status mapping, webhooks if supported, company configuration, registry registration, tests — not a rewrite of invoices, allocation, FX, refunds, CB/RF, reporting, or audit.
 
-Gateway configuration is **company-specific** (enabled, encrypted credentials, sandbox/live, settlement currencies, webhook config, health). Credentials never exposed to unauthorized Staff.
+Gateway configuration is **company-specific** (enabled, encrypted credentials, sandbox/live, settlement currencies, webhook config, health). Credentials never exposed to unauthorized Staff. Credential encryption at rest follows [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]].
 
 Core reporting uses normalized application payment records so a later provider appears in generic gateway reporting once records are normalized.
 
@@ -468,7 +469,9 @@ Direct Stripe/PayPal calls in domain/UI code; provider-name conditionals in allo
 
 ### Consequences
 
-[[TASK-044 Payment Domain Schema]] persists the provider-agnostic `payments` core record. [[TASK-048 Payment Provider Abstraction]] defines the registry, interface, and capabilities. Concrete adapters remain later tasks. Authorize.Net is an adapter-shaped future extension only.
+[[TASK-048 Payment Provider Abstraction]] implements the TypeScript `PaymentProvider` contract, registry, capability flags, and Manual + Fake (test-only) adapters. [[TASK-052 Stripe Adapter]] registers `StripePaymentAdapter` (Checkout request/status + `verifyWebhook`). [[TASK-053 Stripe Webhook]] implements `parseWebhook`, company-scoped webhook Route Handler, and `payment_events` idempotency. [[TASK-054 PayPal Adapter]] registers `PayPalPaymentAdapter` (Orders request/status + `verifyWebhook`). [[TASK-055 PayPal Webhook]] implements `parseWebhook`, company-scoped PayPal webhook Route Handler, and shared `payment_events` idempotency.
+
+**Version 1 live adapters:** MANUAL, STRIPE, PAYPAL. **`BANK_PROCESSOR` is a configuration slot only** until a concrete vendor/API is selected. [[TASK-056 Bank Processor Adapter]] and [[TASK-057 Bank Processor Webhook]] are **DEFERRED** (2026-08-24): do not invent a fictional/generic banking API; do not register a Fake/Generic bank adapter that pretends to process payments. Authorize.Net, Adyen, Checkout.com, Braintree, local acquirers, and other named processors remain adapter-shaped future extensions — each is an independent registry registration without redesigning invoices, allocation, FX, refunds, CB/RF, reporting, or audit. Company gateway credential encryption is [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]; storage is implemented by [[TASK-049 Gateway Configuration Per Company]].
 
 ### Related Documents
 
@@ -480,6 +483,8 @@ Direct Stripe/PayPal calls in domain/UI code; provider-name conditionals in allo
 - [[Engineering Rules]]
 - [[TASK-044 Payment Domain Schema]]
 - [[TASK-048 Payment Provider Abstraction]]
+- [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]
+- [[TASK-049 Gateway Configuration Per Company]]
 
 ---
 
@@ -825,6 +830,197 @@ Store authoritative timestamps in **UTC**. Display in configured user/company ti
 - [[Deployment]]
 - [[TASK-001 Repository Foundation]]
 - [[TASK-013 Core System Settings]]
+- [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]
+
+### Consequences (gateway credential keys)
+
+[[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]] extends this env boundary with a versioned KEK keyring for company gateway credentials:
+
+- `GATEWAY_CREDENTIALS_KEY_VERSION` — active key version for new encryption
+- `GATEWAY_CREDENTIALS_KEY_V1`, `GATEWAY_CREDENTIALS_KEY_V2`, … — base64-encoded 32-byte KEKs
+
+These are server-only. Never `NEXT_PUBLIC_*`. Never store the KEK in PostgreSQL. Production must fail closed when credential encryption is required but no valid active KEK is configured. Local/test may use explicitly configured test keys; do not silently generate ephemeral production keys.
+
+---
+
+## ADR-022 — Gateway credential encryption
+
+Status: ACCEPTED
+
+Date: 2026-08-24
+
+### Context
+
+[[TASK-049 Gateway Configuration Per Company]] must store company-isolated payment gateway credentials at rest. [[Security]] requires application-managed key/envelope encryption. [[Payments]] and [[05 Architecture Decisions#ADR-008 — Payment provider architecture|ADR-008]] require credentials never on payment records, never exposed to Staff, and never logged or audited in plaintext. Without an accepted encryption/key-management decision, TASK-049 cannot implement credential storage without inventing security architecture.
+
+### Decision
+
+Gateway credentials use **application-managed envelope encryption**.
+
+#### Algorithm
+
+- **AES-256-GCM**
+- Node.js built-in cryptographic primitives (`node:crypto`) or a well-maintained cryptographic library
+- Never implement custom cryptographic algorithms
+- Use timing-safe and authenticated operations from the selected implementation
+- Failure to authenticate/decrypt ciphertext must **fail closed**
+
+#### Key architecture
+
+- A server-only **Key Encryption Key (KEK)** is supplied through environment configuration ([[05 Architecture Decisions#ADR-021 — Environment and configuration|ADR-021]]).
+- The KEK must **never** be stored in PostgreSQL.
+- The KEK must **never** be exposed through `NEXT_PUBLIC_*` variables.
+- The KEK must **never** appear in logs, audit events, API responses, client props, or error messages.
+
+Use a **versioned keyring**:
+
+| Variable | Purpose |
+| --- | --- |
+| `GATEWAY_CREDENTIALS_KEY_VERSION` | Active key version for new encryption |
+| `GATEWAY_CREDENTIALS_KEY_V1` | Base64-encoded 32-byte KEK (version 1) |
+| `GATEWAY_CREDENTIALS_KEY_V2` | Base64-encoded 32-byte KEK (version 2) |
+| `GATEWAY_CREDENTIALS_KEY_Vn` | Additional versions as needed |
+
+Keys are base64-encoded **32-byte** random values. The active key version controls new encryption. Old key versions may remain temporarily available for decrypting historical ciphertext during rotation.
+
+#### Envelope encryption (per gateway credential set)
+
+1. Generate a cryptographically random **256-bit Data Encryption Key (DEK)**.
+2. Encrypt the credential JSON using the DEK with AES-256-GCM.
+3. Use a unique random nonce/IV.
+4. Authenticate relevant stable context using **AAD** where appropriate, including identifiers such as company ID and gateway/provider type (method code).
+5. Encrypt/wrap the DEK using the active KEK (AES-256-GCM).
+6. Persist **only** encrypted material and metadata — never plaintext credentials.
+
+Persist enough information to decrypt safely later, conceptually including:
+
+- encrypted credential ciphertext
+- credential nonce
+- credential auth tag
+- wrapped/encrypted DEK
+- DEK wrapping nonce
+- DEK wrapping auth tag
+- KEK/key version
+- encryption format/version
+
+#### Persistence
+
+Encrypted credential material may live in the application PostgreSQL gateway configuration/credential persistence layer (`payment_gateway_configs` or an associated credential store introduced by TASK-049).
+
+Normal gateway configuration APIs must **never** return:
+
+- plaintext credentials
+- ciphertext blobs
+- wrapped DEKs
+- nonces
+- authentication tags
+- encryption keys
+
+Normal safe responses may return metadata such as `credentialsConfigured: true` and provider/configuration status.
+
+#### Server-side decryption boundary
+
+Create a server-only credential encryption/decryption service abstraction:
+
+```text
+GatewayCredentialService
+        ↓
+CredentialCipher
+        ↓
+KeyProvider
+```
+
+Current KeyProvider: **EnvironmentKeyProvider**.
+
+Only trusted server-side provider/integration code may request decrypted credentials. Routes, Server Actions, React Server Components, client components, audit writers, and generic serializers must **not** directly decrypt credentials.
+
+PaymentProvider adapters may receive resolved credentials through a controlled server-side credential provider when later tasks require them (TASK-052+).
+
+#### Credential replacement
+
+Secret replacement must be **explicit**. Updating non-secret gateway configuration must never clear, replace, or decrypt/re-encrypt existing credentials unnecessarily.
+
+#### Credential / KEK rotation
+
+Support key versions from day one. Rotation procedure:
+
+1. Introduce a new KEK version.
+2. Mark it active for new writes (`GATEWAY_CREDENTIALS_KEY_VERSION`).
+3. Old versions remain decryptable temporarily.
+4. Re-encrypt existing credential records through a controlled server-side maintenance operation.
+5. Verify migration.
+6. Remove the old KEK only after no records reference it.
+
+Do **not** automatically rotate credentials as part of ordinary configuration reads.
+
+#### Security controls
+
+- Encryption/decryption is server-only.
+- Never log plaintext credentials.
+- Never audit plaintext credentials.
+- Never send them to Sentry.
+- Never expose them in API errors.
+- Never include them in client bundles.
+- Never store them on payment records.
+- Never store them in Supabase Auth metadata.
+
+#### Environment validation
+
+Integrate encryption key configuration with the ADR-021 typed env/config architecture. Production must fail closed when credential encryption is required but no valid active KEK is configured. Local/test environments may use explicitly configured test keys; do **not** silently generate ephemeral production keys.
+
+#### Provider neutrality
+
+The encryption service must not be Stripe-specific or PayPal-specific. It encrypts opaque credential payloads for any company gateway method.
+
+#### Operational limitation
+
+The environment-based KEK provides encryption at rest and separation from the database, but compromise of **both** the production application environment and the database could allow decryption.
+
+An external KMS/HSM may be adopted later for stronger key isolation without changing the credential-service contract.
+
+#### Future KeyProvider migration path
+
+`EnvironmentKeyProvider` may later be replaced or supplemented by:
+
+- AWS KMS
+- GCP KMS
+- HashiCorp Vault
+- another managed key service
+
+without rewriting gateway configuration or the payment domain.
+
+### Reason
+
+Required by [[Security]], [[Payments]], BR-008, and [[TASK-049 Gateway Configuration Per Company]]. Application-managed envelope encryption with a versioned env keyring matches ADR-021, keeps KEKs out of PostgreSQL, and leaves a clean path to external KMS later.
+
+### Alternatives Considered
+
+| Alternative | Outcome |
+| --- | --- |
+| Plaintext credentials in PostgreSQL | Rejected |
+| Credentials in `system_settings` | Rejected |
+| Credentials on `payments` rows | Rejected (BR-008 / ADR-008) |
+| App-layer AES without envelope / without versioned keyring | Rejected — weak rotation story |
+| External KMS as Version 1 requirement | Deferred — KeyProvider abstraction allows later adoption |
+| Silently generating ephemeral KEKs in production | Rejected — fail closed |
+
+### Consequences
+
+- [[TASK-049 Gateway Configuration Per Company]] implemented encrypted credential storage against this ADR (schema, Admin APIs, UI, settlement reuse).
+- Later Stripe/PayPal/bank adapters decrypt only through the server-side credential boundary.
+- ADR-009 / ADR-010 / ADR-011 remain OPEN and are unaffected.
+
+### Related Documents
+
+- [[Security]]
+- [[Engineering Rules]]
+- [[Payments]]
+- [[API and Integrations]]
+- [[Data Model]]
+- [[05 Architecture Decisions#ADR-008 — Payment provider architecture|ADR-008]]
+- [[05 Architecture Decisions#ADR-021 — Environment and configuration|ADR-021]]
+- [[TASK-049 Gateway Configuration Per Company]]
+- [[Business Rules]] (BR-008)
 
 ---
 

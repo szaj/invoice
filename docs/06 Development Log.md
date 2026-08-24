@@ -29,6 +29,366 @@ Next task:
 
 ## Entries
 
+### 2026-08-24 — TASK-058
+
+Work completed:
+
+Optional hosted checkout / payment links (not a customer portal). `createHostedCheckout` calls PaymentProvider `createPaymentRequest` with Admin fixed-rate converted settlement amount, persists PENDING (`GATEWAY_API`) with snapshot + session/order id, returns checkout URL. Does not confirm Paid or allocate invoice balance. Invoice email modal selects company-enabled Stripe/PayPal methods + settlement currency; disabled/BANK_PROCESSOR omitted. Return/cancel via `/payments/checkout/return` (APP_URL). Webhooks continue to confirm existing PENDING only.
+
+Files changed:
+
+`payment-service` (`createHostedCheckout`, `listHostedCheckoutOptions`, shared `persistPendingPayment`), checkout APIs, return page, invoice email panel, unit/integration tests. Vault: TASK-058, Payments, PDF and Email, API, Screen Inventory, Status, Phase 05, Home, this log.
+
+Database changes:
+
+None (existing `payments` snapshot fields).
+
+Tests:
+
+Unit (Admin rate not gateway FX; options omit disabled; Staff `invoice.create`). Integration (PENDING created). Full `RUN_DB_INTEGRATION=true test:integration`. typecheck/lint/format/build. E2E N/A. Live Stripe/PayPal checkout not performed.
+
+Decisions:
+
+Authorization uses `invoice.create` (send-invoice family), not `payment.manual.record`. Amount defaults to open balance from SUCCESSFUL applications (partial amount UI remains TASK-059). ADR-009/010/011 unaffected.
+
+Problems:
+
+None blocking. Live-provider checkout not exercised in this environment.
+
+Next task:
+
+[[TASK-059 Partial Payments]]
+
+### 2026-08-24 — TASK-056 / TASK-057 DEFERRED
+
+Work completed:
+
+Formal product/architecture deferral of live bank/card processor integration. No fictional/generic banking API and no Fake/Generic `BankProcessorAdapter` that pretends to process payments. Version 1 live `PaymentProvider` adapters remain MANUAL, STRIPE, PAYPAL. `BANK_PROCESSOR` stays a company gateway configuration method-code slot only. Future named processors (Authorize.Net, Adyen, Checkout.com, Braintree, local acquirers, others) are independent adapters under ADR-008 without core payment-domain redesign. Status vocabulary gains **DEFERRED** (not COMPLETE).
+
+Files changed:
+
+Vault only: [[TASK-056 Bank Processor Adapter]], [[TASK-057 Bank Processor Webhook]], [[03 Implementation Plan]], [[04 Implementation Status]], [[Phase 05 Payments]], [[Payments]], [[02 Architecture]], ADR-008 Context/Consequences, [[Unresolved Source Items]] (US-017), [[00 Home]], this log.
+
+Database changes:
+
+None.
+
+Tests:
+
+None (docs-only deferral; no adapter code).
+
+Decisions:
+
+US-017 — concrete bank/card processor brand + API deferred. TASK-056/057 marked DEFERRED. Next buildable task is [[TASK-058 Hosted Checkout]].
+
+Problems:
+
+None for deferral recording. Live bank charging remains unavailable until vendor/API accepted.
+
+Next task:
+
+[[TASK-058 Hosted Checkout]]
+
+### 2026-08-24 — TASK-055
+
+Work completed:
+
+PayPal webhook pipeline: company-scoped `POST /api/webhooks/paypal/[companyId]`, `parseWebhook` on PayPal adapter, `payment_events` idempotency, confirm/fail existing PENDING payments via WEBHOOK actor. Unsigned rejected. Duplicate event IDs do not double-confirm (E2E-10). Orphan events IGNORED without creating payments. Inline dispatcher (BullMQ later). No invoice balance mutation; no PayPal FX / snapshot rewrite.
+
+Files changed:
+
+`paypal-webhook-{map,service,queue}.ts`, webhook Route Handler, PayPal `parseWebhook`, public auth path, unit/integration webhook tests. Vault: Payments, API, Testing, Database, Security, Authorization, ADR-008 note, Home, Status, Plan, Phase 05, this log, [[TASK-055 PayPal Webhook]].
+
+Database changes:
+
+None. Reuses `payment_events`.
+
+Tests:
+
+Unit + integration (signature, duplicate, orphan, WEBHOOK audit, no secret leak). typecheck/lint/format/test/integration/build.
+
+Decisions:
+
+None new. Company-scoped webhook URL follows per-company credentials (TASK-049 / ADR-022 / TASK-053 pattern). Webhooks do not create payments (TASK-058). ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for webhook scope. Hosted checkout PENDING create remains TASK-058. Allocation remains TASK-060.
+
+Next task:
+
+[[TASK-056 Bank Processor Adapter]]
+
+### 2026-08-24 — TASK-054
+
+Work completed:
+
+PayPal PaymentProvider adapter behind the TASK-048 registry. Orders v2 create/status, webhook signature verify only, health check. Company credentials via ADR-022 resolver. Admin converted settlement → Decimal amount string; no PayPal FX. Sandbox/live API host selection. parseWebhook/refunds/fees/hosted checkout UI deferred.
+
+Files changed:
+
+`src/server/payments/providers/paypal/*`, registry, `toProviderAmountDecimalString`, gateway form labels, logger redaction, unit/integration PayPal adapter tests. Vault: Payments, API, Testing, Database, Security, Authorization, ADR-008 note, Home, Status, Plan, Phase 05, this log, [[TASK-054 PayPal Adapter]].
+
+Database changes:
+
+None. Reuses `payment_gateway_configs` method_code PAYPAL. No PayPal columns on `payments`.
+
+Tests:
+
+Unit + integration with PayPal client fakes (no live PayPal). Manual/Stripe regression intact. typecheck/lint/format/test/integration/build.
+
+Decisions:
+
+None new. Orders v2 approve-link hosted checkout is adapter-internal (parallel to Stripe Checkout Sessions). ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for adapter scope. Webhook pipeline remains TASK-055. Capture/hosted checkout remains TASK-058.
+
+Next task:
+
+[[TASK-055 PayPal Webhook]]
+
+### 2026-08-24 — TASK-053
+
+Work completed:
+
+Stripe webhook pipeline: company-scoped `POST /api/webhooks/stripe/[companyId]`, `parseWebhook` on Stripe adapter, `payment_events` idempotency, confirm/fail existing PENDING payments via WEBHOOK actor. Unsigned rejected. Duplicate event IDs do not double-confirm (E2E-10). Orphan events IGNORED without creating payments. Inline dispatcher (BullMQ later). No invoice balance mutation.
+
+Files changed:
+
+`payment_events` migration + Prisma model, `stripe-webhook-{map,service,queue}.ts`, `payment-event-repository.ts`, webhook Route Handler, `applyGatewayWebhookPaymentStatus`, Stripe `parseWebhook`, public auth path, unit/integration webhook tests. Vault: Payments, API, Testing, Database, Security, ADR-008 note, Home, Status, Plan, Phase 05, this log, [[TASK-053 Stripe Webhook]].
+
+Database changes:
+
+`20260824280000_payment_events` — `payment_events` with unique `(method_code, external_event_id)`.
+
+Tests:
+
+Unit + integration (signature, duplicate, orphan, WEBHOOK audit, no secret leak). typecheck/lint/format/test/integration/build.
+
+Decisions:
+
+None new. Company-scoped webhook URL follows per-company secrets (TASK-049 / ADR-022). Webhooks do not create payments (TASK-058). ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for webhook scope. Hosted checkout PENDING create remains TASK-058. Allocation remains TASK-060.
+
+Next task:
+
+[[TASK-054 PayPal Adapter]]
+
+### 2026-08-24 — TASK-052
+
+Work completed:
+
+Stripe PaymentProvider adapter behind the TASK-048 registry. Checkout Session create/status, webhook signature verify only, health check. Company credentials via ADR-022 resolver. Admin converted settlement → Decimal minor units; no Stripe FX. Sandbox/live key prefix enforcement. parseWebhook/refunds/fees/hosted checkout UI deferred.
+
+Files changed:
+
+`src/server/payments/providers/stripe/*`, `resolve-gateway-credentials.ts`, `minor-units.ts`, registry, provider types/errors, gateway form labels, logger redaction, `stripe` package, unit/integration Stripe adapter tests. Vault: Payments, API, Testing, Database, Security, Authorization, ADR-008 note, Home, Status, Plan, Phase 05, this log, [[TASK-052 Stripe Adapter]].
+
+Database changes:
+
+None. Reuses `payment_gateway_configs` method_code STRIPE. No Stripe columns on `payments`.
+
+Tests:
+
+Unit + integration with Stripe client fakes (no live Stripe). Manual adapter regression intact. typecheck/lint/format/test/integration/build.
+
+Decisions:
+
+None new. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for adapter scope. Webhook pipeline remains TASK-053.
+
+Next task:
+
+[[TASK-053 Stripe Webhook]]
+
+### 2026-08-24 — TASK-051
+
+Work completed:
+
+Implemented Manual Payment UI on the design system: invoice detail Record payment dialog and standalone `/payments/manual` entry (concrete company context). Server actions wrap TASK-050 `recordManualPayment` (no duplicated domain logic). Form loads MANUAL settlement currencies from company settlement config; conversion preview is display-only (Admin fixed rate / same-currency 1); fee and actual received labeled reconciliation-only; success states that invoice paid/outstanding are unchanged until TASK-060. Staff denied via `payment.manual.record` (US-007) for page, nav, actions, and submit path.
+
+Files changed:
+
+`src/server/payments/actions.ts`, `src/app/(app)/payments/{manual-payment-form,invoice-record-payment-panel}.tsx`, `src/app/(app)/payments/manual/{page,manual-payment-entry-client}.tsx`, invoice detail + nav-config, `tests/unit/payments-ui-authz.test.ts`. Vault: Payments, Screen Inventory, API, Authorization, Testing, Home, Status, Plan, Phase 05, this log, [[TASK-051 Manual Payment UI]].
+
+Database changes:
+
+None.
+
+Tests:
+
+`pnpm typecheck` / `lint` / `format:check` / `test` (327) / payment + full `RUN_DB_INTEGRATION=true test:integration` 59 pass / 4 skipped / `e2e` shell pass (live auth skipped) / `build` pass.
+
+Decisions:
+
+Reuse TASK-050 only; no new payment HTTP routes; no invoice balance mutation; US-015 / OPEN ADRs untouched.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-052 Stripe Adapter]]
+
+### 2026-08-24 — TASK-050
+
+Work completed:
+
+Implemented manual payment recording on the existing provider-neutral payment domain: `recordManualPayment` / `POST /api/payments/manual` forces MANUAL method+source, derives company/customer from the invoice, requires concrete company context, validates MANUAL settlement currency (BR-006), resolves Admin fixed rate (same-currency 1), stores optional fee/actual received as reconciliation only (BR-020), rejects applied > open balance from SUCCESSFUL payments (BR-010) without inventing overpayment allow (US-015), creates PENDING then confirms SUCCESSFUL via TASK-045 lifecycle (locked snapshot), uses ManualPaymentAdapter without hosted checkout/fake webhooks, does not invent gateway transaction IDs, and does not mutate invoice paid/outstanding (TASK-060). Staff remains denied (`payment.manual.record` / US-007 default deny). No payment UI (TASK-051).
+
+Files changed:
+
+`src/domain/payments/{manual,schema,types}.ts`, `src/server/payments/payment-service.ts`, `src/app/api/payments/manual/route.ts`, unit + integration payment-manual tests. Vault: Payments, API, Authorization, Testing, Error Handling, Unresolved Source Items (US-007), Home, Status, Plan, Phase 05, this log, [[TASK-050 Manual Payment Recording]].
+
+Database changes:
+
+None. Reuses TASK-044 `payments` (`method_code=MANUAL`).
+
+Tests:
+
+`pnpm typecheck` / `lint` / `format:check` / `test` (325) / payment integration (`payments-manual` + service + snapshot) pass / full `RUN_DB_INTEGRATION=true test:integration` 58 pass / 4 skipped / 1 unrelated `customers-crud` unique-constraint flake / `build` pass. E2E UI N/A (TASK-051); E2E-05 precursor covered by integration.
+
+Decisions:
+
+Same payment domain as gateway payments — no second system. Lifecycle is create PENDING → confirm SUCCESSFUL (immutable). US-007 kept denied. US-015 allow-workflow not invented. ADR-009 / ADR-010 / ADR-011 remain OPEN. No ADR update required.
+
+Problems:
+
+Full integration suite previously reported one unrelated flake in `customers-crud` (`supabase_auth_user_id` unique constraint on upsert). Root cause: TASK-050 `payments-manual` fixture IDs (`…ee50`/`…ee52`) collided with `customers-crud` (`…ee51`/`…ee52`) and left the auth UUID occupied. Fixed by remapping TASK-050 fixture IDs and clearing fixture users by id/auth UUID; no application behavior change. TASK-050 remains COMPLETE.
+
+Next task:
+
+[[TASK-051 Manual Payment UI]]
+
+### 2026-08-24 — TASK-049
+
+Work completed:
+
+Implemented per-company gateway configuration on existing TASK-020 `payment_gateway_configs`: sandbox/live environment, non-secret provider config, ADR-022 AES-256-GCM envelope-encrypted credentials (including webhook secret), derived Healthy/Configuration Error/Disabled status. Server-only `GatewayCredentialService` → `CredentialCipher` → `EnvironmentKeyProvider` with versioned env KEK keyring. Admin APIs and Company Gateway Settings UI under `gateway.credentials.manage`. Settlement currencies reused from TASK-020. Explicit credential replace; non-secret PATCH preserves envelope. Safe GET metadata only. No live charging, webhooks, adapters, or payment UI.
+
+Files changed:
+
+`src/server/gateway-credentials/*`, `src/domain/gateway-config/*`, `src/server/gateway-config/*`, gateway API routes + `/companies/{id}/gateways` UI, Prisma schema/migration, typed env keyring, audit actions/mask, logger redact, status badge. Vault: Payments, Settings, Companies and Brands, Data Model, Security, Authorization, API and Integrations, Database, Audit Logs, Testing, ADR-022 consequences, Home, Status, Plan, Phase 05, this log, [[TASK-049 Gateway Configuration Per Company]].
+
+Database changes:
+
+Migration `20260824270000_gateway_configuration_credentials` — `gateway_environment` enum; envelope + environment + `provider_config` columns on `payment_gateway_configs`. Applied with `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+Full `pnpm test` (314) + `RUN_DB_INTEGRATION=true pnpm test:integration` (58 passed / 4 skipped) + `typecheck` / `lint` / `format:check` / `build`. E2E N/A.
+
+Decisions:
+
+ADR-022 followed exactly. No competing config model. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None. Automatic KEK re-encrypt maintenance tooling deferred (key-version metadata retained).
+
+Next task:
+
+[[TASK-050 Manual Payment Recording]]
+
+### 2026-08-24 — ADR-022 (encryption architecture; not TASK-049)
+
+Work completed:
+
+Accepted [[05 Architecture Decisions#ADR-022 — Gateway credential encryption|ADR-022]]: application-managed AES-256-GCM envelope encryption for company gateway credentials; versioned server-only env KEK keyring; DEK-per-credential-set; AAD; safe config metadata only; server-only `GatewayCredentialService` → `CredentialCipher` → `KeyProvider` (`EnvironmentKeyProvider` now; external KMS later); explicit secret replace; controlled KEK rotation; fail closed. Cleared the TASK-049 encryption/key-management blocker. Did **not** implement gateway credential storage, migrations, APIs, or UI. TASK-049 remains NOT STARTED.
+
+Files changed:
+
+[[05 Architecture Decisions]] ADR-022 + ADR-021 consequences; [[Security]]; [[Engineering Rules]]; `.cursor/rules/gateway-credentials.mdc`; `.env.example` keyring placeholders; [[TASK-049 Gateway Configuration Per Company]] blocker notes; [[00 Home]]; [[02 Architecture]]; [[Data Model]]; [[Payments]]; [[Settings]]; [[Companies and Brands]]; [[Unresolved Source Items]] US-016; this log.
+
+Database changes:
+
+None.
+
+Tests:
+
+N/A (documentation / architecture only).
+
+Decisions:
+
+ADR-022 ACCEPTED. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None.
+
+Next task:
+
+[[TASK-049 Gateway Configuration Per Company]] (implement against ADR-022)
+
+### 2026-08-24 — TASK-048
+
+Work completed:
+
+Provider-agnostic PaymentProvider registry, capability flags, and adapter contract (ADR-008). Operations: createPaymentRequest, getPaymentStatus, verifyWebhook, parseWebhook, refundPayment, getFees, healthCheck. Normalized Pending/Successful/Failed mapping stays inside adapters. Default registry registers Manual only (no fake webhooks). Fake adapter is test-only. No live Stripe/PayPal/bank SDKs. No `if (provider === "stripe")` in core payment files. Credentials are not on payment records or gateway config (BR-008). Payment domain/service unchanged for charging.
+
+Files changed:
+
+`src/domain/payments/providers/*`, `src/server/payments/providers/*`, `tests/unit/payments-provider.test.ts`, Prisma comment on `payment_gateway_configs`. Updated [[Payments]], [[API and Integrations]], [[Testing]], [[Database]], [[Data Model]], [[Security]], [[Authorization]], [[05 Architecture Decisions]] ADR-008, [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 05 Payments]], this log, [[TASK-048 Payment Provider Abstraction]].
+
+Database changes:
+
+None. Reused TASK-020 `payment_gateway_configs` shape without secrets.
+
+Tests:
+
+Unit Fake contract + decoupling (303). Integration N/A per task; full `RUN_DB_INTEGRATION=true pnpm test:integration` 56 pass / 4 skipped. `typecheck` / `lint` / `format:check` / `build` pass.
+
+Decisions:
+
+None. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for abstraction scope. Encrypted credentials remain TASK-049. Live adapters remain TASK-052/054/056.
+
+Next task:
+
+[[TASK-049 Gateway Configuration Per Company]]
+
+### 2026-08-24 — TASK-047
+
+Work completed:
+
+Optional merchant/processor fee and actual received stored as reconciliation data only (BR-020). Actual received is never derived from converted settlement minus fee. Fee is excluded from conversion and invoice outstanding. Confirm does not rewrite fee or actual received. Staff cannot record payments or smuggle fee into converted settlement / outstanding via client payloads. No payment UI.
+
+Files changed:
+
+`src/domain/payments/reconciliation.ts`, `src/domain/money/outstanding.ts`, `src/server/payments/{payment-service,payment-repository}.ts`, unit reconciliation/money/service tests. Updated [[Payments]], [[Currency and Conversion]], [[Data Model]], [[Database]], [[Testing]], [[Audit Logs]], [[Authorization]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 05 Payments]], this log, [[TASK-047 Merchant Fee Reconciliation Fields]].
+
+Database changes:
+
+None. Reused `payments.processor_fee_amount` and `payments.actual_received_amount` from TASK-044.
+
+Tests:
+
+Unit fee-change does not alter outstanding/settlement + actual-received independence (291). Integration N/A for new cases; existing payment create/confirm still asserts fee is separate. Full `RUN_DB_INTEGRATION=true pnpm test:integration` 56 pass / 4 skipped. `typecheck` / `lint` / `format:check` / `build` pass.
+
+Decisions:
+
+None. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for reconciliation scope. Payment detail UI remains TASK-062. Allocation remains TASK-060.
+
+Next task:
+
+[[TASK-048 Payment Provider Abstraction]]
+
 ### 2026-08-24 — TASK-046
 
 Work completed:

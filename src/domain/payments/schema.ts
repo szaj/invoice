@@ -158,8 +158,9 @@ export type PaymentWriteInput = z.output<typeof paymentWriteSchema>;
 export type PaymentWriteFormValues = z.input<typeof paymentWriteSchema>;
 
 /**
- * Application create-pending input (TASK-045).
+ * Application create-pending input (TASK-045 / TASK-047).
  * Company/customer/rate/converted settlement are derived server-side — never trusted from the client.
+ * Optional fee and actual received are reconciliation-only; actual received is never derived from fee.
  */
 export const paymentCreatePendingSchema = z.strictObject({
   invoiceId: z.uuid({ error: PAYMENT_INVOICE_REQUIRED }),
@@ -176,6 +177,41 @@ export const paymentCreatePendingSchema = z.strictObject({
 
 export type PaymentCreatePendingInput = z.output<typeof paymentCreatePendingSchema>;
 export type PaymentCreatePendingFormValues = z.input<typeof paymentCreatePendingSchema>;
+
+/**
+ * Manual payment recording input (TASK-050 / Payments §10.6).
+ * Method and source are always MANUAL. Company/customer/rate/settlement math are server-derived.
+ * `externalTransactionId` is an optional human reference — never a fabricated gateway transaction id.
+ */
+export const paymentManualRecordSchema = z.strictObject({
+  invoiceId: z.uuid({ error: PAYMENT_INVOICE_REQUIRED }),
+  invoiceAmountApplied: moneyDecimalStringSchema(PAYMENT_AMOUNT_REQUIRED),
+  settlementCurrencyCode: currencyCodeSchema,
+  paymentDate: paymentDateSchema,
+  externalTransactionId: nullableText(200).optional().default(null),
+  notes: nullableText(5000).optional().default(null),
+  processorFeeAmount: optionalMoneyDecimalStringSchema.optional().default(null),
+  actualReceivedAmount: optionalMoneyDecimalStringSchema.optional().default(null),
+});
+
+export type PaymentManualRecordInput = z.output<typeof paymentManualRecordSchema>;
+export type PaymentManualRecordFormValues = z.input<typeof paymentManualRecordSchema>;
+
+/**
+ * Hosted checkout create input (TASK-058).
+ * Amount defaults server-side to open balance from SUCCESSFUL applications when omitted.
+ * Company/customer/rate/converted settlement are never trusted from the client.
+ */
+export const paymentHostedCheckoutSchema = z.strictObject({
+  invoiceId: z.uuid({ error: PAYMENT_INVOICE_REQUIRED }),
+  methodCode: paymentMethodCodeSchema,
+  settlementCurrencyCode: currencyCodeSchema,
+  /** Optional override; when omitted the service uses open invoice balance (BR-010). */
+  invoiceAmountApplied: moneyDecimalStringSchema(PAYMENT_AMOUNT_REQUIRED).optional(),
+});
+
+export type PaymentHostedCheckoutInput = z.output<typeof paymentHostedCheckoutSchema>;
+export type PaymentHostedCheckoutFormValues = z.input<typeof paymentHostedCheckoutSchema>;
 
 export const paymentListQuerySchema = z.strictObject({
   companyId: z.uuid().optional(),

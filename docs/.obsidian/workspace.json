@@ -11,10 +11,17 @@
             "id": "vault-home",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "canvas",
+              "state": {
+                "file": "Architecture.canvas",
+                "viewState": {
+                  "x": 820,
+                  "y": 400,
+                  "zoom": -0.5157824730186609
+                }
+              },
+              "icon": "lucide-layout-dashboard",
+              "title": "Architecture"
             }
           }
         ]
@@ -95,6 +102,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Architecture.canvas",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -180,6 +188,7 @@
   },
   "active": "vault-home",
   "lastOpenFiles": [
+    "Untitled 1.canvas",
     "00 Home.md",
     "Tasks/TASK-031 Invoice Draft Service.md",
     "Tasks/TASK-007 Company CRUD.md",
@@ -207,7 +216,6 @@
     "Technical/Authentication.md",
     "Tasks/TASK-038 Invoice Cancellation.md",
     "Tasks/TASK-059 Partial Payments.md",
-    "Tasks/TASK-098 Performance Hardening.md",
     "_build_backlog.py"
   ]
 }

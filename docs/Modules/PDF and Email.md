@@ -46,7 +46,7 @@ TASK-039 implements generation with `@react-pdf/renderer` (ADR-013): financial f
 
 - System records recipient, subject, sender user, timestamp, delivery request status, and provider message ID where available.
 
-TASK-041 implements send via `POST /api/invoices/{id}/email`: From uses `EMAIL_FROM` with company display name; Reply-To uses company branding/contact email; recipient defaults to customer email; Notifications §14.1 merge fields; stored `invoice_files` PDF attached (generates once if missing, never claims success without attachment); optional `paymentLink` placeholder; `email_logs` SENT/FAILED+retryable; failure does not un-issue. Invoice modules never import the Resend SDK. TASK-042 consumes that API from `InvoiceEmailPanel` (compose prefill, CC/BCC when permitted, history table, failure/retry UX without un-issuing).
+TASK-041 implements send via `POST /api/invoices/{id}/email`: From uses `EMAIL_FROM` with company display name; Reply-To uses company branding/contact email; recipient defaults to customer email; Notifications §14.1 merge fields; stored `invoice_files` PDF attached (generates once if missing, never claims success without attachment); optional `paymentLink` placeholder; `email_logs` SENT/FAILED+retryable; failure does not un-issue. Invoice modules never import the Resend SDK. TASK-042 consumes that API from `InvoiceEmailPanel` (compose prefill, CC/BCC when permitted, history table, failure/retry UX without un-issuing). TASK-058 adds optional payment-method selection on that email modal: creates hosted checkout PENDING rows and injects checkout URL(s) into `paymentLink`.
 
 ## Related Documentation
 

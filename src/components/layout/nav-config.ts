@@ -33,6 +33,11 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
         label: "Invoices",
         permissions: ["invoice.create"],
       },
+      {
+        href: "/payments/manual",
+        label: "Manual payment",
+        permissions: ["payment.manual.record"],
+      },
     ],
   },
   {

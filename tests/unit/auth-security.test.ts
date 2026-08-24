@@ -35,6 +35,14 @@ describe("public auth paths", () => {
     expect(isPublicAuthPath("/api/auth/logout")).toBe(true);
     expect(isPublicAuthPath("/api/auth/forgot-password")).toBe(true);
     expect(isPublicAuthPath("/api/auth/reset-password")).toBe(true);
+    expect(isPublicAuthPath("/api/webhooks/stripe")).toBe(true);
+    expect(isPublicAuthPath("/api/webhooks/stripe/11111111-1111-4111-8111-111111111111")).toBe(
+      true,
+    );
+    expect(isPublicAuthPath("/api/webhooks/paypal")).toBe(true);
+    expect(isPublicAuthPath("/api/webhooks/paypal/11111111-1111-4111-8111-111111111111")).toBe(
+      true,
+    );
     expect(isPublicAuthPath("/")).toBe(false);
     expect(isPublicAuthPath("/signup")).toBe(false);
     expect(isLoginPagePath("/login")).toBe(true);

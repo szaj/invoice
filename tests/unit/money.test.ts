@@ -122,6 +122,25 @@ describe("computeInvoiceOutstanding", () => {
     expect(result.currencyCode).toBe("GBP");
     expect(result.isSettledWithinTolerance).toBe(false);
   });
+
+  it("excludes merchant/processor fee and actual received from outstanding (BR-020)", () => {
+    const withoutFee = computeInvoiceOutstanding({
+      invoiceTotal: "100.00",
+      invoiceCurrencyCode: "USD",
+      confirmedApplications: ["40.00"],
+      decimalPrecision: 2,
+    });
+    const withFee = computeInvoiceOutstanding({
+      invoiceTotal: "100.00",
+      invoiceCurrencyCode: "USD",
+      confirmedApplications: ["40.00"],
+      decimalPrecision: 2,
+      processorFee: "3.00",
+      actualReceivedAmount: "37.00",
+    });
+    expect(withFee.amount).toBe(withoutFee.amount);
+    expect(withFee.amount).toBe("60");
+  });
 });
 
 describe("mixed currency guard", () => {

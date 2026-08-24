@@ -47,7 +47,7 @@ TASK-017 expires prior ACTIVE versions for the same pair when a new version is c
 
 TASK-018 selects the effective Admin fixed rate for a pair at timestamp `at` via `resolveFixedConversionRate` / `selectEffectiveRate` (`validFrom <= at < validTo`; same-currency → `1.000000000000`; missing → Admin configuration error; never market FX). Payment/settlement application remains later.
 
-TASK-019 provides centralized Prisma Decimal helpers in `src/domain/money`: `computeConvertedSettlementAmount` (fee excluded), rounding to currency precision, settings tolerance, outstanding from confirmed applications, and display-only formatting.
+TASK-019 provides centralized Prisma Decimal helpers in `src/domain/money`: `computeConvertedSettlementAmount` (fee excluded), rounding to currency precision, settings tolerance, outstanding from confirmed applications, and display-only formatting. TASK-052 adds Decimal-based `toMinorUnits` / `toProviderAmountInteger` for provider API boundaries (Stripe Checkout); adapters must not recompute Admin fixed rates or use JavaScript float money math.
 
 TASK-020 stores per-company, per-payment-method settlement currency enablement on `payment_gateway_configs` / `payment_gateway_settlement_currencies` (method enablement + currency codes; no credentials). Initial USD/AED (BR-007); Admin may enable other ACTIVE catalog codes. Non-enabled settlement currencies are rejected (BR-006). Encrypted credentials remain TASK-049; live charges remain later.
 
@@ -81,6 +81,8 @@ The application must use Admin-defined fixed conversion rates only. No live/auto
 | base_currency_equivalent | Recommended | For consolidated reporting using stored fixed reporting-rate snapshots. |
 
 TASK-046 persists these snapshot columns on `payments` and locks them when status becomes SUCCESSFUL. Create/confirm resolve only Admin fixed rates via [[TASK-018 Effective Rate Selection]] and convert with [[TASK-019 Money Calculation Utilities]] (Prisma Decimal; fee excluded). Confirm never re-resolves a stored snapshot, so a later Admin rate version cannot rewrite historical payments (BR-021). Market or gateway FX is never fetched or substituted.
+
+TASK-047 treats `processor_fee` / `actual_received_amount` as store-only reconciliation fields. Actual received is never computed as converted settlement minus fee. Outstanding continues to use invoice-currency applications only; fees never enter that formula.
 
 
 - Admin can create or update a fixed rate for a currency pair (for example GBP -> USD or AUD -> AED). A rate change applies only to future payment/conversion records; historical payment records keep the exact fixed-rate snapshot originally used.

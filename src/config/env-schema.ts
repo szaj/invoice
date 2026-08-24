@@ -68,6 +68,15 @@ export const serverEnvSchema = z.object({
   PAYPAL_WEBHOOK_ID: optionalSecret,
   BANK_PROCESSOR_API_KEY: optionalSecret,
   BANK_PROCESSOR_WEBHOOK_SECRET: optionalSecret,
+
+  /**
+   * ADR-022 gateway credential KEK keyring (server-only).
+   * Active version encrypts new material; prior versions may remain for decrypt during rotation.
+   * Never NEXT_PUBLIC_*. Never store KEKs in PostgreSQL.
+   */
+  GATEWAY_CREDENTIALS_KEY_VERSION: z.coerce.number().int().positive().optional(),
+  GATEWAY_CREDENTIALS_KEY_V1: optionalSecret,
+  GATEWAY_CREDENTIALS_KEY_V2: optionalSecret,
 });
 
 export const envSchema = z.object({
@@ -88,6 +97,8 @@ export const SERVER_SECRET_ENV_KEYS = [
   "DATABASE_URL",
   "DIRECT_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "GATEWAY_CREDENTIALS_KEY_V1",
+  "GATEWAY_CREDENTIALS_KEY_V2",
 ] as const;
 
 export interface EnvSource {
