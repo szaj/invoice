@@ -5,6 +5,7 @@ import {
   PAYMENT_CONFIRMED_IMMUTABLE,
   PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT,
   PAYMENT_HARD_DELETE_FORBIDDEN,
+  type PaymentConfirmedFinancialField,
   type PaymentRecord,
   type PaymentStatus,
 } from "@/domain/payments/types";
@@ -84,4 +85,22 @@ export function assertProcessorFeeExcludedFromSettlement(
 
 export function paymentConfirmedFinancialFieldSet(): ReadonlySet<string> {
   return new Set(PAYMENT_CONFIRMED_FINANCIAL_FIELDS);
+}
+
+/**
+ * BR-005: once SUCCESSFUL, confirmed financial fields must be unchanged.
+ * Used when a caller attempts a patch that includes financial keys.
+ */
+export function assertConfirmedFinancialFieldsUnchanged(
+  current: Pick<PaymentRecord, PaymentConfirmedFinancialField | "status">,
+  patch: Partial<Pick<PaymentRecord, PaymentConfirmedFinancialField>>,
+): void {
+  if (!isPaymentFinanciallyImmutable(current.status)) {
+    return;
+  }
+  for (const field of PAYMENT_CONFIRMED_FINANCIAL_FIELDS) {
+    if (field in patch && patch[field] !== current[field]) {
+      throw new Error(PAYMENT_CONFIRMED_IMMUTABLE);
+    }
+  }
 }

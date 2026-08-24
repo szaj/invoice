@@ -85,3 +85,11 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Visibility-only filter. Server-side authorization still gates each route. */
+export function filterNavGroups(allowedHrefs: ReadonlySet<string>): NavGroup[] {
+  return APP_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => allowedHrefs.has(item.href)),
+  })).filter((group) => group.items.length > 0);
+}

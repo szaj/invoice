@@ -74,11 +74,13 @@ The application must use Admin-defined fixed conversion rates only. No live/auto
 | settlement_currency | Yes | USD/AED initially. |
 | fixed_conversion_rate | Yes | Exact Admin-defined fixed rate snapshot used for this payment. |
 | rate_source | Yes | Admin Fixed Rate. |
-| rate_effective_at | Yes | Effective timestamp/version of the configured fixed rate used. |
+| rate_effective_at | Yes | Effective timestamp/version of the configured fixed rate used. Same-currency payments store the payment date. |
 | converted_settlement_amount | Yes | invoice_amount_applied x fixed_conversion_rate. Merchant fee excluded. |
 | processor_fee | Optional | Optional reconciliation field in settlement currency; never used in conversion or invoice-balance math. |
 | actual_received_amount | Optional | Amount actually recorded/confirmed as received, if the business wants to track it separately. |
 | base_currency_equivalent | Recommended | For consolidated reporting using stored fixed reporting-rate snapshots. |
+
+TASK-046 persists these snapshot columns on `payments` and locks them when status becomes SUCCESSFUL. Create/confirm resolve only Admin fixed rates via [[TASK-018 Effective Rate Selection]] and convert with [[TASK-019 Money Calculation Utilities]] (Prisma Decimal; fee excluded). Confirm never re-resolves a stored snapshot, so a later Admin rate version cannot rewrite historical payments (BR-021). Market or gateway FX is never fetched or substituted.
 
 
 - Admin can create or update a fixed rate for a currency pair (for example GBP -> USD or AUD -> AED). A rate change applies only to future payment/conversion records; historical payment records keep the exact fixed-rate snapshot originally used.

@@ -29,6 +29,66 @@ Next task:
 
 ## Entries
 
+### 2026-08-24 — TASK-046
+
+Work completed:
+
+Locked Admin-defined fixed-rate snapshots on payments (BR-020 / BR-021). Stored invoice/settlement currencies, applied amount, fixed rate, `rate_source`, `rate_effective_at`, `rate_version_id`, and converted settlement. Confirm completes the snapshot without re-resolving a stored rate. Later Admin rate versions do not rewrite historical payments. Processor fees remain excluded from converted settlement. Missing Admin rate still blocks cross-currency create and incomplete-snapshot confirm. No market/gateway FX. No payment UI.
+
+Files changed:
+
+`prisma/schema.prisma`, migration `20260824260000_payment_settlement_snapshot`, `src/domain/payments/{snapshot,types,schema}.ts`, `src/server/payments/{payment-service,payment-repository}.ts`, unit + integration snapshot tests. Updated [[Currency and Conversion]], [[Payments]], [[Data Model]], [[Database]], [[Testing]], [[Error Handling]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 05 Payments]], this log, [[TASK-046 Settlement Conversion Snapshot]].
+
+Database changes:
+
+`payments.rate_effective_at TIMESTAMPTZ` applied via `pnpm prisma:migrate:deploy`.
+
+Tests:
+
+Unit later-rate immutability + same-currency effective time + missing-rate confirm (284). Integration confirm-stores-snapshot / E2E-13 analogue + full suite 56 pass / 4 skipped. `typecheck` / `lint` / `format:check` / `build` pass.
+
+Decisions:
+
+None. Admin fixed-rate architecture unchanged. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+
+Problems:
+
+None for snapshot scope. Payment detail UI remains TASK-062. Merchant fee reconciliation fields remain TASK-047.
+
+Next task:
+
+[[TASK-047 Merchant Fee Reconciliation Fields]]
+
+### 2026-08-24 — TASK-045
+
+Work completed:
+
+Payment domain service on the TASK-044 `payments` schema (ADR-008). Create PENDING, confirm PENDING→SUCCESSFUL, fail PENDING→FAILED, GET list/detail. Server path: authorization → company scope → invoice/customer → settlement enablement → Admin fixed-rate resolution → Decimal conversion (fee excluded) → persist → audit. Confirmed financial fields are not rewritten (BR-004/005). No gateway HTTP, adapters, webhooks, allocation, or UI.
+
+Files changed:
+
+`src/domain/payments/{transitions,access,types,schema,invariants}.ts`, `src/server/payments/{payment-service,payment-repository}.ts`, `src/app/api/payments/**`, `src/domain/audit/types.ts`, unit + integration payment-service tests. Updated [[Payments]], [[API and Integrations]], [[Audit Logs]], [[Testing]], [[Authorization]], [[Error Handling]], [[00 Home]], [[04 Implementation Status]], [[03 Implementation Plan]], [[Phase 05 Payments]], this log, [[TASK-045 Payment Service]].
+
+Database changes:
+
+None.
+
+Tests:
+
+Unit lock-after-SUCCESSFUL, pending/confirm, Staff write denial (277). Integration create pending/confirm + full suite 55 pass / 4 skipped. `typecheck` / `lint` / `format:check` / `build` pass.
+
+Decisions:
+
+None. ADR-008 followed; ADR-009 / ADR-010 / ADR-011 remain OPEN. Overpayment (US-015) not decided.
+
+Problems:
+
+None for service scope. Snapshot `rate_effective_at` remains TASK-046. Charging/adapters remain later.
+
+Next task:
+
+[[TASK-046 Settlement Conversion Snapshot]]
+
 ### 2026-08-21 — TASK-044
 
 Work completed:

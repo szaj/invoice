@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { APP_NAV_GROUPS, isNavItemActive, type NavGroup } from "@/components/layout/nav-config";
+import { isNavItemActive, type NavGroup } from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
 
 type AppSidebarNavProps = {
@@ -48,11 +48,4 @@ export function AppSidebarNav({ groups, onNavigate, className }: AppSidebarNavPr
       ))}
     </nav>
   );
-}
-
-export function filterNavGroups(allowedHrefs: ReadonlySet<string>): NavGroup[] {
-  return APP_NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => allowedHrefs.has(item.href)),
-  })).filter((group) => group.items.length > 0);
 }

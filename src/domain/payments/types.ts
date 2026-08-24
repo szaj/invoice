@@ -26,6 +26,7 @@ export const PAYMENT_CONFIRMED_FINANCIAL_FIELDS = [
   "fixedConversionRate",
   "rateVersionId",
   "rateSource",
+  "rateEffectiveAt",
   "convertedSettlementAmount",
   "processorFeeAmount",
   "actualReceivedAmount",
@@ -52,6 +53,12 @@ export const PAYMENT_FEE_MUST_NOT_AFFECT_SETTLEMENT =
   "Processor fee must not change converted settlement amount (BR-020).";
 export const PAYMENT_JS_NUMBER_FORBIDDEN =
   "JavaScript number is not allowed for authoritative payment money fields.";
+export const PAYMENT_ILLEGAL_TRANSITION = "That payment status change is not allowed.";
+export const PAYMENT_INVOICE_NOT_PAYABLE =
+  "Payments cannot be recorded against draft or cancelled invoices.";
+export const PAYMENT_AMOUNT_NOT_POSITIVE = "Invoice amount applied must be greater than zero.";
+export const PAYMENT_RECORD_FORBIDDEN = "You do not have permission to record or confirm payments.";
+export const PAYMENT_COMPANY_SCOPE_REQUIRED = "Select a company before listing payments.";
 
 /**
  * Provider-agnostic payment record (Payments §10.3 / TASK-044).
@@ -72,6 +79,8 @@ export type PaymentRecord = {
   readonly fixedConversionRate: string;
   readonly rateVersionId: string | null;
   readonly rateSource: PaymentRateSource;
+  /** Effective timestamp of the Admin rate version used (payment date when same-currency). */
+  readonly rateEffectiveAt: Date | null;
   readonly convertedSettlementAmount: string;
   /** Optional reconciliation fee in settlement currency; excluded from conversion/balance. */
   readonly processorFeeAmount: string | null;

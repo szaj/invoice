@@ -83,13 +83,13 @@ Internal development vault for the multi-brand invoicing and payment-management 
 
 Current Phase: Phase 05 — Payments
 
-Current Task: [[TASK-045 Payment Service]] (NOT STARTED)
+Current Task: [[TASK-047 Merchant Fee Reconciliation Fields]] (NOT STARTED)
 
-Current Status: [[TASK-044 Payment Domain Schema]] is COMPLETE. Next buildable task is [[TASK-045 Payment Service]]. ADR-009 / ADR-010 / ADR-011 remain OPEN.
+Current Status: [[TASK-046 Settlement Conversion Snapshot]] is COMPLETE. Next buildable task is [[TASK-047 Merchant Fee Reconciliation Fields]]. ADR-009 / ADR-010 / ADR-011 remain OPEN.
 
-Next Task: [[TASK-045 Payment Service]]
+Next Task: [[TASK-047 Merchant Fee Reconciliation Fields]]
 
-Do not start TASK-045 until ready.
+Do not start TASK-047 until ready.
 
 ## Blocked Items
 

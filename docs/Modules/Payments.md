@@ -67,16 +67,22 @@ sequenceDiagram
 | Invoice Amount Applied | Amount applied to invoice balance. |
 | Settlement Currency | USD or AED initially. |
 | Fixed Conversion Rate | Locked Admin-defined fixed rate snapshot used for conversion. |
+| Rate Version ID | Snapshotted Admin fixed-rate version id; null when same-currency. |
+| Rate Effective At | Effective timestamp of the Admin rate version used; payment date when same-currency. |
 | Converted Settlement Amount | Invoice amount applied x fixed conversion rate; fee excluded. |
 | Processor / Merchant Fee | Optional reconciliation field in settlement currency; excluded from conversion and invoice balance. |
 | Actual Amount Received | Optional amount recorded/confirmed as actually received; not auto-derived from merchant fee. |
 | Payment Date | Business/effective payment date. |
 | Received At | System timestamp from webhook/API/manual confirmation. |
-| Rate Source | Admin Fixed Rate. |
+| Rate Source | Admin Fixed Rate, or Same Currency when invoice and settlement codes match. |
 | Notes | Internal notes. |
 | Created/Confirmed By | User or system/webhook actor. |
 
-TASK-044 persists the provider-agnostic `payments` table (ADR-008): company + invoice + customer FKs; `method_code` (STRIPE/PAYPAL/BANK_PROCESSOR/MANUAL); external transaction reference; status PENDING/SUCCESSFUL/FAILED; invoice/settlement currency codes; invoice amount applied; locked fixed-rate snapshot + optional `rate_version_id` placeholder; converted settlement; optional processor fee and actual received (reconciliation only, BR-020); payment date / received_at; source; notes; created/confirmed actors. No gateway credentials, charges, webhooks, allocation, or payment UI. Confirmed financial fields are immutable in domain invariants (BR-004/005); adjustments are Phase 06.
+TASK-044 persists the provider-agnostic `payments` table (ADR-008): company + invoice + customer FKs; `method_code` (STRIPE/PAYPAL/BANK_PROCESSOR/MANUAL); external transaction reference; status PENDING/SUCCESSFUL/FAILED; invoice/settlement currency codes; invoice amount applied; locked fixed-rate snapshot + optional `rate_version_id`; converted settlement; optional processor fee and actual received (reconciliation only, BR-020); payment date / received_at; source; notes; created/confirmed actors. No gateway credentials, charges, webhooks, allocation, or payment UI. Confirmed financial fields are immutable in domain invariants (BR-004/005); adjustments are Phase 06.
+
+TASK-045 adds the payment domain service and APIs on that schema: create PENDING, confirm (PENDING → SUCCESSFUL), fail (PENDING → FAILED), and GET list/detail. Each write follows authorization → company scope → invoice/customer validation → settlement enablement (BR-006) → Admin fixed-rate resolution (never market FX) → Decimal conversion (fee excluded, BR-020) → persistence → audit. Confirm/fail never rewrite financial columns. Staff cannot record/confirm (`payment.manual.record` denied). No gateway HTTP, allocation, or payment UI.
+
+TASK-046 persists `rate_effective_at` and locks the conversion snapshot on confirm (BR-020 / BR-021): invoice/settlement currencies, applied amount, Admin fixed rate, `rate_source`, `rate_effective_at`, `rate_version_id`, converted settlement. Confirm does not re-resolve a stored snapshot, so a later Admin rate version cannot rewrite a historical payment. Same-currency payments store rate 1, `rate_source=SAME_CURRENCY`, `rate_effective_at=payment_date`, and null `rate_version_id`. Missing Admin rate blocks cross-currency create and incomplete-snapshot confirm. Processor fees remain a separate reconciliation field. Payment detail UI is later (TASK-062).
 
 
 ### 10.4 Partial Payments

@@ -8,7 +8,7 @@ import {
   assertPaymentHardDeleteAllowed,
   assertProcessorFeeExcludedFromSettlement,
 } from "@/domain/payments/invariants";
-import { paymentWriteSchema } from "@/domain/payments/schema";
+import { paymentCreatePendingSchema, paymentWriteSchema } from "@/domain/payments/schema";
 import {
   PAYMENT_CONFIRMED_IMMUTABLE,
   PAYMENT_HARD_DELETE_FORBIDDEN,
@@ -96,6 +96,19 @@ describe("payment domain schema (TASK-044)", () => {
     expect(parsed.data.actualReceivedAmount).toBe("115.01");
     expect(parsed.data.convertedSettlementAmount).not.toBe("115.01");
 
+    const withSnapshot = paymentWriteSchema.safeParse(
+      validWrite({
+        rateVersionId: "99999999-9999-4999-8999-999999999999",
+        rateEffectiveAt: "2026-01-01T00:00:00.000Z",
+      }),
+    );
+    expect(withSnapshot.success).toBe(true);
+    if (!withSnapshot.success) {
+      throw new Error("expected snapshot fields to parse");
+    }
+    expect(withSnapshot.data.rateVersionId).toBe("99999999-9999-4999-8999-999999999999");
+    expect(withSnapshot.data.rateEffectiveAt?.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+
     assertProcessorFeeExcludedFromSettlement(
       {
         invoiceAmountApplied: parsed.data.invoiceAmountApplied,
@@ -129,8 +142,26 @@ describe("payment domain schema (TASK-044)", () => {
     expect(paymentBlock).toContain("methodCode");
     expect(paymentBlock).toContain("externalTransactionId");
     expect(paymentBlock).toContain("processorFeeAmount");
+    expect(paymentBlock).toContain("rateEffectiveAt");
+    expect(paymentBlock).toContain("rateVersionId");
     expect(paymentBlock).not.toMatch(/stripePaymentIntent/i);
     expect(paymentBlock).not.toMatch(/paypalOrder/i);
     expect(paymentBlock).not.toMatch(/secretKey|apiKey|webhookSecret/i);
+  });
+});
+
+describe("payment create-pending schema (TASK-045)", () => {
+  it("does not accept client-supplied rates, company, or converted settlement", () => {
+    const parsed = paymentCreatePendingSchema.safeParse({
+      invoiceId: INVOICE_ID,
+      methodCode: "MANUAL",
+      invoiceAmountApplied: "10.00",
+      settlementCurrencyCode: "USD",
+      paymentDate: "2026-08-24",
+      companyId: COMPANY_ID,
+      fixedConversionRate: "2",
+      convertedSettlementAmount: "20",
+    });
+    expect(parsed.success).toBe(false);
   });
 });

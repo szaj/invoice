@@ -21,7 +21,7 @@ Every task ID appears exactly once in this file.
 
 Do not mark anything complete merely because documentation exists.
 
-TASK-001 through [[TASK-044 Payment Domain Schema]] are COMPLETE. The next buildable task is [[TASK-045 Payment Service]] (NOT STARTED). **UI/UX Foundation Refresh — before TASK-042** remains COMPLETE as a non-numbered presentation checkpoint; see [[UI UX Design System]]. All later application tasks remain NOT STARTED.
+TASK-001 through [[TASK-046 Settlement Conversion Snapshot]] are COMPLETE. The next buildable task is [[TASK-047 Merchant Fee Reconciliation Fields]] (NOT STARTED). **UI/UX Foundation Refresh — before TASK-042** remains COMPLETE as a non-numbered presentation checkpoint; see [[UI UX Design System]]. All later application tasks remain NOT STARTED.
 
 Control: [[03 Implementation Plan]] · [[06 Development Log]] · [[00 Home]]
 
@@ -103,8 +103,8 @@ Phase index: [[Phase 05 Payments]]
 | Task | Status | Started | Completed | Commit | Notes |
 |---|---|---|---|---|---|
 | [[TASK-044 Payment Domain Schema]] | COMPLETE | 2026-08-21 | 2026-08-21 | | `payments` §10.3; provider-agnostic; Decimal; fee separate; no charges. |
-| [[TASK-045 Payment Service]] | NOT STARTED | | | |  |
-| [[TASK-046 Settlement Conversion Snapshot]] | NOT STARTED | | | |  |
+| [[TASK-045 Payment Service]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Domain service + GET/confirm/fail APIs; BR-004/005 lock; no charges/UI. |
+| [[TASK-046 Settlement Conversion Snapshot]] | COMPLETE | 2026-08-24 | 2026-08-24 | | Admin fixed-rate snapshot + `rate_effective_at`; BR-020/021 lock; no market FX. |
 | [[TASK-047 Merchant Fee Reconciliation Fields]] | NOT STARTED | | | |  |
 | [[TASK-048 Payment Provider Abstraction]] | NOT STARTED | | | |  |
 | [[TASK-049 Gateway Configuration Per Company]] | NOT STARTED | | | |  |

@@ -747,9 +747,11 @@ model Payment {
   settlementCurrencyCode   String            @map("settlement_currency_code") @db.Char(3)
   /// Locked Admin-defined fixed rate snapshot (or 1 for same-currency). Never recalculated (BR-020/021).
   fixedConversionRate      Decimal           @map("fixed_conversion_rate") @db.Decimal(20, 12)
-  /// Optional link to the fixed_conversion_rates version used (placeholder until TASK-046 fills on confirm).
+  /// Link to the fixed_conversion_rates version snapshotted for this payment (null when same-currency).
   rateVersionId            String?           @map("rate_version_id") @db.Uuid
   rateSource               PaymentRateSource @map("rate_source")
+  /// Effective timestamp of the Admin rate version used; payment date when same-currency (TASK-046).
+  rateEffectiveAt          DateTime?         @map("rate_effective_at") @db.Timestamptz
   /// invoice_amount_applied × fixed_conversion_rate; fee excluded (TASK-019 / BR-020).
   convertedSettlementAmount Decimal          @map("converted_settlement_amount") @db.Decimal(19, 4)
   /// Optional processor/merchant fee in settlement currency — reconciliation only.

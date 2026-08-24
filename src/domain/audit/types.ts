@@ -80,6 +80,9 @@ export const AuditActions = {
   INVOICE_EMAILED: "invoices.emailed",
   INVOICE_EMAIL_FAILED: "invoices.email_failed",
   INVOICE_DUPLICATED: "invoices.duplicated",
+  PAYMENT_CREATED: "payments.created",
+  PAYMENT_CONFIRMED: "payments.confirmed",
+  PAYMENT_FAILED: "payments.failed",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];

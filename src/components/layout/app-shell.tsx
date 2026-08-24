@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 
 import { CompanySwitcher, type CompanySwitcherOption } from "@/app/(app)/company-switcher";
 import { LogoutButton } from "@/app/(app)/logout-button";
-import { AppSidebarNav, filterNavGroups } from "@/components/layout/app-sidebar-nav";
-import { APP_NAV_GROUPS } from "@/components/layout/nav-config";
+import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
+import { APP_NAV_GROUPS, filterNavGroups } from "@/components/layout/nav-config";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { authorizePermission, type AuthorizationPrincipal } from "@/domain/authz/authorize";
 import type { CompanyContextSelection } from "@/domain/company-context/types";

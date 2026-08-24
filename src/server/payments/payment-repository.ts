@@ -26,6 +26,7 @@ type PaymentRow = {
   fixedConversionRate: { toString(): string };
   rateVersionId: string | null;
   rateSource: PaymentRateSource;
+  rateEffectiveAt: Date | null;
   convertedSettlementAmount: { toString(): string };
   processorFeeAmount: { toString(): string } | null;
   actualReceivedAmount: { toString(): string } | null;
@@ -54,6 +55,7 @@ function mapRow(row: PaymentRow): PaymentRecord {
     fixedConversionRate: toDecimalString(row.fixedConversionRate.toString()),
     rateVersionId: row.rateVersionId,
     rateSource: row.rateSource,
+    rateEffectiveAt: row.rateEffectiveAt,
     convertedSettlementAmount: toDecimalString(row.convertedSettlementAmount.toString()),
     processorFeeAmount:
       row.processorFeeAmount != null ? toDecimalString(row.processorFeeAmount.toString()) : null,
@@ -73,9 +75,9 @@ function mapRow(row: PaymentRow): PaymentRecord {
 }
 
 /**
- * Internal persistence for payment records (TASK-044).
- * No public charging API. No hard-delete of SUCCESSFUL payments (BR-004).
- * Confirmed financial field updates are blocked via domain invariants (BR-005); charging/service later.
+ * Internal persistence for payment records (TASK-044 / TASK-045).
+ * No gateway charging. No hard-delete of SUCCESSFUL payments (BR-004).
+ * Lifecycle updates never write confirmed financial columns (BR-005).
  */
 export class PrismaPaymentStore {
   async getPaymentById(id: string): Promise<PaymentRecord | null> {
@@ -94,9 +96,26 @@ export class PrismaPaymentStore {
   }
 
   async listPaymentsByCompany(companyId: string): Promise<PaymentRecord[]> {
+    return this.listPayments({ companyIds: [companyId] });
+  }
+
+  async listPayments(filters: {
+    readonly companyIds: readonly string[];
+    readonly invoiceId?: string;
+    readonly customerId?: string;
+    readonly status?: PaymentStatus;
+  }): Promise<PaymentRecord[]> {
+    if (filters.companyIds.length === 0) {
+      return [];
+    }
     const prisma = getPrisma();
     const rows = await prisma.payment.findMany({
-      where: { companyId },
+      where: {
+        companyId: { in: [...filters.companyIds] },
+        ...(filters.invoiceId ? { invoiceId: filters.invoiceId } : {}),
+        ...(filters.customerId ? { customerId: filters.customerId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+      },
       orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
     });
     return rows.map((row) => mapRow(row as PaymentRow));
@@ -118,6 +137,7 @@ export class PrismaPaymentStore {
         fixedConversionRate: input.fixedConversionRate,
         rateVersionId: input.rateVersionId,
         rateSource: input.rateSource,
+        rateEffectiveAt: input.rateEffectiveAt,
         convertedSettlementAmount: input.convertedSettlementAmount,
         processorFeeAmount: input.processorFeeAmount,
         actualReceivedAmount: input.actualReceivedAmount,
@@ -130,6 +150,41 @@ export class PrismaPaymentStore {
       },
     });
     return mapRow(row as PaymentRow);
+  }
+
+  /**
+   * Lifecycle update (TASK-045 / TASK-046). Never writes amounts, currencies, or the stored rate.
+   * Confirm may complete snapshot lock fields (`rateEffectiveAt`, `rateVersionId`) while PENDING.
+   * Concurrent confirm/fail is rejected when the row is no longer PENDING.
+   */
+  async updatePaymentLifecycle(
+    id: string,
+    expectedStatus: PaymentStatus,
+    patch: {
+      readonly status: PaymentStatus;
+      readonly receivedAt?: Date | null;
+      readonly confirmedByUserId?: string | null;
+      readonly rateEffectiveAt?: Date | null;
+      readonly rateVersionId?: string | null;
+    },
+  ): Promise<PaymentRecord | null> {
+    const prisma = getPrisma();
+    const result = await prisma.payment.updateMany({
+      where: { id, status: expectedStatus },
+      data: {
+        status: patch.status,
+        ...(patch.receivedAt !== undefined ? { receivedAt: patch.receivedAt } : {}),
+        ...(patch.confirmedByUserId !== undefined
+          ? { confirmedByUserId: patch.confirmedByUserId }
+          : {}),
+        ...(patch.rateEffectiveAt !== undefined ? { rateEffectiveAt: patch.rateEffectiveAt } : {}),
+        ...(patch.rateVersionId !== undefined ? { rateVersionId: patch.rateVersionId } : {}),
+      },
+    });
+    if (result.count === 0) {
+      return null;
+    }
+    return this.getPaymentById(id);
   }
 
   /**

@@ -142,6 +142,7 @@ export const paymentWriteSchema = z.strictObject({
   fixedConversionRate: moneyDecimalStringSchema(PAYMENT_INVALID_INPUT),
   rateVersionId: nullableUuid,
   rateSource: paymentRateSourceSchema,
+  rateEffectiveAt: receivedAtSchema.optional().default(null),
   convertedSettlementAmount: moneyDecimalStringSchema(PAYMENT_INVALID_INPUT),
   processorFeeAmount: optionalMoneyDecimalStringSchema,
   actualReceivedAmount: optionalMoneyDecimalStringSchema,
@@ -155,3 +156,32 @@ export const paymentWriteSchema = z.strictObject({
 
 export type PaymentWriteInput = z.output<typeof paymentWriteSchema>;
 export type PaymentWriteFormValues = z.input<typeof paymentWriteSchema>;
+
+/**
+ * Application create-pending input (TASK-045).
+ * Company/customer/rate/converted settlement are derived server-side — never trusted from the client.
+ */
+export const paymentCreatePendingSchema = z.strictObject({
+  invoiceId: z.uuid({ error: PAYMENT_INVOICE_REQUIRED }),
+  methodCode: paymentMethodCodeSchema,
+  invoiceAmountApplied: moneyDecimalStringSchema(PAYMENT_AMOUNT_REQUIRED),
+  settlementCurrencyCode: currencyCodeSchema,
+  paymentDate: paymentDateSchema,
+  externalTransactionId: nullableText(200).optional().default(null),
+  source: paymentSourceSchema.optional().default("MANUAL"),
+  notes: nullableText(5000).optional().default(null),
+  processorFeeAmount: optionalMoneyDecimalStringSchema.optional().default(null),
+  actualReceivedAmount: optionalMoneyDecimalStringSchema.optional().default(null),
+});
+
+export type PaymentCreatePendingInput = z.output<typeof paymentCreatePendingSchema>;
+export type PaymentCreatePendingFormValues = z.input<typeof paymentCreatePendingSchema>;
+
+export const paymentListQuerySchema = z.strictObject({
+  companyId: z.uuid().optional(),
+  invoiceId: z.uuid().optional(),
+  customerId: z.uuid().optional(),
+  status: paymentStatusSchema.optional(),
+});
+
+export type PaymentListQuery = z.output<typeof paymentListQuerySchema>;

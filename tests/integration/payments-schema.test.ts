@@ -30,6 +30,8 @@ describe.skipIf(!runDbIntegration)("payment domain schema integration", () => {
     expect(byName.get("converted_settlement_amount")).toBe("numeric");
     expect(byName.get("processor_fee_amount")).toBe("numeric");
     expect(byName.get("actual_received_amount")).toBe("numeric");
+    expect(byName.get("rate_effective_at")).toBe("timestamp with time zone");
+    expect(byName.get("rate_version_id")).toBe("uuid");
     expect(byName.has("stripe_payment_intent_id")).toBe(false);
     expect(byName.has("api_key")).toBe(false);
   }, 30_000);
