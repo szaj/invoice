@@ -208,7 +208,6 @@ describe.skipIf(!runDbIntegration)("invoice versions integration", () => {
       {
         referencePo: "X",
         assignedStaffUserId: null,
-        complianceStatus: "NOT_REVIEWED",
         internalNotes: null,
         customerNotes: null,
       },
@@ -225,7 +224,6 @@ describe.skipIf(!runDbIntegration)("invoice versions integration", () => {
       {
         referencePo: "PO-37",
         assignedStaffUserId: null,
-        complianceStatus: "UNDER_REVIEW",
         internalNotes: "internal",
         customerNotes: "thanks",
       },

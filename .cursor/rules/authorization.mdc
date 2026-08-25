@@ -1,6 +1,7 @@
 ---
-description: Supabase Auth is identity only. App DB authorizes. Always apply.
-alwaysApply: true
+description: Supabase Auth is identity only. App DB authorizes company-scoped operations.
+globs: src/domain/auth/**,src/domain/authz/**,src/domain/company-context/**,src/domain/**/access.ts,src/domain/users/**,src/server/auth/**,src/server/authz/**,src/server/company-context/**,src/server/users/**,src/server/**/actions.ts,src/server/**/*service*.ts,src/lib/supabase/**,src/proxy.ts,src/app/api/**,src/app/auth/**,src/app/login/**,src/app/forgot-password/**,src/app/reset-password/**,src/app/**/users/**,tests/**/auth*.ts,tests/**/authz*.ts,tests/**/company-context*.ts,tests/**/*authz*.ts,scripts/bootstrap-admin.ts
+alwaysApply: false
 ---
 
 # Authorization Rule
@@ -21,4 +22,4 @@ Frontend visibility is not authorization. Deny forged URLs, Route Handlers, Serv
 
 Never treat `authenticated = authorized` as valid.
 
-Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-003), `docs/Foundation/Roles and Permissions.md`, `docs/Foundation/Companies and Brands.md`.
+Authoritative docs: `docs/01 Current Architecture.md`, `docs/02 Current Product Rules.md`, `docs/05 Architecture Decisions.md` (ADR-003).

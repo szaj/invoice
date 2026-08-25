@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+
+import { GENERIC_FORBIDDEN } from "@/domain/authz/errors";
+import { ADJUSTMENT_CANCEL_INVALID_INPUT } from "@/domain/payments/adjustment-history";
+import { isSameOriginRequest } from "@/server/auth/request";
+import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
+import { cancelPaymentAdjustment } from "@/server/payments/adjustment-history-service";
+
+/**
+ * POST /api/payments/{id}/adjustments/{adjustmentId}/cancel — soft-cancel (TASK-068).
+ * Sets CANCELLED; retains row for audit; excludes from financial totals. Never deletes.
+ * Requires payment.adjust. UI remains TASK-069.
+ */
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string; adjustmentId: string }> },
+) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ ok: false, error: GENERIC_FORBIDDEN }, { status: 403 });
+  }
+
+  let body: unknown = {};
+  const raw = await request.text();
+  if (raw.trim().length > 0) {
+    try {
+      body = JSON.parse(raw) as unknown;
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: ADJUSTMENT_CANCEL_INVALID_INPUT },
+        { status: 400 },
+      );
+    }
+  }
+
+  const { id, adjustmentId } = await context.params;
+  const actor = await getRequestAuthorizationPrincipal();
+  const result = await cancelPaymentAdjustment(actor, id, adjustmentId, body);
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    payment: result.data.payment,
+    adjustment: result.data.adjustment,
+  });
+}

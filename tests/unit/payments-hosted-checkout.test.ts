@@ -101,6 +101,7 @@ function customerRecord(): CustomerRecord {
     defaultCompanyId: COMPANY_A,
     paymentPreference: null,
     status: "ACTIVE",
+    complianceStatus: "NOT_REVIEWED",
     assignedStaffUserId: null,
     internalNotes: null,
     tags: [],
@@ -229,6 +230,7 @@ function toPaymentRecord(input: PaymentWriteInput, id: string): PaymentRecord {
     methodCode: input.methodCode,
     externalTransactionId: input.externalTransactionId,
     status: input.status,
+    complianceStatus: "NOT_REVIEWED",
     invoiceCurrencyCode: input.invoiceCurrencyCode,
     invoiceAmountApplied: input.invoiceAmountApplied,
     settlementCurrencyCode: input.settlementCurrencyCode,
@@ -331,6 +333,35 @@ function createHostedDeps(seed: {
       },
       async listInvoices(filters) {
         return invoices.filter((row) => filters.companyIds.includes(row.companyId));
+      },
+      async updatePaymentAllocation(invoiceId, input) {
+        const index = invoices.findIndex((row) => row.id === invoiceId);
+        if (index < 0) {
+          throw new Error("INVOICE_NOT_FOUND");
+        }
+        const current = invoices[index]!;
+        const updated = {
+          ...current,
+          confirmedPaidAmount: input.confirmedPaidAmount,
+          outstandingAmount: input.outstandingAmount,
+          status: input.status,
+          updatedAt: new Date(),
+        };
+        invoices[index] = updated;
+        return updated;
+      },
+    },
+    settings: {
+      async getSettings() {
+        return {
+          id: "system",
+          reportingCurrencyCode: "USD",
+          defaultTimezone: "UTC",
+          roundingTolerance: "0.01",
+          invoiceNumberIncludeYear: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
       },
     },
     customers: {

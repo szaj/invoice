@@ -51,6 +51,11 @@ export default async function Home() {
       label: "Invoices",
       description: "Create drafts, issue invoices, and review totals.",
     });
+    links.push({
+      href: "/payments",
+      label: "Payments",
+      description: "Browse company-scoped payment transactions.",
+    });
   }
   if (canWriteCompanies) {
     links.push({

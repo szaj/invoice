@@ -1,0 +1,37 @@
+---
+description: Minimal task execution
+alwaysApply: true
+---
+
+For numbered TASKs:
+
+1. Read the current TASK in `docs/Active/Tasks/` first.
+2. Read [[01 Current Architecture]] / [[02 Current Product Rules]] only when relevant to the TASK.
+3. Read direct task references (Active modules, ADRs, unresolved items) only as needed.
+4. Read directly relevant source code.
+
+Do not:
+
+- Inspect `docs/Archive/**` during normal TASK execution.
+- Scan the full vault, completed TASKs, all ADRs, or unrelated code.
+- Rediscover established architecture from vault history — use `.cursor/rules/` and current-state docs.
+- Resolve OPEN decisions by assumption.
+
+Treat COMPLETE dependencies as established via [[03 Current Implementation Status]] (do not open archived TASK files merely to verify COMPLETE).
+
+Archived material may be consulted only if current active documents explicitly lack necessary historical information **and** the user specifically requests investigation.
+
+Implement only the requested TASK. Update only necessary current-state docs / Active task notes / recent Development Log.
+
+When a TASK becomes COMPLETE:
+
+1. Update Current Implementation Status.
+2. Update Current Plan / next task.
+3. Update Architecture / Product Rules only if facts changed.
+4. Move the TASK file from `docs/Active/Tasks/` to `docs/Archive/Completed Tasks/`.
+5. Keep task ID and history intact.
+6. Do not leave completed TASK details in normal active context.
+
+See `docs/Active/Vault Completion Workflow.md`.
+
+Keep the final report concise. Do not start the next TASK.

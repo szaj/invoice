@@ -113,6 +113,10 @@ export default async function CustomerProfilePage({
           <DetailField label="Name" value={customer.displayName} />
           <DetailField label="Type" value={customer.customerType} />
           <DetailField label="Status" value={<StatusBadge status={customer.status} />} />
+          <DetailField
+            label="Compliance"
+            value={<StatusBadge status={customer.complianceStatus} />}
+          />
           <DetailField label="Contact person" value={customer.contactPerson} />
           <DetailField label="Email" value={customer.email} />
           <DetailField label="Phone" value={customer.phone} />

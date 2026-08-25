@@ -28,6 +28,8 @@
 // TASK-039 adds invoice_files (PDF metadata; blob in StorageService / R2 — ADR-006 / ADR-013).
 // TASK-041 adds email_logs (invoice email delivery; EmailService → ResendAdapter — ADR-007).
 // TASK-044 adds payments (provider-agnostic payment records; no charges/webhooks/allocation).
+// TASK-063 adds payment_adjustments (dispute open/under review; original SUCCESSFUL payment immutable).
+// TASK-071 adds compliance_status on customers/payments (invoices already had it) and compliance_reviews.
 // Do not add payment charging, customer portal, or live FX here.
 //
 // Conventions for later models (PostgreSQL / Prisma):
@@ -140,6 +142,8 @@ model User {
   sentEmailLogs          EmailLog[] @relation("EmailLogSentBy")
   createdPayments        Payment[] @relation("PaymentCreatedBy")
   confirmedPayments      Payment[] @relation("PaymentConfirmedBy")
+  createdPaymentAdjustments PaymentAdjustment[] @relation("PaymentAdjustmentCreatedBy")
+  complianceReviews      ComplianceReview[] @relation("ComplianceReviewReviewer")
 
   @@map("users")
 }
@@ -251,6 +255,8 @@ model Company {
   emailLogs              EmailLog[]
   payments               Payment[]
   paymentEvents          PaymentEvent[]
+  paymentAdjustments     PaymentAdjustment[]
+  complianceReviews      ComplianceReview[]
 
   @@index([reportingGroupId])
   @@map("companies")
@@ -480,6 +486,8 @@ model Customer {
   defaultCompanyId           String?           @map("default_company_id") @db.Uuid
   paymentPreference          String?           @map("payment_preference")
   status                     CustomerStatus    @default(ACTIVE)
+  /// Compliance review status (TASK-071). Default Not Reviewed; Staff cannot change.
+  complianceStatus           ComplianceStatus  @default(NOT_REVIEWED) @map("compliance_status")
   assignedStaffUserId        String?           @map("assigned_staff_user_id") @db.Uuid
   internalNotes              String?           @map("internal_notes")
   tags                       String[]          @default([])
@@ -497,6 +505,7 @@ model Customer {
   payments                   Payment[]
 
   @@index([status])
+  @@index([complianceStatus])
   @@index([displayName])
   @@index([email])
   @@index([defaultCompanyId])
@@ -552,13 +561,42 @@ enum InvoiceStatus {
   @@map("invoice_status")
 }
 
-enum InvoiceComplianceStatus {
+/// Shared compliance review statuses (Compliance §11.1 / TASK-071).
+enum ComplianceStatus {
   NOT_REVIEWED
   UNDER_REVIEW
   APPROVED
   FLAGGED
 
-  @@map("invoice_compliance_status")
+  @@map("compliance_status")
+}
+
+enum ComplianceReviewSubjectType {
+  INVOICE
+  PAYMENT
+  CUSTOMER
+
+  @@map("compliance_review_subject_type")
+}
+
+/// Compliance review history row (TASK-071 skeleton). Notes/reason codes are TASK-073.
+/// Subject status is also denormalized on invoice/payment/customer for queues.
+model ComplianceReview {
+  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String                       @map("company_id") @db.Uuid
+  subjectType    ComplianceReviewSubjectType  @map("subject_type")
+  subjectId      String                       @map("subject_id") @db.Uuid
+  status         ComplianceStatus
+  reviewerUserId String?                      @map("reviewer_user_id") @db.Uuid
+  createdAt      DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+  company        Company                      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  reviewer       User?                        @relation("ComplianceReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([subjectType, subjectId])
+  @@index([createdAt])
+  @@map("compliance_reviews")
 }
 
 /// Invoice header (Invoices §8.2 / TASK-030). BR-001: exactly one company and one customer.
@@ -577,12 +615,12 @@ model Invoice {
   currencyCode     String                  @map("currency_code") @db.Char(3)
   referencePo      String?                 @map("reference_po")
   assignedStaffUserId String?              @map("assigned_staff_user_id") @db.Uuid
-  status           InvoiceStatus           @default(DRAFT)
-  complianceStatus InvoiceComplianceStatus @default(NOT_REVIEWED) @map("compliance_status")
+  status           InvoiceStatus      @default(DRAFT)
+  complianceStatus ComplianceStatus   @default(NOT_REVIEWED) @map("compliance_status")
   /// Never printed or emailed (Invoices §8.2).
-  internalNotes    String?                 @map("internal_notes")
+  internalNotes    String?            @map("internal_notes")
   /// Optional invoice-visible notes (PDF/email later).
-  customerNotes    String?                 @map("customer_notes")
+  customerNotes    String?            @map("customer_notes")
   /// Stored totals (TASK-034). Recalculated from line items / confirmed payment applications.
   subtotal             Decimal @default(0) @map("subtotal") @db.Decimal(19, 4)
   /// Always 0 while ADR-010 remains OPEN — not a manually editable discount.
@@ -596,16 +634,16 @@ model Invoice {
   cancellationReason   String?   @map("cancellation_reason")
   cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz
   cancelledByUserId    String?   @map("cancelled_by_user_id") @db.Uuid
-  createdByUserId  String?                 @map("created_by_user_id") @db.Uuid
-  updatedByUserId  String?                 @map("updated_by_user_id") @db.Uuid
-  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz
-  company          Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  customer         Customer                @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  assignedStaff    User?                   @relation("InvoiceAssignedStaff", fields: [assignedStaffUserId], references: [id], onDelete: SetNull)
-  createdBy        User?                   @relation("InvoiceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy        User?                   @relation("InvoiceUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  cancelledBy      User?                   @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  createdByUserId  String?            @map("created_by_user_id") @db.Uuid
+  updatedByUserId  String?            @map("updated_by_user_id") @db.Uuid
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  company          Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  assignedStaff    User?              @relation("InvoiceAssignedStaff", fields: [assignedStaffUserId], references: [id], onDelete: SetNull)
+  createdBy        User?              @relation("InvoiceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy        User?              @relation("InvoiceUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy      User?              @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   lineItems        InvoiceItem[]
   versions         InvoiceVersion[]
   files            InvoiceFile[]
@@ -614,6 +652,7 @@ model Invoice {
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, status])
+  @@index([companyId, complianceStatus])
   @@index([customerId])
   @@index([assignedStaffUserId])
   @@index([invoiceDate])
@@ -754,7 +793,7 @@ enum PaymentRateSource {
 
 /// Provider-agnostic payment record (Payments §10.3 / TASK-044 / ADR-008).
 /// Core application statuses: Pending / Successful / Failed.
-/// Refunds/disputes/chargebacks are later linked adjustments — never rewrite SUCCESSFUL financial fields (BR-004/005).
+/// Refunds/disputes/chargebacks are linked adjustments — never rewrite SUCCESSFUL financial fields (BR-004/005).
 /// Merchant/processor fee and actual received are optional reconciliation only (BR-020); excluded from conversion and invoice balance.
 /// No gateway credentials, Stripe-/PayPal-specific columns, charging, webhooks, or allocation here.
 model Payment {
@@ -768,6 +807,8 @@ model Payment {
   /// External provider/manual reference. Provider-neutral; not a credential.
   externalTransactionId    String?           @map("external_transaction_id")
   status                   PaymentStatus     @default(PENDING)
+  /// Compliance review status (TASK-071). Default Not Reviewed; Staff cannot change.
+  complianceStatus         ComplianceStatus  @default(NOT_REVIEWED) @map("compliance_status")
   invoiceCurrencyCode      String            @map("invoice_currency_code") @db.Char(3)
   /// Amount applied to the invoice balance in invoice currency (ADR-004).
   invoiceAmountApplied     Decimal           @map("invoice_amount_applied") @db.Decimal(19, 4)
@@ -800,8 +841,10 @@ model Payment {
   createdBy                User?             @relation("PaymentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   confirmedBy              User?             @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
   events                   PaymentEvent[]
+  adjustments              PaymentAdjustment[]
 
   @@index([companyId, status])
+  @@index([companyId, complianceStatus])
   @@index([invoiceId])
   @@index([customerId])
   @@index([methodCode, externalTransactionId])
@@ -849,4 +892,64 @@ model PaymentEvent {
   @@index([correlationId])
   @@index([createdAt])
   @@map("payment_events")
+}
+
+/// Adjustment kind on a linked original payment (Data Model / Refunds Disputes Chargebacks).
+enum PaymentAdjustmentType {
+  DISPUTE
+  REFUND
+  CHARGEBACK
+  REVERSAL
+  NOTE
+
+  @@map("payment_adjustment_type")
+}
+
+/// Adjustment lifecycle. Dispute OPEN / UNDER_REVIEW has no financial deduction (BR-024).
+enum PaymentAdjustmentStatus {
+  OPEN
+  UNDER_REVIEW
+  PROCESSED
+  DEBITED
+  LOST
+  WON
+  REVERSED
+  CANCELLED
+
+  @@map("payment_adjustment_status")
+}
+
+/// Linked refund/dispute/chargeback/note record (BR-023). Original SUCCESSFUL payment is never overwritten.
+/// TASK-063 writes DISPUTE + OPEN/UNDER_REVIEW. TASK-064/065 write REFUND + PROCESSED.
+/// TASK-066 writes CHARGEBACK + DEBITED/LOST (included in CB/RF; BR-024).
+/// TASK-067 writes REVERSAL + WON/REVERSED (subtracts from CB/RF; does not edit debit row).
+/// TASK-068 writes NOTE + OPEN (informational); cancel sets CANCELLED (retained; excluded from totals).
+model PaymentAdjustment {
+  id                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String                    @map("company_id") @db.Uuid
+  paymentId         String                    @map("payment_id") @db.Uuid
+  type              PaymentAdjustmentType
+  status            PaymentAdjustmentStatus
+  /// Stored disputed/refund/chargeback amount (Decimal). Open disputes do not deduct outstanding or CB/RF.
+  amount            Decimal                   @db.Decimal(19, 4)
+  invoiceAmount     Decimal?                  @map("invoice_amount") @db.Decimal(19, 4)
+  settlementAmount  Decimal?                  @map("settlement_amount") @db.Decimal(19, 4)
+  reason            String?
+  merchantReference String?                   @map("merchant_reference")
+  notes             String?
+  effectiveDate     DateTime                  @map("effective_date") @db.Date
+  openedAt          DateTime?                 @map("opened_at") @db.Timestamptz
+  processedAt       DateTime?                 @map("processed_at") @db.Timestamptz
+  resolvedAt        DateTime?                 @map("resolved_at") @db.Timestamptz
+  createdByUserId   String?                   @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  company           Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  payment           Payment                   @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  createdBy         User?                     @relation("PaymentAdjustmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId, type, status])
+  @@index([companyId, type])
+  @@index([effectiveDate])
+  @@map("payment_adjustments")
 }

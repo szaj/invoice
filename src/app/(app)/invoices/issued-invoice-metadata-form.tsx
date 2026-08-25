@@ -6,7 +6,6 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { INVOICE_COMPLIANCE_STATUSES } from "@/domain/invoices/types";
 import { updateIssuedInvoiceMetadataAction } from "@/server/invoices/actions";
 
 export function IssuedInvoiceMetadataForm({
@@ -17,7 +16,6 @@ export function IssuedInvoiceMetadataForm({
   defaultValues: {
     referencePo: string;
     assignedStaffUserId: string;
-    complianceStatus: string;
     internalNotes: string;
     customerNotes: string;
   };
@@ -35,7 +33,6 @@ export function IssuedInvoiceMetadataForm({
     const payload = {
       referencePo: String(form.get("referencePo") ?? ""),
       assignedStaffUserId: String(form.get("assignedStaffUserId") ?? "") || null,
-      complianceStatus: String(form.get("complianceStatus") ?? "NOT_REVIEWED"),
       internalNotes: String(form.get("internalNotes") ?? ""),
       customerNotes: String(form.get("customerNotes") ?? ""),
     };
@@ -54,7 +51,8 @@ export function IssuedInvoiceMetadataForm({
     <form className="grid gap-4" onSubmit={onSubmit} noValidate>
       <p className="text-muted-foreground text-xs">
         Non-financial metadata only. Financial fields, dates, currency, customer, and line items
-        cannot be changed while ADR-009 is open.
+        cannot be changed while ADR-009 is open. Compliance status is changed via compliance review
+        (Admin/Compliance only).
       </p>
       <div className="grid gap-2">
         <Label htmlFor="issued-referencePo">Reference / PO</Label>
@@ -71,21 +69,6 @@ export function IssuedInvoiceMetadataForm({
           name="assignedStaffUserId"
           defaultValue={defaultValues.assignedStaffUserId}
         />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="issued-complianceStatus">Compliance status</Label>
-        <select
-          id="issued-complianceStatus"
-          name="complianceStatus"
-          className="border-input bg-background flex h-9 rounded-md border px-3 text-sm"
-          defaultValue={defaultValues.complianceStatus}
-        >
-          {INVOICE_COMPLIANCE_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status.replaceAll("_", " ")}
-            </option>
-          ))}
-        </select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="issued-internalNotes">Internal notes</Label>

@@ -35,7 +35,7 @@ export function InvoiceTotalsPanel({
     {
       label: "Confirmed paid",
       value: confirmedPaidAmount,
-      hint: "From confirmed payment applications (BR-009). Zero until payments exist.",
+      hint: "Sum of SUCCESSFUL payment applications in invoice currency (BR-009).",
     },
     { label: "Outstanding", value: outstandingAmount },
   ];

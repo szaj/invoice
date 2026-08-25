@@ -82,9 +82,17 @@ export const AuditActions = {
   INVOICE_EMAILED: "invoices.emailed",
   INVOICE_EMAIL_FAILED: "invoices.email_failed",
   INVOICE_DUPLICATED: "invoices.duplicated",
+  INVOICE_PAYMENT_ALLOCATED: "invoices.payment_allocated",
   PAYMENT_CREATED: "payments.created",
   PAYMENT_CONFIRMED: "payments.confirmed",
   PAYMENT_FAILED: "payments.failed",
+  PAYMENT_DISPUTE_OPENED: "payments.dispute_opened",
+  PAYMENT_REFUND_PROCESSED: "payments.refund_processed",
+  PAYMENT_CHARGEBACK_DEBITED: "payments.chargeback_debited",
+  PAYMENT_CHARGEBACK_WON: "payments.chargeback_won",
+  PAYMENT_ADJUSTMENT_NOTE_ADDED: "payments.adjustment_note_added",
+  PAYMENT_ADJUSTMENT_CANCELLED: "payments.adjustment_cancelled",
+  COMPLIANCE_STATUS_UPDATED: "compliance.status_updated",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
@@ -100,4 +108,6 @@ export const AuditEntityTypes = {
   CUSTOMER: "customer",
   INVOICE: "invoice",
   PAYMENT: "payment",
+  PAYMENT_ADJUSTMENT: "payment_adjustment",
+  COMPLIANCE_REVIEW: "compliance_review",
 } as const;

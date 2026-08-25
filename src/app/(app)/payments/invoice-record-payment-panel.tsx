@@ -70,8 +70,10 @@ export function InvoiceRecordPaymentPanel({
           <DialogHeader>
             <DialogTitle>Record manual payment</DialogTitle>
             <DialogDescription>
-              Confirmation creates an immutable SUCCESSFUL payment. Invoice balance allocation is
-              unchanged until a later allocation task.
+              Confirmation creates an immutable SUCCESSFUL payment. You may record multiple partial
+              payments against the remaining open balance (SUCCESSFUL applications). Invoice Paid /
+              Successful payments recalculate confirmed paid, outstanding, and Partially Paid/Paid
+              status. Overpayment is rejected by default (BR-010 / US-015).
             </DialogDescription>
           </DialogHeader>
           {context ? (

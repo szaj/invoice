@@ -1,0 +1,47 @@
+﻿# Dependencies / package stores
+node_modules/
+.pnpm-store/
+
+# Next.js build output
+.next/
+out/
+
+# Prisma generated client
+src/generated/
+
+# Env / secrets
+.env
+.env.*
+
+# Logs / debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.vercel/
+
+# Local object storage
+.data/
+
+# Obsidian vault archive — historical only; not for normal Cursor TASK context
+docs/Archive/**
+
+# Obsidian workspace chrome (optional noise)
+docs/.obsidian/

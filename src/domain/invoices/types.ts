@@ -1,3 +1,5 @@
+import type { ComplianceStatus } from "@/domain/compliance/types";
+
 export const INVOICE_STATUSES = [
   "DRAFT",
   "ISSUED",
@@ -9,14 +11,9 @@ export const INVOICE_STATUSES = [
 
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
-export const INVOICE_COMPLIANCE_STATUSES = [
-  "NOT_REVIEWED",
-  "UNDER_REVIEW",
-  "APPROVED",
-  "FLAGGED",
-] as const;
+export { COMPLIANCE_STATUSES as INVOICE_COMPLIANCE_STATUSES } from "@/domain/compliance/types";
 
-export type InvoiceComplianceStatus = (typeof INVOICE_COMPLIANCE_STATUSES)[number];
+export type InvoiceComplianceStatus = ComplianceStatus;
 
 export const INVOICE_INVALID_INPUT = "Check the invoice details and try again.";
 export const INVOICE_COMPANY_CUSTOMER_REQUIRED =

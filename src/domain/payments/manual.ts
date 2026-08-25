@@ -5,11 +5,11 @@ import { confirmedInvoiceApplicationsFromPayments } from "@/domain/payments/reco
 import { PAYMENT_EXCEEDS_OPEN_BALANCE, type PaymentRecord } from "@/domain/payments/types";
 
 /**
- * BR-010 / Payments §10.6: applied amount must not exceed open balance.
- * Overpayment authorization workflow remains US-015 (TASK-059/060) — not invented here.
+ * BR-010: applied amount must not exceed open balance from SUCCESSFUL applications.
+ * PENDING/FAILED rows do not reserve balance. Overpayment *allow* remains US-015 — not invented.
  * Processor fee and actual received never affect this check (BR-020).
  */
-export function assertManualPaymentWithinOpenBalance(input: {
+export function assertPaymentWithinOpenBalance(input: {
   readonly invoiceTotal: DecimalInput;
   readonly invoiceCurrencyCode: string;
   readonly invoiceDecimalPrecision: number;
@@ -34,3 +34,6 @@ export function assertManualPaymentWithinOpenBalance(input: {
     throw new Error(PAYMENT_EXCEEDS_OPEN_BALANCE);
   }
 }
+
+/** Alias for TASK-050 call sites — same BR-010 guard (TASK-059). */
+export const assertManualPaymentWithinOpenBalance = assertPaymentWithinOpenBalance;

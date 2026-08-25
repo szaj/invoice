@@ -21,6 +21,20 @@ export {
   assertSameCurrencyCodes,
   type InvoiceOutstandingInput,
 } from "@/domain/money/outstanding";
+export {
+  computeCbrf,
+  computeCbrfBreakdown,
+  computeGrossReceipts,
+  computeNetGTotal,
+  computeReportingNetTotals,
+  sumOpenDisputeAmounts,
+  adjustmentCbrfContribution,
+  isOpenDisputeExcludedFromCbrf,
+  type CbrfAdjustmentInput,
+  type CbrfBreakdown,
+  type GrossReceiptsPaymentInput,
+  type ReportingNetTotals,
+} from "@/domain/money/cbrf";
 export { formatMoneyForDisplay } from "@/domain/money/format";
 export {
   toMinorUnits,

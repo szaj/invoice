@@ -35,9 +35,9 @@ Index of architecture decisions. Accepted items are authoritative for implementa
 | ADR-021 | Centralized typed environment/configuration | ACCEPTED |
 | ADR-022 | Gateway credential encryption (application-managed envelope) | ACCEPTED |
 
-Use [[Architecture Decision]] to add new ADRs. Permanent engineering rules: [[Engineering Rules]].
+Use [[Architecture Decision]] to add new ADRs. Compact current facts: [[01 Current Architecture]]. Historical engineering rules text: [[Engineering Rules]] (archived).
 
-See also [[Unresolved Source Items]] and [[02 Architecture]].
+See also [[Unresolved Source Items]] and [[01 Current Architecture]].
 
 Accepted: 20 August 2026, unless a later ADR supersedes it.
 

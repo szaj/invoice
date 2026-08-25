@@ -48,6 +48,7 @@ function pendingPayment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     methodCode: "STRIPE",
     externalTransactionId: "cs_test_1",
     status: "PENDING",
+    complianceStatus: "NOT_REVIEWED",
     invoiceCurrencyCode: "GBP",
     invoiceAmountApplied: "100",
     settlementCurrencyCode: "USD",
@@ -305,12 +306,104 @@ describe("Stripe webhook processing (TASK-053)", () => {
         },
       },
       invoices: {
-        getInvoiceById: async () => null,
+        getInvoiceById: async (id: string) =>
+          id === payment.invoiceId
+            ? {
+                id: payment.invoiceId,
+                companyId: COMPANY_ID,
+                customerId: payment.customerId,
+                invoiceNumber: "INV-1",
+                invoiceDate: new Date("2026-08-01T00:00:00.000Z"),
+                dueDate: new Date("2026-08-31T00:00:00.000Z"),
+                currencyCode: "GBP",
+                referencePo: null,
+                assignedStaffUserId: null,
+                status: "ISSUED" as const,
+                complianceStatus: "NOT_REVIEWED" as const,
+                internalNotes: null,
+                customerNotes: null,
+                subtotal: "100",
+                discountTotal: "0",
+                taxTotal: "0",
+                invoiceTotal: "100",
+                confirmedPaidAmount: "0",
+                outstandingAmount: "100",
+                cancellationReason: null,
+                cancelledAt: null,
+                cancelledByUserId: null,
+                createdByUserId: null,
+                updatedByUserId: null,
+                createdAt: new Date("2026-08-01T00:00:00.000Z"),
+                updatedAt: new Date("2026-08-01T00:00:00.000Z"),
+              }
+            : null,
         listInvoices: async () => [],
+        updatePaymentAllocation: async (
+          _invoiceId: string,
+          input: {
+            confirmedPaidAmount: string;
+            outstandingAmount: string;
+            status: "ISSUED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "DRAFT" | "CANCELLED";
+          },
+        ) => ({
+          id: payment.invoiceId,
+          companyId: COMPANY_ID,
+          customerId: payment.customerId,
+          invoiceNumber: "INV-1",
+          invoiceDate: new Date("2026-08-01T00:00:00.000Z"),
+          dueDate: new Date("2026-08-31T00:00:00.000Z"),
+          currencyCode: "GBP",
+          referencePo: null,
+          assignedStaffUserId: null,
+          status: input.status,
+          complianceStatus: "NOT_REVIEWED" as const,
+          internalNotes: null,
+          customerNotes: null,
+          subtotal: "100",
+          discountTotal: "0",
+          taxTotal: "0",
+          invoiceTotal: "100",
+          confirmedPaidAmount: input.confirmedPaidAmount,
+          outstandingAmount: input.outstandingAmount,
+          cancellationReason: null,
+          cancelledAt: null,
+          cancelledByUserId: null,
+          createdByUserId: null,
+          updatedByUserId: null,
+          createdAt: new Date("2026-08-01T00:00:00.000Z"),
+          updatedAt: new Date(),
+        }),
       },
       customers: { getCustomerById: async () => null },
       settlement: { getCompanySettlementConfiguration: async () => null },
-      currencies: { findByCode: async () => null },
+      currencies: {
+        findByCode: async (code: string) =>
+          code === "GBP" || code === "USD"
+            ? {
+                id: `curr-${code}`,
+                code,
+                name: code,
+                symbol: code,
+                decimalPrecision: 2,
+                status: "ACTIVE" as const,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              }
+            : null,
+      },
+      settings: {
+        async getSettings() {
+          return {
+            id: "system",
+            reportingCurrencyCode: "USD",
+            defaultTimezone: "UTC",
+            roundingTolerance: "0.01",
+            invoiceNumberIncludeYear: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        },
+      },
       auditWriter: {
         append: async () => ({
           id: randomUUID(),

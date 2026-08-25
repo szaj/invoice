@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CustomerPersistedWriteInput, CustomerSearchInput } from "@/domain/customers/schema";
 import type { CustomerRecord, CustomerStatus } from "@/domain/customers/types";
+import type { ComplianceStatus } from "@/domain/compliance/types";
 import { getPrisma } from "@/server/db/client";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -25,6 +26,7 @@ type CustomerRow = {
   defaultCompanyId: string | null;
   paymentPreference: string | null;
   status: CustomerStatus;
+  complianceStatus: ComplianceStatus;
   assignedStaffUserId: string | null;
   internalNotes: string | null;
   tags: string[];
@@ -56,6 +58,7 @@ function mapRow(row: CustomerRow): CustomerRecord {
     defaultCompanyId: row.defaultCompanyId,
     paymentPreference: row.paymentPreference,
     status: row.status,
+    complianceStatus: row.complianceStatus,
     assignedStaffUserId: row.assignedStaffUserId,
     internalNotes: row.internalNotes,
     tags: [...row.tags],

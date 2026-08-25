@@ -1,7 +1,7 @@
 import { z } from "zod";
 
+import { complianceStatusSchema } from "@/domain/compliance/schema";
 import {
-  INVOICE_COMPLIANCE_STATUSES,
   INVOICE_STATUSES,
   INVOICE_COMPANY_CUSTOMER_REQUIRED,
   INVOICE_CURRENCY_REQUIRED,
@@ -9,7 +9,7 @@ import {
 } from "@/domain/invoices/types";
 
 export const invoiceStatusSchema = z.enum(INVOICE_STATUSES);
-export const invoiceComplianceStatusSchema = z.enum(INVOICE_COMPLIANCE_STATUSES);
+export const invoiceComplianceStatusSchema = complianceStatusSchema;
 export const invoiceIdSchema = z.uuid();
 
 function blankToNull(value: unknown): unknown {
@@ -95,6 +95,7 @@ export type InvoiceHeaderWriteFormValues = z.input<typeof invoiceHeaderWriteSche
 
 /**
  * Draft create/update payload (TASK-031). Status and invoice number are server-controlled.
+ * Compliance status is not writable here — use compliance.review APIs (TASK-071).
  */
 export const invoiceDraftWriteSchema = z.strictObject({
   companyId: z.uuid({ error: INVOICE_COMPANY_CUSTOMER_REQUIRED }),
@@ -104,7 +105,6 @@ export const invoiceDraftWriteSchema = z.strictObject({
   currencyCode: currencyCodeSchema,
   referencePo: nullableText(200),
   assignedStaffUserId: nullableUuid,
-  complianceStatus: invoiceComplianceStatusSchema.optional().default("NOT_REVIEWED"),
   internalNotes: nullableText(5000),
   customerNotes: nullableText(5000),
 });
@@ -157,6 +157,7 @@ export function toInvoiceHeaderWriteFromDraft(
   options: {
     readonly assignedStaffUserId: string | null;
     readonly status?: "DRAFT";
+    readonly complianceStatus?: InvoiceHeaderWriteInput["complianceStatus"];
   },
 ): InvoiceHeaderWriteInput {
   return {
@@ -168,7 +169,7 @@ export function toInvoiceHeaderWriteFromDraft(
     referencePo: draft.referencePo,
     assignedStaffUserId: options.assignedStaffUserId,
     status: options.status ?? "DRAFT",
-    complianceStatus: draft.complianceStatus,
+    complianceStatus: options.complianceStatus ?? "NOT_REVIEWED",
     internalNotes: draft.internalNotes,
     customerNotes: draft.customerNotes,
     invoiceNumber: null,

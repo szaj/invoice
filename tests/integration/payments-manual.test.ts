@@ -231,8 +231,8 @@ describe.skipIf(!runDbIntegration)("manual payment recording integration (TASK-0
     }
 
     const invoiceBefore = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.data.id } });
-    const outstandingBefore = invoiceBefore.outstandingAmount.toString();
-    const paidBefore = invoiceBefore.confirmedPaidAmount.toString();
+    expect(invoiceBefore.outstandingAmount.toString()).toMatch(/^100(\.0+)?$/);
+    expect(invoiceBefore.confirmedPaidAmount.toString()).toMatch(/^0(\.0+)?$/);
 
     const staffDenied = await recordManualPayment(
       staff,
@@ -285,8 +285,9 @@ describe.skipIf(!runDbIntegration)("manual payment recording integration (TASK-0
     expect(recorded.data.externalTransactionId).toBe("manual-ref-e2e05");
 
     const invoiceAfter = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.data.id } });
-    expect(invoiceAfter.outstandingAmount.toString()).toBe(outstandingBefore);
-    expect(invoiceAfter.confirmedPaidAmount.toString()).toBe(paidBefore);
+    expect(invoiceAfter.confirmedPaidAmount.toString()).toBe("40");
+    expect(invoiceAfter.outstandingAmount.toString()).toBe("60");
+    expect(invoiceAfter.status).toBe("PARTIALLY_PAID");
 
     const overpay = await recordManualPayment(
       admin,
@@ -315,6 +316,15 @@ describe.skipIf(!runDbIntegration)("manual payment recording integration (TASK-0
       AuditActions.PAYMENT_CREATED,
       AuditActions.PAYMENT_CONFIRMED,
     ]);
+
+    const invoiceEvents = await prisma.auditLog.findMany({
+      where: {
+        entityType: "invoice",
+        entityId: draft.data.id,
+        action: AuditActions.INVOICE_PAYMENT_ALLOCATED,
+      },
+    });
+    expect(invoiceEvents.length).toBeGreaterThanOrEqual(1);
   }, 90_000);
 
   afterAll(async () => {

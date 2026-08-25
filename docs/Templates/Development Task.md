@@ -10,6 +10,10 @@ tags:
 
 # TASK-XXX — Task Name
 
+Status: NOT STARTED
+
+Place new executable tasks under `docs/Active/Tasks/`.
+
 ## Objective
 
 ## Source Documents
@@ -56,8 +60,10 @@ tags:
 - [ ] Tests added
 - [ ] Relevant tests passing
 - [ ] Documentation updated
-- [ ] Implementation Status updated
-- [ ] Architecture Decisions updated if required
+- [ ] [[03 Current Implementation Status]] updated
+- [ ] [[04 Current Plan]] updated (next task)
+- [ ] Architecture Decisions / Current Architecture / Product Rules updated if required
+- [ ] On COMPLETE: move this file from `docs/Active/Tasks/` to `docs/Archive/Completed Tasks/` (see [[Vault Completion Workflow]])
 
 ## Cursor Implementation Result
 

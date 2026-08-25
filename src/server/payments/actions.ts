@@ -2,30 +2,43 @@
 
 import { revalidatePath } from "next/cache";
 
-import { assertPermission } from "@/domain/authz/authorize";
+import { assertPermission, authorizePermission } from "@/domain/authz/authorize";
 import { assertCompanyAccess } from "@/domain/authz/company-access";
-import { AuthorizationError } from "@/domain/authz/errors";
+import { AuthorizationError, GENERIC_FORBIDDEN } from "@/domain/authz/errors";
 import { FIXED_RATE_MISSING_FOR_CONVERSION } from "@/domain/fixed-rates/types";
 import { isCollectibleInvoiceStatus } from "@/domain/invoices/cancellation";
 import { canViewInvoice } from "@/domain/invoices/access";
 import { INVOICE_NOT_FOUND, type InvoiceRecord } from "@/domain/invoices/types";
 import {
   computeConvertedSettlementAmount,
+  computeInvoiceOutstanding,
   moneyDecimal,
   roundMoney,
   toDecimalString,
 } from "@/domain/money";
-import { PAYMENT_INVALID_INPUT, PAYMENT_RECORD_FORBIDDEN } from "@/domain/payments/types";
+import { confirmedInvoiceApplicationsFromPayments } from "@/domain/payments/reconciliation";
+import type { PaymentListQuery } from "@/domain/payments/schema";
+import {
+  PAYMENT_INVALID_INPUT,
+  PAYMENT_RECORD_FORBIDDEN,
+  type PaymentRecord,
+} from "@/domain/payments/types";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
+import { listSwitcherCompanies } from "@/server/company-context/accessible-companies";
+import { loadCompanyContextForLayout } from "@/server/company-context/actions";
 import { PrismaCurrencyStore } from "@/server/currencies/currency-repository";
 import { resolveFixedConversionRate } from "@/server/fixed-rates/resolve-rate-service";
 import { PrismaInvoiceStore } from "@/server/invoices/invoice-repository";
 import {
   recordManualPayment,
   createHostedCheckout,
+  getPayment,
   listHostedCheckoutOptions,
+  listPayments,
 } from "@/server/payments/payment-service";
 import type { HostedCheckoutOption } from "@/server/payments/payment-service";
+import { PrismaPaymentStore } from "@/server/payments/payment-repository";
+import { PrismaCustomerStore } from "@/server/customers/customer-repository";
 import { PrismaSettlementConfigStore } from "@/server/settlement/settlement-repository";
 import type { PaymentMethodCode } from "@/domain/settlement/types";
 
@@ -76,9 +89,195 @@ function invoiceLabel(invoice: InvoiceRecord): string {
   return invoice.invoiceNumber ?? `Invoice ${invoice.id.slice(0, 8)}`;
 }
 
+export type PaymentListRow = PaymentRecord & {
+  readonly companyDisplayName: string;
+  readonly invoiceLabel: string;
+};
+
+export type PaymentDetailView = PaymentRecord & {
+  readonly companyDisplayName: string;
+  readonly invoiceLabel: string;
+  readonly customerDisplayName: string | null;
+};
+
+/**
+ * Company options + default company for the payments transaction list (TASK-061).
+ * Visibility uses invoice.create (same family as invoice list). Server still
+ * enforces company assignment and invoice visibility on listPayments.
+ */
+export async function loadPaymentListOptions(companyId?: string | null) {
+  const actor = await getRequestAuthorizationPrincipal();
+  if (!authorizePermission(actor, "invoice.create").allowed) {
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: GENERIC_FORBIDDEN,
+      companies: [] as Array<{ id: string; displayName: string }>,
+      defaultCompanyId: null as string | null,
+      canRecordManual: false,
+    };
+  }
+
+  const companies = await listSwitcherCompanies(actor);
+  const context = await loadCompanyContextForLayout();
+  const contextCompanyId =
+    context.selection?.kind === "company" ? context.selection.companyId : null;
+  const selectedCompanyId =
+    companyId && companies.some((company) => company.id === companyId)
+      ? companyId
+      : contextCompanyId && companies.some((company) => company.id === contextCompanyId)
+        ? contextCompanyId
+        : companies.length === 1
+          ? (companies[0]?.id ?? null)
+          : null;
+
+  return {
+    ok: true as const,
+    companies: companies.map((company) => ({
+      id: company.id,
+      displayName: company.displayName,
+    })),
+    defaultCompanyId: selectedCompanyId,
+    canRecordManual: authorizePermission(actor, "payment.manual.record").allowed,
+  };
+}
+
+/**
+ * Company-scoped payments transaction list for UI (TASK-061).
+ * Delegates to listPayments — Staff cannot see unassigned company rows.
+ */
+export async function loadPaymentsForUi(
+  query: PaymentListQuery,
+): Promise<
+  | { ok: true; data: PaymentListRow[]; status?: undefined; error?: undefined }
+  | { ok: false; error: string; status: number; data?: undefined }
+> {
+  const actor = await getRequestAuthorizationPrincipal();
+  if (!authorizePermission(actor, "invoice.create").allowed) {
+    return { ok: false, status: 403, error: GENERIC_FORBIDDEN };
+  }
+
+  const result = await listPayments(actor, query);
+  if (!result.ok) {
+    return { ok: false, status: result.status, error: result.error };
+  }
+
+  const companies = await listSwitcherCompanies(actor);
+  const companyNameById = new Map(companies.map((company) => [company.id, company.displayName]));
+
+  const invoiceIds = [...new Set(result.data.map((payment) => payment.invoiceId))];
+  const invoiceStore = new PrismaInvoiceStore();
+  const invoices = await Promise.all(invoiceIds.map((id) => invoiceStore.getInvoiceById(id)));
+  const invoiceLabelById = new Map(
+    invoices
+      .filter((invoice): invoice is InvoiceRecord => invoice != null)
+      .map((invoice) => [invoice.id, invoiceLabel(invoice)]),
+  );
+
+  const ordered = [...result.data]
+    .sort(
+      (a, b) =>
+        b.paymentDate.getTime() - a.paymentDate.getTime() ||
+        b.createdAt.getTime() - a.createdAt.getTime(),
+    )
+    .map((payment) => ({
+      ...payment,
+      companyDisplayName: companyNameById.get(payment.companyId) ?? payment.companyId.slice(0, 8),
+      invoiceLabel:
+        invoiceLabelById.get(payment.invoiceId) ?? `Invoice ${payment.invoiceId.slice(0, 8)}`,
+    }));
+
+  return { ok: true, data: ordered };
+}
+
+/**
+ * Payment detail for UI (TASK-062). Delegates to getPayment — company assignment
+ * + invoice visibility. Confirmed financial fields are read-only (BR-020 / BR-004).
+ */
+export async function loadPaymentForUi(
+  paymentId: string,
+): Promise<
+  | { ok: true; data: PaymentDetailView; status?: undefined; error?: undefined }
+  | { ok: false; error: string; status: number; data?: undefined }
+> {
+  const actor = await getRequestAuthorizationPrincipal();
+  if (!authorizePermission(actor, "invoice.create").allowed) {
+    return { ok: false, status: 403, error: GENERIC_FORBIDDEN };
+  }
+
+  const result = await getPayment(actor, paymentId);
+  if (!result.ok) {
+    return { ok: false, status: result.status, error: result.error };
+  }
+
+  const payment = result.data;
+  const companies = await listSwitcherCompanies(actor);
+  const companyDisplayName =
+    companies.find((company) => company.id === payment.companyId)?.displayName ??
+    payment.companyId.slice(0, 8);
+
+  const [invoice, customer] = await Promise.all([
+    new PrismaInvoiceStore().getInvoiceById(payment.invoiceId),
+    new PrismaCustomerStore().getCustomerById(payment.customerId),
+  ]);
+
+  return {
+    ok: true,
+    data: {
+      ...payment,
+      companyDisplayName,
+      invoiceLabel: invoice ? invoiceLabel(invoice) : `Invoice ${payment.invoiceId.slice(0, 8)}`,
+      customerDisplayName: customer?.displayName ?? null,
+    },
+  };
+}
+
+/**
+ * List payments for an invoice view (TASK-059). Multiple records may coexist.
+ * Confirmed applications drive allocation on the invoice (TASK-060).
+ */
+export async function loadInvoicePaymentsForUi(
+  invoiceId: string,
+): Promise<PaymentActionResult<{ payments: PaymentRecord[] }>> {
+  const actor = await getRequestAuthorizationPrincipal();
+  if (!actor) {
+    return { ok: false, error: PAYMENT_RECORD_FORBIDDEN };
+  }
+
+  const invoiceStore = new PrismaInvoiceStore();
+  const invoice = await invoiceStore.getInvoiceById(invoiceId);
+  if (!invoice) {
+    return { ok: false, error: INVOICE_NOT_FOUND };
+  }
+
+  try {
+    assertCompanyAccess(actor, invoice.companyId);
+  } catch {
+    return { ok: false, error: INVOICE_NOT_FOUND };
+  }
+  if (!canViewInvoice(actor, invoice)) {
+    return { ok: false, error: INVOICE_NOT_FOUND };
+  }
+
+  const result = await listPayments(actor, {
+    companyId: invoice.companyId,
+    invoiceId: invoice.id,
+  });
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  const ordered = [...result.data].sort(
+    (a, b) =>
+      b.paymentDate.getTime() - a.paymentDate.getTime() ||
+      b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  return { ok: true, data: { payments: ordered } };
+}
+
 /**
  * Record a manual payment (TASK-051 UI → TASK-050 service).
- * Does not allocate or mutate invoice paid/outstanding.
+ * Confirm path allocates invoice paid/outstanding and status (TASK-060).
  */
 export async function recordManualPaymentAction(
   input: unknown,
@@ -90,6 +289,7 @@ export async function recordManualPaymentAction(
   }
 
   revalidatePath(`/invoices/${result.data.invoiceId}`);
+  revalidatePath("/payments");
   revalidatePath("/payments/manual");
   return {
     ok: true,
@@ -185,6 +385,19 @@ export async function loadManualPaymentFormContext(
     const manualMethod = settlement?.methods.find((method) => method.methodCode === "MANUAL");
     const currencies = new PrismaCurrencyStore();
     const invoiceCurrency = await currencies.findByCode(invoice.currencyCode);
+    const invoicePrecision = invoiceCurrency?.decimalPrecision ?? 2;
+
+    const paymentStore = new PrismaPaymentStore();
+    const existingPayments = await paymentStore.listPayments({
+      companyIds: [invoice.companyId],
+      invoiceId: invoice.id,
+    });
+    const openBalance = computeInvoiceOutstanding({
+      invoiceTotal: invoice.invoiceTotal,
+      invoiceCurrencyCode: invoice.currencyCode,
+      confirmedApplications: confirmedInvoiceApplicationsFromPayments(existingPayments),
+      decimalPrecision: invoicePrecision,
+    });
 
     const { getPrisma } = await import("@/server/db/client");
     const prisma = getPrisma();
@@ -211,10 +424,12 @@ export async function loadManualPaymentFormContext(
           customerDisplayName: customer?.displayName ?? null,
           currencyCode: invoice.currencyCode,
           invoiceTotal: invoice.invoiceTotal,
-          outstandingAmount: invoice.outstandingAmount,
+          // Open balance for the form uses SUCCESSFUL applications (BR-010).
+          // Stored invoice outstanding is kept in sync by TASK-060 allocation.
+          outstandingAmount: openBalance.amount,
           confirmedPaidAmount: invoice.confirmedPaidAmount,
           status: invoice.status,
-          decimalPrecision: invoiceCurrency?.decimalPrecision ?? 2,
+          decimalPrecision: invoicePrecision,
         },
         settlementCurrencyCodes: manualMethod?.enabledSettlementCurrencyCodes ?? [],
         methodEnabled: manualMethod?.methodEnabled ?? false,

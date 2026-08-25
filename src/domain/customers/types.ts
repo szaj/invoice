@@ -1,3 +1,5 @@
+import type { ComplianceStatus } from "@/domain/compliance/types";
+
 export type CustomerType = "INDIVIDUAL" | "BUSINESS";
 export type CustomerStatus = "ACTIVE" | "INACTIVE";
 
@@ -27,6 +29,7 @@ export type CustomerRecord = {
   readonly defaultCompanyId: string | null;
   readonly paymentPreference: string | null;
   readonly status: CustomerStatus;
+  readonly complianceStatus: ComplianceStatus;
   readonly assignedStaffUserId: string | null;
   readonly internalNotes: string | null;
   readonly tags: readonly string[];

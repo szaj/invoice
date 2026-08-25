@@ -20,6 +20,7 @@ function payment(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
     methodCode: "MANUAL",
     externalTransactionId: null,
     status: "PENDING",
+    complianceStatus: "NOT_REVIEWED",
     invoiceCurrencyCode: "GBP",
     invoiceAmountApplied: "100",
     settlementCurrencyCode: "USD",

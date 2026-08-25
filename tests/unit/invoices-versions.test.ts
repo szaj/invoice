@@ -146,7 +146,6 @@ describe("issued metadata authorization", () => {
       {
         referencePo: "PO",
         assignedStaffUserId: null,
-        complianceStatus: "NOT_REVIEWED",
         internalNotes: null,
         customerNotes: null,
       },

@@ -1,6 +1,7 @@
 ---
-description: Confirmed financial records are immutable. Always apply.
-alwaysApply: true
+description: Confirmed financial records are immutable; corrections use controlled workflows.
+globs: src/domain/invoices/**,src/domain/payments/**,src/server/invoices/**,src/server/payments/**,src/app/api/invoices/**,src/app/api/payments/**,src/app/api/webhooks/**,src/app/**/invoices/**,src/app/**/payments/**,src/domain/refunds/**,src/domain/disputes/**,src/domain/chargebacks/**,src/server/refunds/**,src/server/disputes/**,src/server/chargebacks/**,src/app/api/refunds/**,src/app/api/disputes/**,src/app/api/chargebacks/**,src/app/**/refunds/**,src/app/**/disputes/**,src/app/**/chargebacks/**,tests/**/invoices*.ts,tests/**/payments*.ts,prisma/schema.prisma
+alwaysApply: false
 ---
 
 # Financial Immutability Rule
@@ -13,4 +14,4 @@ Original successful payments remain preserved. Refund/dispute/chargeback state l
 
 Do not regenerate a historical invoice PDF from today's mutable company/invoice data when an immutable stored version exists.
 
-Authoritative docs: `docs/Modules/Invoices.md`, `docs/Modules/Payments.md`, `docs/Modules/Refunds Disputes Chargebacks.md`, `docs/Foundation/Business Rules.md`.
+Authoritative docs: `docs/01 Current Architecture.md`, `docs/02 Current Product Rules.md`, `docs/Active/Modules/Payments.md`, `docs/Active/Modules/Refunds Disputes Chargebacks.md`.

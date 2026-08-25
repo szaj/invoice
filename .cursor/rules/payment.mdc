@@ -1,6 +1,7 @@
 ---
-description: Provider-agnostic payment architecture. Always apply.
-alwaysApply: true
+description: Provider-agnostic payment architecture; adapters own provider specifics.
+globs: src/domain/payments/**,src/server/payments/**,src/app/api/payments/**,src/app/api/webhooks/**,src/app/**/payments/**,src/domain/invoices/allocation.ts,src/server/invoices/invoice-payment-allocation.ts,src/domain/refunds/**,src/domain/disputes/**,src/domain/chargebacks/**,src/server/refunds/**,src/server/disputes/**,src/server/chargebacks/**,src/app/api/refunds/**,src/app/api/disputes/**,src/app/api/chargebacks/**,src/app/**/refunds/**,src/app/**/disputes/**,src/app/**/chargebacks/**,tests/**/payments*.ts,prisma/schema.prisma
+alwaysApply: false
 ---
 
 # Payment Rule
@@ -15,4 +16,4 @@ Use a PaymentProvider registry and capability flags. Do not write `if (provider 
 
 Manual payments use the same domain without fake webhooks.
 
-Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-008), `docs/Modules/Payments.md`.
+Authoritative docs: `docs/01 Current Architecture.md`, `docs/05 Architecture Decisions.md` (ADR-008), `docs/Active/Modules/Payments.md`.

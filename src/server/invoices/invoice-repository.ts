@@ -213,6 +213,32 @@ export class PrismaInvoiceStore {
     return mapRow(updated);
   }
 
+  /**
+   * Persist BR-009 paid/outstanding + payment-derived status (TASK-060).
+   * Does not rewrite line-item totals or invent a manually edited paid total.
+   */
+  async updatePaymentAllocation(
+    invoiceId: string,
+    input: {
+      readonly confirmedPaidAmount: string;
+      readonly outstandingAmount: string;
+      readonly status: InvoiceStatus;
+    },
+    actor?: { updatedByUserId?: string | null },
+  ): Promise<InvoiceRecord> {
+    const prisma = getPrisma();
+    const updated = await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        confirmedPaidAmount: input.confirmedPaidAmount,
+        outstandingAmount: input.outstandingAmount,
+        status: input.status,
+        updatedByUserId: actor?.updatedByUserId ?? null,
+      },
+    });
+    return mapRow(updated);
+  }
+
   async updateInvoiceStatus(
     id: string,
     status: InvoiceStatus,

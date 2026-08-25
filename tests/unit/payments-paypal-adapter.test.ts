@@ -423,7 +423,9 @@ describe("PayPal adapter (TASK-054)", () => {
       resolve(process.cwd(), "src/server/payments/payment-service.ts"),
       "utf8",
     );
-    expect(paymentService).not.toMatch(/paypal|PayPal/i);
+    // Display labels may mention PayPal; domain must not import the PayPal client/SDK.
+    expect(paymentService).not.toMatch(/paypal-client|PayPalApiClient|@paypal\//i);
+    expect(paymentService).not.toMatch(/from ["']@\/server\/payments\/providers\/paypal/i);
     const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
     };

@@ -1,0 +1,72 @@
+---
+type: status
+status: approved
+tags:
+  - task
+---
+
+# Current Implementation Status
+
+What **exists now** as capabilities. Documentation alone is not completion. Completed task IDs are listed only as range markers — full task files live under `docs/Archive/Completed Tasks/`.
+
+Status values: NOT STARTED · PLANNED · IN PROGRESS · BLOCKED · DEFERRED · COMPLETE
+
+**DEFERRED** ≠ COMPLETE. Do not treat deferred work as implemented.
+
+Control: [[04 Current Plan]] · [[00 Home]]
+
+## Capability summary
+
+| Area | Status |
+| --- | --- |
+| Repository / CI / env | implemented (TASK-001) |
+| Database (Prisma + Supabase PG) | implemented (TASK-002) |
+| Authentication (Supabase Auth identity) | implemented (TASK-003–004) |
+| RBAC (Admin / Compliance / Staff) | implemented (TASK-005) |
+| User management | implemented (TASK-006) |
+| Companies / branding / reporting groups | implemented (TASK-007, 010–011) |
+| User–company assignments + tenant context | implemented (TASK-008–009) |
+| Audit event foundation (append-only writers) | implemented (TASK-012); viewer not started |
+| Core system settings | implemented (TASK-013); ADR-011 still OPEN |
+| Currencies + company currencies + fixed rates | implemented (TASK-014–018, 021) |
+| Money calculation utilities | implemented (TASK-019) |
+| Settlement currency configuration | implemented (TASK-020) |
+| Customers (CRUD, profile, notes, duplicates, financial summary) | implemented (TASK-022–029) |
+| Invoices (draft → issue → versions → cancel → PDF → email → duplicate/print) | implemented through TASK-043 |
+| UI/UX design system foundation | implemented (checkpoint before TASK-042) |
+| Payments domain + service + snapshots + fees | implemented (TASK-044–047) |
+| PaymentProvider abstraction | implemented (TASK-048) |
+| Gateway config + credential encryption (ADR-022) | implemented (TASK-049) |
+| Manual payments + UI | implemented (TASK-050–051) |
+| Stripe adapter + webhook | implemented (TASK-052–053) |
+| PayPal adapter + webhook | implemented (TASK-054–055) |
+| Bank processor adapter + webhook | **DEFERRED** (TASK-056–057) |
+| Hosted checkout | implemented (TASK-058) |
+| Partial payments + allocation | implemented (TASK-059–060) |
+| Payment list + detail UI | implemented (TASK-061–062) |
+| Dispute open workflow | implemented (TASK-063) |
+| Full refunds | implemented (TASK-064) |
+| Partial refunds | implemented (TASK-065) |
+| Chargeback debit/loss | implemented (TASK-066) |
+| Chargeback won/reversal | implemented (TASK-067) |
+| Adjustment history and notes | implemented (TASK-068) |
+| Payment adjustment UI | implemented (TASK-069) |
+| CB/RF engine | implemented (TASK-070) |
+| Compliance status model | implemented (TASK-071); queue/notes/UI/export not started |
+| Compliance module (queue, notes, UI, export) | not started (TASK-072–075) |
+| Audit log viewer | not started (TASK-076) |
+| Reporting / dashboard | not started (TASK-077–090) |
+| Notifications | not started (TASK-091–092) |
+| Hardening / testing suites / deployment | not started (TASK-093–103) |
+
+## Completed ID ranges
+
+- **COMPLETE:** TASK-001 through TASK-071, **except** TASK-056 and TASK-057.
+- **DEFERRED:** TASK-056, TASK-057 (no live bank processor until concrete vendor/API).
+- **NOT STARTED:** TASK-072 through TASK-103.
+
+Dependency check for active tasks: if a dependency ID is in the COMPLETE ranges above, treat it as established. Do **not** open archived task files merely to verify COMPLETE status.
+
+## Version 1 live payment providers
+
+MANUAL · STRIPE · PAYPAL. `BANK_PROCESSOR` config slot only until US-017 is resolved.

@@ -1,3 +1,4 @@
+import type { ComplianceStatus } from "@/domain/compliance/types";
 import type { PaymentMethodCode } from "@/domain/settlement/types";
 
 /** Application payment status (Payments §10.3 / ADR-008). */
@@ -87,6 +88,7 @@ export type PaymentRecord = {
   readonly methodCode: PaymentMethodCode;
   readonly externalTransactionId: string | null;
   readonly status: PaymentStatus;
+  readonly complianceStatus: ComplianceStatus;
   readonly invoiceCurrencyCode: string;
   readonly invoiceAmountApplied: string;
   readonly settlementCurrencyCode: string;

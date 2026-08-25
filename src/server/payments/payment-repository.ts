@@ -8,6 +8,7 @@ import type {
   PaymentSource,
   PaymentStatus,
 } from "@/domain/payments/types";
+import type { ComplianceStatus } from "@/domain/compliance/types";
 import type { PaymentMethodCode } from "@/domain/settlement/types";
 import { toDecimalString } from "@/domain/money";
 import { getPrisma } from "@/server/db/client";
@@ -20,6 +21,7 @@ type PaymentRow = {
   methodCode: PaymentMethodCode;
   externalTransactionId: string | null;
   status: PaymentStatus;
+  complianceStatus: ComplianceStatus;
   invoiceCurrencyCode: string;
   invoiceAmountApplied: { toString(): string };
   settlementCurrencyCode: string;
@@ -49,6 +51,7 @@ function mapRow(row: PaymentRow): PaymentRecord {
     methodCode: row.methodCode,
     externalTransactionId: row.externalTransactionId,
     status: row.status,
+    complianceStatus: row.complianceStatus,
     invoiceCurrencyCode: row.invoiceCurrencyCode.trim(),
     invoiceAmountApplied: toDecimalString(row.invoiceAmountApplied.toString()),
     settlementCurrencyCode: row.settlementCurrencyCode.trim(),

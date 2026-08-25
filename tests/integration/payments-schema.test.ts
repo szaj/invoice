@@ -35,4 +35,30 @@ describe.skipIf(!runDbIntegration)("payment domain schema integration", () => {
     expect(byName.has("stripe_payment_intent_id")).toBe(false);
     expect(byName.has("api_key")).toBe(false);
   }, 30_000);
+
+  it("creates payment_adjustments table for linked dispute records", async () => {
+    const { getPrisma } = await import("@/server/db/client");
+    const prisma = getPrisma();
+
+    const tables = await prisma.$queryRaw<Array<{ table_name: string }>>`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    `;
+    expect(tables.map((row) => row.table_name)).toContain("payment_adjustments");
+
+    const columns = await prisma.$queryRaw<Array<{ column_name: string; data_type: string }>>`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'payment_adjustments'
+      ORDER BY column_name
+    `;
+    const byName = new Map(columns.map((col) => [col.column_name, col.data_type]));
+    expect(byName.get("payment_id")).toBe("uuid");
+    expect(byName.get("company_id")).toBe("uuid");
+    expect(byName.get("amount")).toBe("numeric");
+    expect(byName.get("invoice_amount")).toBe("numeric");
+    expect(byName.get("settlement_amount")).toBe("numeric");
+    expect(byName.get("opened_at")).toBe("timestamp with time zone");
+  }, 30_000);
 });

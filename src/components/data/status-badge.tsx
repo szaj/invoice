@@ -34,6 +34,27 @@ export const STATUS_TONES: Record<string, StatusTone> = {
   CLEAR: "success",
   UNDER_REVIEW: "warning",
   FLAGGED: "destructive",
+  NOT_REVIEWED: "muted",
+  APPROVED: "success",
+  // Payment adjustment lifecycle (do not rewrite SUCCESSFUL)
+  DISPUTED: "warning",
+  REFUNDED: "info",
+  CHARGEBACK_DEBITED: "destructive",
+  CHARGEBACK_LOST: "destructive",
+  CHARGEBACK_WON: "success",
+  CHARGEBACK_REVERSED: "success",
+  // Adjustment row statuses / types
+  OPEN: "warning",
+  PROCESSED: "info",
+  DEBITED: "destructive",
+  LOST: "destructive",
+  WON: "success",
+  REVERSED: "success",
+  DISPUTE: "warning",
+  REFUND: "info",
+  CHARGEBACK: "destructive",
+  REVERSAL: "success",
+  NOTE: "neutral",
 };
 
 function humanizeStatus(status: string): string {

@@ -221,3 +221,30 @@ export const paymentListQuerySchema = z.strictObject({
 });
 
 export type PaymentListQuery = z.output<typeof paymentListQuerySchema>;
+
+/**
+ * Parse payments list page searchParams into list query input.
+ * Keeps filter/query logic out of React components (TASK-061).
+ */
+export function parsePaymentListSearchParams(
+  params: Record<string, string | string[] | undefined>,
+): PaymentListQuery {
+  const companyIdRaw = params.companyId;
+  const statusRaw = params.status;
+  const invoiceIdRaw = params.invoiceId;
+  const customerIdRaw = params.customerId;
+  const companyId =
+    typeof companyIdRaw === "string" && companyIdRaw.length > 0 ? companyIdRaw : undefined;
+  const status = typeof statusRaw === "string" && statusRaw.length > 0 ? statusRaw : undefined;
+  const invoiceId =
+    typeof invoiceIdRaw === "string" && invoiceIdRaw.length > 0 ? invoiceIdRaw : undefined;
+  const customerId =
+    typeof customerIdRaw === "string" && customerIdRaw.length > 0 ? customerIdRaw : undefined;
+  const parsed = paymentListQuerySchema.safeParse({
+    companyId,
+    status,
+    invoiceId,
+    customerId,
+  });
+  return parsed.success ? parsed.data : {};
+}

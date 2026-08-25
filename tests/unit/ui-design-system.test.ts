@@ -24,5 +24,19 @@ describe("UI design system helpers", () => {
     expect(isNavItemActive("/customers", "/customers")).toBe(true);
     expect(isNavItemActive("/customers/abc", "/customers")).toBe(true);
     expect(isNavItemActive("/invoices", "/customers")).toBe(false);
+    const paymentNav = ["/payments", "/payments/manual"] as const;
+    expect(isNavItemActive("/payments", "/payments", paymentNav)).toBe(true);
+    expect(isNavItemActive("/payments/manual", "/payments", paymentNav)).toBe(false);
+    expect(isNavItemActive("/payments/manual", "/payments/manual", paymentNav)).toBe(true);
+    expect(
+      isNavItemActive("/payments/11111111-1111-4111-8111-111111111111", "/payments", paymentNav),
+    ).toBe(true);
+    expect(
+      isNavItemActive(
+        "/payments/11111111-1111-4111-8111-111111111111",
+        "/payments/manual",
+        paymentNav,
+      ),
+    ).toBe(false);
   });
 });

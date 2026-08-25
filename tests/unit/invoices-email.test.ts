@@ -149,6 +149,7 @@ describe("invoice email delivery (TASK-041)", () => {
           defaultCompanyId: COMPANY_A,
           paymentPreference: null,
           status: "ACTIVE" as const,
+          complianceStatus: "NOT_REVIEWED" as const,
           assignedStaffUserId: STAFF_ID,
           internalNotes: null,
           tags: [] as string[],

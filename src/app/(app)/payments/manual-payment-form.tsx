@@ -138,8 +138,8 @@ export function ManualPaymentForm({
         <Alert>
           <AlertTitle>Payment recorded</AlertTitle>
           <AlertDescription>
-            {success} Invoice paid/outstanding totals are not updated until payment allocation
-            (later). Fee fields are reconciliation only.
+            {success} Invoice confirmed paid, outstanding, and status were recalculated from
+            confirmed payments. Fee fields are reconciliation only.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -185,7 +185,7 @@ export function ManualPaymentForm({
             <p className="font-medium">{context.invoice.currencyCode}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Outstanding (display)</p>
+            <p className="text-muted-foreground">Open balance (SUCCESSFUL payments)</p>
             <p className="font-medium">
               {context.invoice.outstandingAmount} {context.invoice.currencyCode}
             </p>
@@ -195,7 +195,7 @@ export function ManualPaymentForm({
 
       <FormSection
         title="Payment"
-        description="Amount is applied in invoice currency. Settlement conversion uses the Admin fixed rate on the server."
+        description="Amount is applied in invoice currency and must not exceed open balance from SUCCESSFUL payments (BR-010). Partial amounts are allowed. Settlement conversion uses the Admin fixed rate on the server."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField

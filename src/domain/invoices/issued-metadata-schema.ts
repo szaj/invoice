@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { invoiceComplianceStatusSchema } from "@/domain/invoices/schema";
-
 function blankToNull(value: unknown): unknown {
   if (value === undefined || value === null) {
     return null;
@@ -19,11 +17,11 @@ const nullableUuid = z.preprocess(blankToNull, z.uuid().nullable());
 /**
  * Non-financial metadata only (Invoices §8.6 / TASK-037).
  * Does not include financial fields — those stay blocked while ADR-009 is OPEN.
+ * Compliance status is not writable here — use compliance.review APIs (TASK-071).
  */
 export const issuedInvoiceMetadataWriteSchema = z.strictObject({
   referencePo: nullableText(200),
   assignedStaffUserId: nullableUuid,
-  complianceStatus: invoiceComplianceStatusSchema,
   internalNotes: nullableText(5000),
   customerNotes: nullableText(5000),
 });

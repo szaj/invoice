@@ -192,7 +192,7 @@ export async function updateIssuedInvoiceMetadata(
         referencePo: parsed.data.referencePo,
         assignedStaffUserId: parsed.data.assignedStaffUserId,
         status: existing.status,
-        complianceStatus: parsed.data.complianceStatus,
+        complianceStatus: existing.complianceStatus,
         internalNotes: parsed.data.internalNotes,
         customerNotes: parsed.data.customerNotes,
       },
@@ -210,14 +210,12 @@ export async function updateIssuedInvoiceMetadata(
         oldValues: {
           referencePo: existing.referencePo,
           assignedStaffUserId: existing.assignedStaffUserId,
-          complianceStatus: existing.complianceStatus,
           internalNotes: existing.internalNotes,
           customerNotes: existing.customerNotes,
         },
         newValues: {
           referencePo: updated.referencePo,
           assignedStaffUserId: updated.assignedStaffUserId,
-          complianceStatus: updated.complianceStatus,
           internalNotes: updated.internalNotes,
           customerNotes: updated.customerNotes,
         },

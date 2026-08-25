@@ -31,7 +31,10 @@ import {
   confirmedInvoiceApplicationsFromPayments,
   normalizePaymentReconciliationFields,
 } from "@/domain/payments/reconciliation";
-import { assertManualPaymentWithinOpenBalance } from "@/domain/payments/manual";
+import {
+  assertManualPaymentWithinOpenBalance,
+  assertPaymentWithinOpenBalance,
+} from "@/domain/payments/manual";
 import {
   PROVIDER_CAPABILITY_UNSUPPORTED,
   PROVIDER_CONFIGURATION_ERROR,
@@ -100,9 +103,11 @@ import {
   type ResolveRateDependencies,
 } from "@/server/fixed-rates/resolve-rate-service";
 import { PrismaGatewayConfigStore } from "@/server/gateway-config/gateway-config-repository";
+import { allocateInvoiceFromConfirmedPayments } from "@/server/invoices/invoice-payment-allocation";
 import { PrismaInvoiceStore } from "@/server/invoices/invoice-repository";
 import { PrismaPaymentStore } from "@/server/payments/payment-repository";
 import { createPaymentProviderRegistry } from "@/server/payments/providers/create-payment-provider-registry";
+import { PrismaSystemSettingsStore } from "@/server/settings/settings-repository";
 import { PrismaSettlementConfigStore } from "@/server/settlement/settlement-repository";
 
 export type PaymentServiceResult<T> =
@@ -117,10 +122,14 @@ export interface PaymentServiceDependencies {
     | "createPayment"
     | "updatePaymentLifecycle"
   >;
-  readonly invoices: Pick<PrismaInvoiceStore, "getInvoiceById" | "listInvoices">;
+  readonly invoices: Pick<
+    PrismaInvoiceStore,
+    "getInvoiceById" | "listInvoices" | "updatePaymentAllocation"
+  >;
   readonly customers: Pick<PrismaCustomerStore, "getCustomerById">;
   readonly settlement: Pick<PrismaSettlementConfigStore, "getCompanySettlementConfiguration">;
   readonly currencies: Pick<PrismaCurrencyStore, "findByCode">;
+  readonly settings?: Pick<PrismaSystemSettingsStore, "getSettings">;
   readonly gatewayConfigs?: Pick<
     PrismaGatewayConfigStore,
     "getMethodRow" | "getCompanyGatewayConfiguration"
@@ -162,8 +171,36 @@ export function createDefaultPaymentServiceDependencies(): PaymentServiceDepende
     customers: new PrismaCustomerStore(),
     settlement: new PrismaSettlementConfigStore(),
     currencies: new PrismaCurrencyStore(),
+    settings: new PrismaSystemSettingsStore(),
     gatewayConfigs: new PrismaGatewayConfigStore(),
   };
+}
+
+async function allocateAfterSuccessfulPayment(
+  payment: PaymentRecord,
+  input: {
+    readonly actorType: "USER" | "WEBHOOK" | "SYSTEM";
+    readonly actorUserId?: string | null;
+    readonly correlationId?: string | null;
+  },
+  deps: PaymentServiceDependencies,
+): Promise<void> {
+  await allocateInvoiceFromConfirmedPayments(
+    {
+      invoiceId: payment.invoiceId,
+      companyId: payment.companyId,
+      actorType: input.actorType,
+      actorUserId: input.actorUserId ?? null,
+      correlationId: input.correlationId ?? null,
+    },
+    {
+      invoices: deps.invoices,
+      payments: deps.payments,
+      currencies: deps.currencies,
+      settings: deps.settings,
+      auditWriter: auditWriterOf(deps),
+    },
+  );
 }
 
 function gatewayConfigsOf(
@@ -447,6 +484,27 @@ async function persistPendingPayment(
   }
   const invoiceAmountApplied = toDecimalString(roundMoney(applied, invoicePrecision));
 
+  const existingPayments = await deps.payments.listPayments({
+    companyIds: [invoice.companyId],
+    invoiceId: invoice.id,
+  });
+  try {
+    assertPaymentWithinOpenBalance({
+      invoiceTotal: invoice.invoiceTotal,
+      invoiceCurrencyCode: invoice.currencyCode,
+      invoiceDecimalPrecision: invoicePrecision,
+      invoiceAmountApplied,
+      existingPayments,
+      processorFeeAmount: parsed.processorFeeAmount,
+      actualReceivedAmount: parsed.actualReceivedAmount,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === PAYMENT_EXCEEDS_OPEN_BALANCE) {
+      return { ok: false, status: 400, error: PAYMENT_EXCEEDS_OPEN_BALANCE };
+    }
+    throw error;
+  }
+
   let reconciliation;
   try {
     reconciliation = normalizePaymentReconciliationFields({
@@ -662,7 +720,7 @@ export async function listHostedCheckoutOptions(
 
 /**
  * Create hosted checkout + PENDING payment with Admin rate snapshot (TASK-058).
- * Does not confirm SUCCESSFUL (webhooks / status later). Does not allocate invoice balance (TASK-060).
+ * Does not confirm SUCCESSFUL (webhooks / status later). Allocation runs on webhook confirm (TASK-060).
  * Credentials resolve only inside PaymentProvider adapters (ADR-022).
  */
 export async function createHostedCheckout(
@@ -911,7 +969,7 @@ function mapProviderCheckoutError(error: unknown): {
  * Record a manual payment (TASK-050 / Payments §10.6).
  * Reuses TASK-045 create PENDING → confirm SUCCESSFUL lifecycle on the same payment domain.
  * Forces method MANUAL + source MANUAL. Does not invent gateway transaction IDs or fake webhooks.
- * Does not allocate or mutate invoice paid/outstanding (TASK-060).
+ * Confirm path allocates invoice paid/outstanding and status (TASK-060).
  * Staff remains denied (US-007 default deny). Overpayment allow-workflow remains US-015.
  */
 export async function recordManualPayment(
@@ -1053,6 +1111,30 @@ export async function confirmPayment(
     assertPaymentStatusTransition(payment.status, "SUCCESSFUL");
     assertConfirmedFinancialFieldsUnchanged(payment, {});
 
+    const invoice = invoiceResult.data;
+    const invoiceCurrency = await deps.currencies.findByCode(invoice.currencyCode);
+    const invoicePrecision = invoiceCurrency?.decimalPrecision ?? 2;
+    const existingPayments = await deps.payments.listPayments({
+      companyIds: [payment.companyId],
+      invoiceId: payment.invoiceId,
+    });
+    try {
+      assertPaymentWithinOpenBalance({
+        invoiceTotal: invoice.invoiceTotal,
+        invoiceCurrencyCode: invoice.currencyCode,
+        invoiceDecimalPrecision: invoicePrecision,
+        invoiceAmountApplied: payment.invoiceAmountApplied,
+        existingPayments,
+        processorFeeAmount: payment.processorFeeAmount,
+        actualReceivedAmount: payment.actualReceivedAmount,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === PAYMENT_EXCEEDS_OPEN_BALANCE) {
+        return { ok: false, status: 400, error: PAYMENT_EXCEEDS_OPEN_BALANCE };
+      }
+      throw error;
+    }
+
     let snapshotPatch: {
       readonly rateEffectiveAt?: Date;
       readonly rateVersionId?: string | null;
@@ -1107,8 +1189,8 @@ export async function confirmPayment(
       convertedSettlementAmount: updated.convertedSettlementAmount,
       processorFeeAmount: updated.processorFeeAmount,
       actualReceivedAmount: updated.actualReceivedAmount,
-      invoiceTotal: invoiceResult.data.invoiceTotal,
-      invoiceDecimalPrecision: 2,
+      invoiceTotal: invoice.invoiceTotal,
+      invoiceDecimalPrecision: invoicePrecision,
       confirmedApplications: [updated.invoiceAmountApplied],
     });
     assertConfirmedFinancialFieldsUnchanged(updated, {
@@ -1158,6 +1240,12 @@ export async function confirmPayment(
         companyId: updated.companyId,
       },
       "Payment confirmed",
+    );
+
+    await allocateAfterSuccessfulPayment(
+      updated,
+      { actorType: "USER", actorUserId: actor.userId },
+      deps,
     );
 
     return { ok: true, data: updated };
@@ -1236,7 +1324,7 @@ export async function failPayment(
  * Apply a verified gateway webhook status to an existing PENDING payment (TASK-053).
  * Signature verification is the authorization boundary — no user RBAC.
  * Does not create payments (TASK-058) and does not rewrite confirmed financial fields.
- * Does not mutate invoice paid/outstanding (TASK-060).
+ * SUCCESSFUL confirmation triggers invoice allocation (TASK-060).
  */
 export async function applyGatewayWebhookPaymentStatus(
   input: {
@@ -1288,6 +1376,33 @@ export async function applyGatewayWebhookPaymentStatus(
     assertConfirmedFinancialFieldsUnchanged(payment, {});
 
     if (input.status === "SUCCESSFUL") {
+      const invoice = await deps.invoices.getInvoiceById(payment.invoiceId);
+      if (!invoice || invoice.companyId !== payment.companyId) {
+        return { ok: false, status: 404, error: INVOICE_NOT_FOUND };
+      }
+      const invoiceCurrency = await deps.currencies.findByCode(invoice.currencyCode);
+      const invoicePrecision = invoiceCurrency?.decimalPrecision ?? 2;
+      const existingPayments = await deps.payments.listPayments({
+        companyIds: [payment.companyId],
+        invoiceId: payment.invoiceId,
+      });
+      try {
+        assertPaymentWithinOpenBalance({
+          invoiceTotal: invoice.invoiceTotal,
+          invoiceCurrencyCode: invoice.currencyCode,
+          invoiceDecimalPrecision: invoicePrecision,
+          invoiceAmountApplied: payment.invoiceAmountApplied,
+          existingPayments,
+          processorFeeAmount: payment.processorFeeAmount,
+          actualReceivedAmount: payment.actualReceivedAmount,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === PAYMENT_EXCEEDS_OPEN_BALANCE) {
+          return { ok: false, status: 400, error: PAYMENT_EXCEEDS_OPEN_BALANCE };
+        }
+        throw error;
+      }
+
       let snapshotPatch: {
         readonly rateEffectiveAt?: Date;
         readonly rateVersionId?: string | null;
@@ -1366,6 +1481,16 @@ export async function applyGatewayWebhookPaymentStatus(
           via: "gateway_webhook",
         },
         "Payment confirmed via gateway webhook",
+      );
+
+      await allocateAfterSuccessfulPayment(
+        updated,
+        {
+          actorType: "WEBHOOK",
+          actorUserId: null,
+          correlationId: input.correlationId,
+        },
+        deps,
       );
 
       return { ok: true, data: { payment: updated, outcome: "confirmed" } };

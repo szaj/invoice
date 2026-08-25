@@ -11,17 +11,10 @@
             "id": "vault-home",
             "type": "leaf",
             "state": {
-              "type": "canvas",
-              "state": {
-                "file": "Architecture.canvas",
-                "viewState": {
-                  "x": 820,
-                  "y": 400,
-                  "zoom": -0.5157824730186609
-                }
-              },
-              "icon": "lucide-layout-dashboard",
-              "title": "Architecture"
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
             }
           }
         ]
@@ -102,7 +95,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Architecture.canvas",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -186,36 +178,46 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "vault-home",
+  "active": "vault-files",
   "lastOpenFiles": [
-    "Untitled 1.canvas",
-    "00 Home.md",
-    "Tasks/TASK-031 Invoice Draft Service.md",
-    "Tasks/TASK-007 Company CRUD.md",
-    "Tasks/TASK-017 Fixed Rate Versioning.md",
+    "Archive/Completed Tasks/TASK-071 Compliance Status Model.md",
+    "Archive/Completed Tasks/TASK-070 CBRF Calculation Engine.md",
+    "Archive/Completed Tasks/TASK-069 Payment Adjustment UI.md",
+    "Archive/Completed Tasks/TASK-068 Adjustment History and Notes.md",
+    "Archive/Completed Tasks/TASK-067 Chargeback Won Reversal.md",
+    "Archive/Completed Tasks/TASK-066 Chargeback Debit Loss.md",
+    "Archive/Completed Tasks/TASK-065 Partial Refunds.md",
+    "Active/UI UX Design System.md",
+    "Active/Vault Completion Workflow.md",
+    "06 Development Log.md",
+    "Archive/Historical Specs/Source/Original Home.md",
+    "Archive/Historical Specs/Source/multi_brand_invoice_saas_development_spec.md",
+    "Active/Unresolved/Unresolved Source Items.md",
+    "Archive/Historical Specs/Modules/PDF and Email.md",
+    "Archive/Historical Specs/Modules/Invoices.md",
+    "Archive/Historical Specs/Modules/Customers.md",
+    "Active/Modules/Settings.md",
+    "Active/Modules/Notifications.md",
+    "Active/Modules/Dashboard and Reporting.md",
+    "Active/Modules/Audit Logs.md",
+    "Active/Modules/Compliance.md",
+    "Active/Modules/Refunds Disputes Chargebacks.md",
+    "Active/Modules/Payments.md",
+    "Archive/Historical Specs/Technical/UI UX Design System.md",
+    "Archive/Historical Specs/Technical/Testing.md",
+    "Archive/Historical Specs/Technical/Security.md",
+    "Archive/Historical Specs/Technical",
+    "Archive/Historical Specs/Source",
+    "Archive/Historical Specs/Product",
+    "Archive/Historical Specs/Phases",
+    "Archive/Historical Specs/Modules",
+    "Archive/Historical Specs/Foundation",
+    "Archive/Historical Specs",
+    "Archive/Development Logs",
+    "Archive/Completed Tasks",
+    "Archive",
     "Architecture.canvas",
-    "Technical/UI UX Design System.md",
-    "Untitled.canvas",
-    "Tasks/TASK-033 Invoice Line Items.md",
-    "Tasks/TASK-037 Invoice Versions.md",
-    "Tasks/TASK-097 PDF Visual QA.md",
-    "Tasks/TASK-067 Chargeback Won Reversal.md",
-    "Tasks/TASK-034 Invoice Totals.md",
-    "Tasks/TASK-101 Backup and Recovery.md",
-    "Tasks/TASK-071 Compliance Status Model.md",
-    "Tasks/TASK-036 Invoice Lifecycle.md",
-    "Tasks/TASK-078 Invoice Report.md",
-    "Tasks/TASK-046 Settlement Conversion Snapshot.md",
-    "Tasks/TASK-051 Manual Payment UI.md",
-    "Tasks/TASK-068 Adjustment History and Notes.md",
-    "Tasks/TASK-079 Payment Report.md",
-    "Tasks/TASK-044 Payment Domain Schema.md",
-    "Tasks/TASK-077 Dashboard KPIs.md",
-    "Tasks/TASK-076 Audit Log Viewer.md",
-    "Technical/Authorization.md",
-    "Technical/Authentication.md",
-    "Tasks/TASK-038 Invoice Cancellation.md",
-    "Tasks/TASK-059 Partial Payments.md",
-    "_build_backlog.py"
+    "Untitled 1.canvas",
+    "Untitled.canvas"
   ]
 }

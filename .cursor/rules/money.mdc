@@ -1,6 +1,7 @@
 ---
-description: Authoritative money must use Decimal/NUMERIC. Always apply.
-alwaysApply: true
+description: Authoritative money must use Decimal/NUMERIC. No JS float arithmetic.
+globs: src/domain/money/**,src/domain/invoices/**,src/domain/payments/**,src/domain/currencies/**,src/domain/fixed-rates/**,src/domain/settlement/**,src/domain/customers/financial-summary.ts,src/server/invoices/**,src/server/payments/**,src/server/currencies/**,src/server/fixed-rates/**,src/server/settlement/**,src/server/customers/*financial*,src/app/api/invoices/**,src/app/api/payments/**,src/app/api/currencies/**,src/app/api/fixed-conversion-rates/**,src/app/api/companies/**/currencies/**,src/app/api/companies/**/settlement/**,src/app/api/customers/**/financial-summary/**,src/app/**/invoice-totals-panel.tsx,src/app/**/invoice-line-items-editor.tsx,src/app/**/customer-financial-summary-panel.tsx,src/app/**/manual-payment*.tsx,src/app/**/invoice-record-payment*.tsx,src/app/**/settlement/**,src/app/**/currencies/**,src/app/**/fixed-rates/**,src/components/currencies/**,tests/**/money*.ts,tests/**/invoices-totals*.ts,tests/**/invoices-allocation*.ts,tests/**/invoices-line-items*.ts,tests/**/fixed-rates*.ts,tests/**/settlement*.ts,tests/**/currency*.ts,tests/**/payments-partial*.ts,tests/**/payments-manual*.ts,tests/**/payments-snapshot*.ts,prisma/schema.prisma
+alwaysApply: false
 ---
 
 # Money Rule
@@ -17,4 +18,4 @@ Historical fixed-rate snapshots must never be recalculated. Gateway FX must neve
 
 Merchant/processor fees must never change invoice balance, the fixed rate, or converted settlement.
 
-Authoritative docs: `docs/05 Architecture Decisions.md` (ADR-004), `docs/Foundation/Currency and Conversion.md`.
+Authoritative docs: `docs/01 Current Architecture.md`, `docs/02 Current Product Rules.md`, `docs/05 Architecture Decisions.md` (ADR-004).

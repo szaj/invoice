@@ -4,7 +4,8 @@ import type { InvoiceStatus } from "@/domain/invoices/types";
 /**
  * Invoice lifecycle transitions.
  * TASK-036: issue + overdue. TASK-038: cancel (Draft/Issued/Overdue → Cancelled).
- * Paid/partial → payment tasks. Issued financial edits → ADR-009 OPEN.
+ * TASK-060: payment allocation → Partially Paid / Paid.
+ * Issued financial edits → ADR-009 OPEN.
  */
 
 export const INVOICE_ILLEGAL_TRANSITION = "That status change is not allowed.";
@@ -20,17 +21,18 @@ export const OVERDUE_ELIGIBLE_STATUSES = ["ISSUED", "PARTIALLY_PAID"] as const;
 export type OverdueEligibleStatus = (typeof OVERDUE_ELIGIBLE_STATUSES)[number];
 
 /**
- * Transitions implemented through TASK-036 + TASK-038.
- * Payment-driven transitions remain omitted.
+ * Transitions implemented through TASK-036 + TASK-038 + TASK-060.
  */
 const LIFECYCLE_TRANSITIONS: ReadonlyMap<InvoiceStatus, ReadonlySet<InvoiceStatus>> = new Map<
   InvoiceStatus,
   ReadonlySet<InvoiceStatus>
 >([
   ["DRAFT", new Set<InvoiceStatus>(["ISSUED", "CANCELLED"])],
-  ["ISSUED", new Set<InvoiceStatus>(["OVERDUE", "CANCELLED"])],
-  ["PARTIALLY_PAID", new Set<InvoiceStatus>(["OVERDUE"])],
-  ["OVERDUE", new Set<InvoiceStatus>(["CANCELLED"])],
+  ["ISSUED", new Set<InvoiceStatus>(["OVERDUE", "CANCELLED", "PARTIALLY_PAID", "PAID"])],
+  ["PARTIALLY_PAID", new Set<InvoiceStatus>(["OVERDUE", "PARTIALLY_PAID", "PAID"])],
+  ["OVERDUE", new Set<InvoiceStatus>(["CANCELLED", "PARTIALLY_PAID", "PAID"])],
+  ["PAID", new Set<InvoiceStatus>(["PAID"])],
+  ["CANCELLED", new Set<InvoiceStatus>(["CANCELLED"])],
 ]);
 
 export function canTransitionInvoiceStatus(from: InvoiceStatus, to: InvoiceStatus): boolean {

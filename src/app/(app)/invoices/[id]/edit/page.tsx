@@ -80,7 +80,6 @@ export default async function EditInvoiceDraftPage({
               currencyCode: invoice.currencyCode,
               referencePo: invoice.referencePo ?? "",
               assignedStaffUserId: invoice.assignedStaffUserId,
-              complianceStatus: invoice.complianceStatus,
               internalNotes: invoice.internalNotes ?? "",
               customerNotes: invoice.customerNotes ?? "",
             }}

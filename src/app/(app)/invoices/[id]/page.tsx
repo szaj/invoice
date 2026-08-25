@@ -19,7 +19,7 @@ import {
   loadInvoicePdfFilesForUi,
   loadInvoiceVersionsForUi,
 } from "@/server/invoices/actions";
-import { loadManualPaymentFormContext } from "@/server/payments/actions";
+import { loadManualPaymentFormContext, loadInvoicePaymentsForUi } from "@/server/payments/actions";
 import { InvoiceCancelControls } from "@/app/(app)/invoices/invoice-cancel-controls";
 import { InvoiceDuplicateButton } from "@/app/(app)/invoices/invoice-duplicate-button";
 import { InvoiceEmailPanel } from "@/app/(app)/invoices/invoice-email-panel";
@@ -29,6 +29,7 @@ import { InvoicePdfPanel } from "@/app/(app)/invoices/invoice-pdf-panel";
 import { InvoiceTotalsPanel } from "@/app/(app)/invoices/invoice-totals-panel";
 import { InvoiceVersionHistoryPanel } from "@/app/(app)/invoices/invoice-version-history-panel";
 import { IssuedInvoiceMetadataForm } from "@/app/(app)/invoices/issued-invoice-metadata-form";
+import { InvoicePaymentsPanel } from "@/app/(app)/payments/invoice-payments-panel";
 import { InvoiceRecordPaymentPanel } from "@/app/(app)/payments/invoice-record-payment-panel";
 import { StatusBadge } from "@/components/data/status-badge";
 import { DetailField, DetailSection } from "@/components/layout/detail";
@@ -76,6 +77,7 @@ export default async function InvoiceDraftViewPage({
     emailLogsResult,
     emailComposeResult,
     manualPaymentContextResult,
+    invoicePaymentsResult,
   ] = await Promise.all([
     loadInvoiceFormOptions(invoice.companyId),
     loadCustomerForUi(invoice.customerId),
@@ -89,6 +91,7 @@ export default async function InvoiceDraftViewPage({
     isCollectibleInvoiceStatus(invoice.status)
       ? loadManualPaymentFormContext(invoice.id)
       : Promise.resolve(null),
+    loadInvoicePaymentsForUi(invoice.id),
   ]);
   const companyName = options.ok
     ? (options.companies.find((company) => company.id === invoice.companyId)?.displayName ??
@@ -127,6 +130,10 @@ export default async function InvoiceDraftViewPage({
     canRecordPayment && collectible && manualPaymentContextResult && !manualPaymentContextResult.ok
       ? manualPaymentContextResult.error
       : null;
+  const invoicePayments =
+    invoicePaymentsResult.ok && invoicePaymentsResult.data
+      ? invoicePaymentsResult.data.payments
+      : [];
 
   const title = invoice.invoiceNumber ?? `Draft ${invoice.id.slice(0, 8)}`;
   const description =
@@ -173,7 +180,10 @@ export default async function InvoiceDraftViewPage({
           <DetailField label="Currency" value={invoice.currencyCode} />
           <DetailField label="Reference / PO" value={invoice.referencePo} />
           <DetailField label="Status" value={<StatusBadge status={invoice.status} />} />
-          <DetailField label="Compliance" value={invoice.complianceStatus.replaceAll("_", " ")} />
+          <DetailField
+            label="Compliance"
+            value={<StatusBadge status={invoice.complianceStatus} />}
+          />
           <DetailField
             label="Invoice number"
             value={invoice.invoiceNumber ?? "Assigned on issue (system-generated, read-only)"}
@@ -246,6 +256,8 @@ export default async function InvoiceDraftViewPage({
         initialLogs={emailLogs}
       />
 
+      <InvoicePaymentsPanel payments={invoicePayments} invoiceCurrencyCode={invoice.currencyCode} />
+
       <InvoiceRecordPaymentPanel
         canRecord={canRecordPayment}
         collectible={collectible}
@@ -263,7 +275,6 @@ export default async function InvoiceDraftViewPage({
             defaultValues={{
               referencePo: invoice.referencePo ?? "",
               assignedStaffUserId: invoice.assignedStaffUserId ?? "",
-              complianceStatus: invoice.complianceStatus,
               internalNotes: invoice.internalNotes ?? "",
               customerNotes: invoice.customerNotes ?? "",
             }}

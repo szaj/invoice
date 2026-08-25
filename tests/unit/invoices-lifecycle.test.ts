@@ -6,8 +6,8 @@ import {
   invoiceMeetsOverdueRule,
 } from "@/domain/invoices/lifecycle";
 
-describe("invoice lifecycle transitions (TASK-036 + TASK-038)", () => {
-  it("allows issue, overdue, and cancel from Draft/Issued/Overdue", () => {
+describe("invoice lifecycle transitions (TASK-036 + TASK-038 + TASK-060)", () => {
+  it("allows issue, overdue, cancel, and payment allocation transitions", () => {
     expect(canTransitionInvoiceStatus("DRAFT", "ISSUED")).toBe(true);
     expect(canTransitionInvoiceStatus("ISSUED", "OVERDUE")).toBe(true);
     expect(canTransitionInvoiceStatus("PARTIALLY_PAID", "OVERDUE")).toBe(true);
@@ -15,9 +15,10 @@ describe("invoice lifecycle transitions (TASK-036 + TASK-038)", () => {
     expect(canTransitionInvoiceStatus("ISSUED", "CANCELLED")).toBe(true);
     expect(canTransitionInvoiceStatus("OVERDUE", "CANCELLED")).toBe(true);
     expect(canTransitionInvoiceStatus("PARTIALLY_PAID", "CANCELLED")).toBe(false);
-    expect(canTransitionInvoiceStatus("ISSUED", "PAID")).toBe(false);
-    expect(canTransitionInvoiceStatus("ISSUED", "PARTIALLY_PAID")).toBe(false);
-    expect(canTransitionInvoiceStatus("OVERDUE", "PAID")).toBe(false);
+    expect(canTransitionInvoiceStatus("ISSUED", "PAID")).toBe(true);
+    expect(canTransitionInvoiceStatus("ISSUED", "PARTIALLY_PAID")).toBe(true);
+    expect(canTransitionInvoiceStatus("OVERDUE", "PAID")).toBe(true);
+    expect(canTransitionInvoiceStatus("PARTIALLY_PAID", "PAID")).toBe(true);
   });
 });
 

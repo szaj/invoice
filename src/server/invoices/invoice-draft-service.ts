@@ -253,6 +253,7 @@ export async function createDraftInvoice(
     const writeInput = toInvoiceHeaderWriteFromDraft(parsed.data, {
       assignedStaffUserId,
       status: "DRAFT",
+      complianceStatus: "NOT_REVIEWED",
     });
 
     const created = await deps.store.createInvoice(writeInput, {
@@ -354,6 +355,7 @@ export async function updateDraftInvoice(
       ...toInvoiceHeaderWriteFromDraft(parsed.data, {
         assignedStaffUserId,
         status: "DRAFT",
+        complianceStatus: existing.complianceStatus,
       }),
       // Preserve existing number if any; numbering assignment is TASK-035.
       invoiceNumber: existing.invoiceNumber,

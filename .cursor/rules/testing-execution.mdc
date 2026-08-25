@@ -1,0 +1,14 @@
+---
+description: Efficient task verification
+alwaysApply: true
+---
+
+For normal TASKs:
+
+- Run targeted unit tests.
+- Run targeted affected-module integration tests when applicable.
+- Run typecheck, lint, format check, and build once near completion.
+- Do not run the full integration suite after every TASK.
+- Run full integration only at phase/checkpoint/release boundaries, after critical shared-core changes, or when specifically required.
+- Debug failures with targeted tests; do not repeatedly rerun the full suite.
+- Report only checks actually executed.

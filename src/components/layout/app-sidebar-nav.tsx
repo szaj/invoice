@@ -14,6 +14,7 @@ type AppSidebarNavProps = {
 
 export function AppSidebarNav({ groups, onNavigate, className }: AppSidebarNavProps) {
   const pathname = usePathname();
+  const siblingHrefs = groups.flatMap((group) => group.items.map((item) => item.href));
 
   return (
     <nav className={cn("flex flex-col gap-6", className)} aria-label="Main">
@@ -24,7 +25,7 @@ export function AppSidebarNav({ groups, onNavigate, className }: AppSidebarNavPr
           </p>
           <ul className="grid gap-0.5">
             {group.items.map((item) => {
-              const active = isNavItemActive(pathname, item.href);
+              const active = isNavItemActive(pathname, item.href, siblingHrefs);
               return (
                 <li key={item.href}>
                   <Link

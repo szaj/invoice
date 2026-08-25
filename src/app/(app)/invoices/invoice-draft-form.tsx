@@ -15,7 +15,6 @@ import {
   type InvoiceDraftWriteFormValues,
   type InvoiceDraftWriteInput,
 } from "@/domain/invoices/schema";
-import { INVOICE_COMPLIANCE_STATUSES } from "@/domain/invoices/types";
 import {
   createDraftInvoiceAction,
   loadInvoiceFormOptionsForCompanyAction,
@@ -51,7 +50,6 @@ export function InvoiceDraftForm({
     defaultValues: {
       ...defaultValues,
       assignedStaffUserId: defaultValues.assignedStaffUserId ?? null,
-      complianceStatus: defaultValues.complianceStatus ?? "NOT_REVIEWED",
       referencePo: defaultValues.referencePo ?? "",
       internalNotes: defaultValues.internalNotes ?? "",
       customerNotes: defaultValues.customerNotes ?? "",
@@ -195,21 +193,6 @@ export function InvoiceDraftForm({
       <div className="grid gap-2">
         <Label htmlFor="invoice-reference">Reference / PO</Label>
         <Input id="invoice-reference" {...form.register("referencePo")} />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="invoice-compliance">Compliance status</Label>
-        <select
-          id="invoice-compliance"
-          className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          {...form.register("complianceStatus")}
-        >
-          {INVOICE_COMPLIANCE_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status.replaceAll("_", " ")}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="grid gap-2">

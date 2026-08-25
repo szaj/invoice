@@ -46,7 +46,6 @@ export default async function NewInvoiceDraftPage() {
               currencyCode: defaultCurrency,
               referencePo: "",
               assignedStaffUserId: null,
-              complianceStatus: "NOT_REVIEWED",
               internalNotes: "",
               customerNotes: "",
             }}

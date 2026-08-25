@@ -34,6 +34,11 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
         permissions: ["invoice.create"],
       },
       {
+        href: "/payments",
+        label: "Payments",
+        permissions: ["invoice.create"],
+      },
+      {
         href: "/payments/manual",
         label: "Manual payment",
         permissions: ["payment.manual.record"],
@@ -84,11 +89,31 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
   },
 ] as const;
 
-export function isNavItemActive(pathname: string, href: string): boolean {
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  siblingHrefs: readonly string[] = [],
+): boolean {
   if (href === "/") {
     return pathname === "/";
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const matches = pathname === href || pathname.startsWith(`${href}/`);
+  if (!matches) {
+    return false;
+  }
+  // Prefer the longest matching nav href so /payments does not stay active on /payments/manual.
+  if (siblingHrefs.length > 0) {
+    const longerMatch = siblingHrefs.some(
+      (other) =>
+        other !== href &&
+        other.length > href.length &&
+        (pathname === other || pathname.startsWith(`${other}/`)),
+    );
+    if (longerMatch) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** Visibility-only filter. Server-side authorization still gates each route. */

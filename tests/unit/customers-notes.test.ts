@@ -53,6 +53,7 @@ function customerRecord(overrides: Partial<CustomerRecord> = {}): CustomerRecord
     defaultCompanyId: COMPANY_A,
     paymentPreference: null,
     status: "ACTIVE",
+    complianceStatus: "NOT_REVIEWED",
     assignedStaffUserId: null,
     internalNotes: null,
     tags: [],

@@ -1,6 +1,7 @@
 ---
-description: Frontend must reuse the shared UI/UX design system. Always apply.
-alwaysApply: true
+description: Frontend must reuse the shared UI/UX design system and semantic tokens.
+globs: src/app/**/*.tsx,src/components/**,src/app/globals.css,components.json,postcss.config.mjs
+alwaysApply: false
 ---
 
 # UI / UX Design System Rule
@@ -17,4 +18,4 @@ Target restrained B2B financial/admin UX: hierarchy, clarity, information densit
 
 Frontend visibility is not authorization. Do not move authoritative business validation into client components.
 
-Authoritative docs: `docs/Technical/UI UX Design System.md`, `docs/Technical/Engineering Rules.md`.
+Authoritative docs: `docs/01 Current Architecture.md`, `docs/Active/UI UX Design System.md`.

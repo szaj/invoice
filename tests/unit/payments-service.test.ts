@@ -117,6 +117,7 @@ function customerRecord(overrides: Partial<CustomerRecord> = {}): CustomerRecord
     defaultCompanyId: COMPANY_A,
     paymentPreference: null,
     status: "ACTIVE",
+    complianceStatus: "NOT_REVIEWED",
     assignedStaffUserId: null,
     internalNotes: null,
     tags: [],
@@ -195,6 +196,7 @@ function toPaymentRecord(input: PaymentWriteInput, id: string): PaymentRecord {
     methodCode: input.methodCode,
     externalTransactionId: input.externalTransactionId,
     status: input.status,
+    complianceStatus: "NOT_REVIEWED",
     invoiceCurrencyCode: input.invoiceCurrencyCode,
     invoiceAmountApplied: input.invoiceAmountApplied,
     settlementCurrencyCode: input.settlementCurrencyCode,
@@ -303,6 +305,35 @@ function createDeps(seed: {
       },
       async listInvoices(filters) {
         return invoices.filter((row) => filters.companyIds.includes(row.companyId));
+      },
+      async updatePaymentAllocation(invoiceId, input) {
+        const index = invoices.findIndex((row) => row.id === invoiceId);
+        if (index < 0) {
+          throw new Error("INVOICE_NOT_FOUND");
+        }
+        const current = invoices[index]!;
+        const updated: InvoiceRecord = {
+          ...current,
+          confirmedPaidAmount: input.confirmedPaidAmount,
+          outstandingAmount: input.outstandingAmount,
+          status: input.status,
+          updatedAt: new Date("2026-08-24T15:00:00.000Z"),
+        };
+        invoices[index] = updated;
+        return updated;
+      },
+    },
+    settings: {
+      async getSettings() {
+        return {
+          id: "system",
+          reportingCurrencyCode: "USD",
+          defaultTimezone: "UTC",
+          roundingTolerance: "0.01",
+          invoiceNumberIncludeYear: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
       },
     },
     customers: {
@@ -446,6 +477,7 @@ describe("payment service (TASK-045)", () => {
     expect(deps.auditWriter.events.map((event) => event.action)).toEqual([
       AuditActions.PAYMENT_CREATED,
       AuditActions.PAYMENT_CONFIRMED,
+      AuditActions.INVOICE_PAYMENT_ALLOCATED,
     ]);
   });
 
@@ -664,6 +696,17 @@ describe("payment service (TASK-045)", () => {
 
     const detail = await getPayment(principal("STAFF"), created.data.id, deps);
     expect(detail.ok).toBe(true);
+
+    const staffUnassigned = await getPayment(
+      principal("STAFF", { assignedCompanyIds: [COMPANY_B] }),
+      created.data.id,
+      deps,
+    );
+    expect(staffUnassigned.ok).toBe(false);
+    if (!staffUnassigned.ok) {
+      expect(staffUnassigned.status).toBe(403);
+      expect(staffUnassigned.error).toBe(GENERIC_FORBIDDEN);
+    }
   });
 
   it("marks pending payments failed without mutating financial fields", async () => {
@@ -719,6 +762,7 @@ describe("payment settlement snapshot (TASK-046)", () => {
       methodCode: "MANUAL",
       externalTransactionId: null,
       status: "PENDING",
+      complianceStatus: "NOT_REVIEWED",
       invoiceCurrencyCode: "GBP",
       invoiceAmountApplied: "100",
       settlementCurrencyCode: "USD",
@@ -937,9 +981,6 @@ describe("manual payment recording (TASK-050)", () => {
       gbpUsdRate: "1.250000000000",
     });
     const admin = principal("ADMIN");
-    const beforeOutstanding = deps.invoices
-      ? (await deps.invoices.getInvoiceById(INVOICE_ID))?.outstandingAmount
-      : null;
 
     const recorded = await recordManualPayment(
       admin,
@@ -987,8 +1028,9 @@ describe("manual payment recording (TASK-050)", () => {
     });
 
     const afterInvoice = await deps.invoices.getInvoiceById(INVOICE_ID);
-    expect(afterInvoice?.outstandingAmount).toBe(beforeOutstanding);
-    expect(afterInvoice?.confirmedPaidAmount).toBe("0");
+    expect(afterInvoice?.confirmedPaidAmount).toBe("40");
+    expect(afterInvoice?.outstandingAmount).toBe("60");
+    expect(afterInvoice?.status).toBe("PARTIALLY_PAID");
 
     const createdAudit = deps.auditWriter.events.find(
       (event) => event.action === AuditActions.PAYMENT_CREATED,
@@ -996,8 +1038,12 @@ describe("manual payment recording (TASK-050)", () => {
     const confirmedAudit = deps.auditWriter.events.find(
       (event) => event.action === AuditActions.PAYMENT_CONFIRMED,
     );
+    const allocatedAudit = deps.auditWriter.events.find(
+      (event) => event.action === AuditActions.INVOICE_PAYMENT_ALLOCATED,
+    );
     expect(createdAudit).toBeDefined();
     expect(confirmedAudit).toBeDefined();
+    expect(allocatedAudit).toBeDefined();
   });
 
   it("uses same-currency rate 1 and does not invent a gateway transaction id", async () => {
@@ -1057,6 +1103,7 @@ describe("manual payment recording (TASK-050)", () => {
           methodCode: "MANUAL",
           externalTransactionId: null,
           status: "SUCCESSFUL",
+          complianceStatus: "NOT_REVIEWED",
           invoiceCurrencyCode: "USD",
           invoiceAmountApplied: "60",
           settlementCurrencyCode: "USD",
@@ -1094,6 +1141,69 @@ describe("manual payment recording (TASK-050)", () => {
     if (!recorded.ok) {
       expect(recorded.status).toBe(400);
       expect(recorded.error).toBe(PAYMENT_EXCEEDS_OPEN_BALANCE);
+    }
+  });
+
+  it("allows two SUCCESSFUL partial payments on one invoice (TASK-059)", async () => {
+    const deps = createDeps({});
+    const first = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "40.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-24",
+      },
+      deps,
+    );
+    expect(first.ok).toBe(true);
+    if (!first.ok) {
+      return;
+    }
+    expect(first.data.status).toBe("SUCCESSFUL");
+    expect(first.data.invoiceAmountApplied).toBe("40");
+
+    const second = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "35.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-25",
+      },
+      deps,
+    );
+    expect(second.ok).toBe(true);
+    if (!second.ok) {
+      return;
+    }
+    expect(second.data.status).toBe("SUCCESSFUL");
+    expect(second.data.invoiceAmountApplied).toBe("35");
+    expect(second.data.id).not.toBe(first.data.id);
+
+    const listed = await listPayments(
+      principal("ADMIN"),
+      { companyId: COMPANY_A, invoiceId: INVOICE_ID },
+      deps,
+    );
+    expect(listed.ok).toBe(true);
+    if (listed.ok) {
+      expect(listed.data.filter((row) => row.status === "SUCCESSFUL")).toHaveLength(2);
+    }
+
+    const over = await recordManualPayment(
+      principal("ADMIN"),
+      {
+        invoiceId: INVOICE_ID,
+        invoiceAmountApplied: "30.00",
+        settlementCurrencyCode: "USD",
+        paymentDate: "2026-08-26",
+      },
+      deps,
+    );
+    expect(over.ok).toBe(false);
+    if (!over.ok) {
+      expect(over.error).toBe(PAYMENT_EXCEEDS_OPEN_BALANCE);
     }
   });
 
