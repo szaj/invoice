@@ -652,6 +652,8 @@ Application logs are not the append-only business/security audit trail. See [[Au
 
 [[TASK-012 Audit Event Foundation]] adds `audit_logs` as the application audit trail. Existing login and Admin user/company mutations dual-write: Pino `event:` fields remain for operations; structured rows are persisted for control/history. Secrets are masked before audit persistence. No update/delete application APIs exist for audit rows.
 
+[[TASK-076 Audit Log Viewer]] adds `GET /api/audit` and `/audit` as a read-only filtered viewer. Access requires `audit.read` (Admin all companies; Compliance assigned; Staff denied per US-010). Stored values are re-masked on read.
+
 ### Related Documents
 
 - [[Security]]

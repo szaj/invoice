@@ -1,13 +1,18 @@
 import Link from "next/link";
 
+import { DashboardFilters, type DashboardFilterValues } from "@/app/(app)/dashboard-filters";
+import { DashboardKpiPanel } from "@/app/(app)/dashboard-kpi-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authorizePermission } from "@/domain/authz/authorize";
+import { parseDashboardKpiSearchParams } from "@/domain/reporting/schema";
 import { getAuthenticatedIdentity } from "@/server/auth/session";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
 import { loadCompanyContextForLayout } from "@/server/company-context/actions";
+import { loadDashboardKpisForUi, loadDashboardOptions } from "@/server/reporting/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +22,29 @@ type QuickLink = {
   description: string;
 };
 
-export default async function Home() {
+function toDateInputValue(value: Date | undefined): string {
+  if (!value) {
+    return "";
+  }
+  return value.toISOString().slice(0, 10);
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const identity = await getAuthenticatedIdentity();
   const principal = await getRequestAuthorizationPrincipal();
+  const canViewDashboard = authorizePermission(principal, "dashboard.view").allowed;
   const canManageUsers = authorizePermission(principal, "user.manage").allowed;
   const canWriteCompanies = authorizePermission(principal, "company.write").allowed;
   const canManageSettings = authorizePermission(principal, "settings.manage").allowed;
   const canManageCurrencies = authorizePermission(principal, "currency.manage").allowed;
   const canEditCustomers = authorizePermission(principal, "customer.edit").allowed;
   const canCreateInvoices = authorizePermission(principal, "invoice.create").allowed;
+  const canReadAudit = authorizePermission(principal, "audit.read").allowed;
+  const canViewReports = authorizePermission(principal, "report.view").allowed;
   const context = await loadCompanyContextForLayout();
 
   const selection = context.selection;
@@ -36,6 +55,35 @@ export default async function Home() {
         ? (context.companies.find((company) => company.id === selection.companyId)?.displayName ??
           selection.companyId)
         : "No company context";
+
+  const params = await searchParams;
+  const query = parseDashboardKpiSearchParams(params);
+  const options = canViewDashboard ? await loadDashboardOptions(query.companyId) : null;
+
+  const companyId =
+    query.companyId ?? (options?.ok ? (options.data.defaultCompanyId ?? undefined) : undefined);
+  const kpiQuery = {
+    ...query,
+    ...(companyId ? { companyId } : {}),
+  };
+
+  const kpiResult = canViewDashboard && options?.ok ? await loadDashboardKpisForUi(kpiQuery) : null;
+
+  const filterValues: DashboardFilterValues = {
+    companyId: companyId ?? "",
+    customerId: query.customerId ?? "",
+    staffUserId: query.staffUserId ?? "",
+    reportingGroupId: query.reportingGroupId ?? "",
+    dateFrom: toDateInputValue(query.dateFrom),
+    dateTo: toDateInputValue(query.dateTo),
+    invoiceStatus: query.invoiceStatus ?? "",
+    paymentStatus: query.paymentStatus ?? "",
+    paymentMethod: query.paymentMethod ?? "",
+    invoiceCurrency: query.invoiceCurrency ?? "",
+    settlementCurrency: query.settlementCurrency ?? "",
+    countryCode: query.countryCode ?? "",
+    complianceStatus: query.complianceStatus ?? "",
+  };
 
   const links: QuickLink[] = [];
   if (canEditCustomers) {
@@ -88,6 +136,30 @@ export default async function Home() {
       description: "Admin-defined conversion rate versions.",
     });
   }
+  if (canViewReports) {
+    links.push({
+      href: "/reports/invoices",
+      label: "Invoice report",
+      description: "Filterable invoice list with totals, paid, balance, and staff.",
+    });
+    links.push({
+      href: "/reports/payments",
+      label: "Payment report",
+      description: "Payments with stored rate snapshots, settlement, and optional fees.",
+    });
+    links.push({
+      href: "/reports/customers",
+      label: "Customer report",
+      description: "Invoiced, paid, and outstanding totals by customer and currency.",
+    });
+  }
+  if (canReadAudit) {
+    links.push({
+      href: "/audit",
+      label: "Audit logs",
+      description: "Read-only history of privileged actions.",
+    });
+  }
   if (canManageUsers) {
     links.push({
       href: "/users",
@@ -99,8 +171,8 @@ export default async function Home() {
   return (
     <PageFrame>
       <PageHeader
-        title="Home"
-        description="Multi-brand invoicing workspace. Authorization uses application roles and permissions."
+        title="Dashboard"
+        description="KPI cards by original and settlement currency. Use the company switcher or filters to scope totals."
       />
 
       <Card>
@@ -119,6 +191,24 @@ export default async function Home() {
           </p>
         </CardContent>
       </Card>
+
+      {canViewDashboard && options?.ok ? (
+        <section className="grid gap-3">
+          <h2 className="text-sm font-semibold">Filters</h2>
+          <DashboardFilters
+            initial={filterValues}
+            companies={options.data.companies}
+            reportingGroups={options.data.reportingGroups}
+            allowsAllCompanies={options.data.allowsAllCompanies}
+          />
+          {kpiResult && !kpiResult.ok ? (
+            <Alert variant="destructive">
+              <AlertDescription>{kpiResult.error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {kpiResult?.ok ? <DashboardKpiPanel kpis={kpiResult.data} /> : null}
+        </section>
+      ) : null}
 
       {links.length > 0 ? (
         <section className="grid gap-3">

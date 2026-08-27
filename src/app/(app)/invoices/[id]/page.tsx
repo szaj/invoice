@@ -48,6 +48,7 @@ export default async function InvoiceDraftViewPage({
   if (!authorizePermission(actor, "invoice.create").allowed) {
     redirect("/");
   }
+  const canComplianceReview = authorizePermission(actor, "compliance.review").allowed;
 
   const result = await loadDraftInvoiceForUi(id);
   if (!result.ok) {
@@ -164,6 +165,11 @@ export default async function InvoiceDraftViewPage({
             {canIssue ? <InvoiceIssueButton invoiceId={invoice.id} /> : null}
             <InvoiceDuplicateButton invoiceId={invoice.id} />
             {canCancel ? <InvoiceCancelControls invoiceId={invoice.id} /> : null}
+            {canComplianceReview ? (
+              <Button asChild variant="outline">
+                <Link href={`/compliance/invoice/${invoice.id}`}>Compliance review</Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <Link href="/invoices">Back to list</Link>
             </Button>

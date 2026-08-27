@@ -55,6 +55,10 @@ export const STATUS_TONES: Record<string, StatusTone> = {
   CHARGEBACK: "destructive",
   REVERSAL: "success",
   NOTE: "neutral",
+  // Audit actor types
+  USER: "info",
+  SYSTEM: "muted",
+  WEBHOOK: "warning",
 };
 
 function humanizeStatus(status: string): string {

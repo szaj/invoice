@@ -26,7 +26,7 @@ Control: [[04 Current Plan]] · [[00 Home]]
 | User management | implemented (TASK-006) |
 | Companies / branding / reporting groups | implemented (TASK-007, 010–011) |
 | User–company assignments + tenant context | implemented (TASK-008–009) |
-| Audit event foundation (append-only writers) | implemented (TASK-012); viewer not started |
+| Audit event foundation (append-only writers) | implemented (TASK-012); viewer implemented (TASK-076) |
 | Core system settings | implemented (TASK-013); ADR-011 still OPEN |
 | Currencies + company currencies + fixed rates | implemented (TASK-014–018, 021) |
 | Money calculation utilities | implemented (TASK-019) |
@@ -52,18 +52,21 @@ Control: [[04 Current Plan]] · [[00 Home]]
 | Adjustment history and notes | implemented (TASK-068) |
 | Payment adjustment UI | implemented (TASK-069) |
 | CB/RF engine | implemented (TASK-070) |
-| Compliance status model | implemented (TASK-071); queue/notes/UI/export not started |
-| Compliance module (queue, notes, UI, export) | not started (TASK-072–075) |
-| Audit log viewer | not started (TASK-076) |
-| Reporting / dashboard | not started (TASK-077–090) |
+| Compliance status model | implemented (TASK-071) |
+| Compliance review queue | implemented (TASK-072) |
+| Compliance notes / reason codes | implemented (TASK-073) |
+| Compliance review UI | implemented (TASK-074) |
+| Compliance export | implemented (TASK-075) |
+| Audit log viewer | implemented (TASK-076) |
+| Reporting / dashboard | dashboard KPIs (TASK-077) + invoice report (TASK-078) + payment report (TASK-079) + outstanding report (TASK-080) + overdue aging (TASK-081) + customer report (TASK-082); remaining reports TASK-083–090 |
 | Notifications | not started (TASK-091–092) |
 | Hardening / testing suites / deployment | not started (TASK-093–103) |
 
 ## Completed ID ranges
 
-- **COMPLETE:** TASK-001 through TASK-071, **except** TASK-056 and TASK-057.
+- **COMPLETE:** TASK-001 through TASK-082, **except** TASK-056 and TASK-057.
 - **DEFERRED:** TASK-056, TASK-057 (no live bank processor until concrete vendor/API).
-- **NOT STARTED:** TASK-072 through TASK-103.
+- **NOT STARTED:** TASK-083 through TASK-103.
 
 Dependency check for active tasks: if a dependency ID is in the COMPLETE ranges above, treat it as established. Do **not** open archived task files merely to verify COMPLETE status.
 

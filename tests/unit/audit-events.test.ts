@@ -168,10 +168,14 @@ describe("login audit writes", () => {
 });
 
 describe("audit API surface", () => {
-  it("does not expose update or delete audit HTTP routes", () => {
+  it("exposes a GET-only audit route and no update/delete audit HTTP handlers", () => {
     const apiRoot = path.join(process.cwd(), "src", "app", "api");
-    const auditApi = path.join(apiRoot, "audit");
-    expect(existsSync(auditApi)).toBe(false);
+    const auditRoute = path.join(apiRoot, "audit", "route.ts");
+    expect(existsSync(auditRoute)).toBe(true);
+
+    const auditContents = readFileSync(auditRoute, "utf8");
+    expect(auditContents).toMatch(/export async function GET/);
+    expect(auditContents).not.toMatch(/export async function (POST|PUT|PATCH|DELETE)/);
 
     const routeFiles = collectRouteFiles(apiRoot);
     for (const file of routeFiles) {

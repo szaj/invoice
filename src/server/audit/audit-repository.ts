@@ -1,7 +1,13 @@
 import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
-import type { AuditEventInput, AuditEventRecord, AuditJson } from "@/domain/audit/types";
+import type {
+  AuditActorType,
+  AuditEventInput,
+  AuditEventRecord,
+  AuditJson,
+} from "@/domain/audit/types";
+import { AUDIT_VIEWER_DEFAULT_LIMIT, AUDIT_VIEWER_MAX_LIMIT } from "@/domain/audit/types";
 import { getPrisma } from "@/server/db/client";
 
 function toAuditJson(value: Prisma.JsonValue | null | undefined): AuditJson {
@@ -52,8 +58,8 @@ export interface AuditEventStore {
 }
 
 /**
- * Write-only Prisma store. Update/delete are intentionally absent.
- * Entity-scoped reads for customer profile activity (TASK-026) are allowed.
+ * Prisma audit store. Update/delete are intentionally absent (append-only).
+ * Entity-scoped reads (TASK-026) and filtered viewer reads (TASK-076) are allowed.
  */
 export class PrismaAuditEventStore implements AuditEventStore {
   async append(
@@ -120,6 +126,63 @@ export class PrismaAuditEventStore implements AuditEventStore {
         AND: companyFilter.length > 0 ? companyFilter : undefined,
       },
       orderBy: { occurredAt: "desc" },
+      take: limit,
+    });
+
+    return rows.map(mapRow);
+  }
+
+  /**
+   * Filtered audit viewer read path (TASK-076). Callers must enforce authorization.
+   * Update/delete remain absent. Company scope is applied by the query service.
+   */
+  async list(input: {
+    readonly companyIds: readonly string[] | "ALL";
+    readonly includeNullCompany?: boolean;
+    readonly actorUserId?: string;
+    readonly actorType?: AuditActorType;
+    readonly entityType?: string;
+    readonly entityId?: string;
+    readonly action?: string;
+    readonly dateFrom?: Date;
+    readonly dateTo?: Date;
+    readonly limit?: number;
+  }): Promise<AuditEventRecord[]> {
+    const prisma = getPrisma();
+    const limit = Math.min(
+      Math.max(input.limit ?? AUDIT_VIEWER_DEFAULT_LIMIT, 1),
+      AUDIT_VIEWER_MAX_LIMIT,
+    );
+
+    const companyWhere: Prisma.AuditLogWhereInput | undefined =
+      input.companyIds === "ALL"
+        ? undefined
+        : input.includeNullCompany
+          ? {
+              OR: [{ companyId: null }, { companyId: { in: [...input.companyIds] } }],
+            }
+          : { companyId: { in: [...input.companyIds] } };
+
+    const rows = await prisma.auditLog.findMany({
+      where: {
+        AND: [
+          companyWhere ?? {},
+          input.actorUserId ? { actorUserId: input.actorUserId } : {},
+          input.actorType ? { actorType: input.actorType } : {},
+          input.entityType ? { entityType: input.entityType } : {},
+          input.entityId ? { entityId: input.entityId } : {},
+          input.action ? { action: input.action } : {},
+          input.dateFrom || input.dateTo
+            ? {
+                occurredAt: {
+                  ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+                  ...(input.dateTo ? { lte: input.dateTo } : {}),
+                },
+              }
+            : {},
+        ],
+      },
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
       take: limit,
     });
 

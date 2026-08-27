@@ -14,13 +14,13 @@ Executable work lives in `docs/Active/Tasks/`. See also [[Vault Completion Workf
 
 ## Current phase
 
-**Phase 07 — Compliance and Audit**
+**Phase 08 — Reporting**
 
 ## Next buildable task
 
-[[TASK-072 Compliance Review Queue]] (NOT STARTED)
+[[TASK-083 Company Performance]] (NOT STARTED)
 
-Do not start TASK-072 until ready. Do not skip ahead.
+Do not start TASK-083 until ready. Do not skip ahead.
 
 ## Remaining sequence
 
@@ -32,11 +32,11 @@ Do not start TASK-072 until ready. Do not skip ahead.
 
 ### Phase 07 — Compliance and Audit
 
-TASK-071 COMPLETE → TASK-072 → TASK-076 (remaining NOT STARTED)
+TASK-071 through TASK-076 COMPLETE.
 
 ### Phase 08 — Reporting
 
-TASK-077 → TASK-090 (all NOT STARTED)
+TASK-077–082 COMPLETE. TASK-083 → TASK-090 (NOT STARTED)
 
 ### Phase 09 — Notifications, Hardening, Deployment
 
@@ -64,7 +64,7 @@ Do not invent a fictional bank adapter. Version 1 live providers: MANUAL, STRIPE
 | US-007–010 Staff optional grants | OPEN | Default denied |
 | US-017 Bank processor vendor | DEFERRED | TASK-056/057 |
 
-None of the above currently blocks TASK-072.
+None of the above currently blocks TASK-083.
 
 ## Explicitly not planned (Version 1)
 

@@ -1,6 +1,6 @@
 ---
 type: task
-status: not-started
+status: complete
 phase: 7
 tags:
   - task
@@ -19,8 +19,8 @@ Control: [[04 Current Plan]] · [[03 Current Implementation Status]] · [[01 Cur
 | ID | Task | Dependencies | Status |
 |---|---|---|---|
 | TASK-071 | [[TASK-071 Compliance Status Model]] | TASK-030, TASK-044 | COMPLETE |
-| TASK-072 | [[TASK-072 Compliance Review Queue]] | TASK-071, TASK-009 | NOT STARTED |
-| TASK-073 | [[TASK-073 Compliance Notes and Reason Codes]] | TASK-072, TASK-012 | NOT STARTED |
-| TASK-074 | [[TASK-074 Compliance Review UI]] | TASK-072, TASK-073 | NOT STARTED |
-| TASK-075 | [[TASK-075 Compliance Export]] | TASK-072 | NOT STARTED |
-| TASK-076 | [[TASK-076 Audit Log Viewer]] | TASK-012 | NOT STARTED |
+| TASK-072 | [[TASK-072 Compliance Review Queue]] | TASK-071, TASK-009 | COMPLETE |
+| TASK-073 | [[TASK-073 Compliance Notes and Reason Codes]] | TASK-072, TASK-012 | COMPLETE |
+| TASK-074 | [[TASK-074 Compliance Review UI]] | TASK-072, TASK-073 | COMPLETE |
+| TASK-075 | [[TASK-075 Compliance Export]] | TASK-072 | COMPLETE |
+| TASK-076 | [[TASK-076 Audit Log Viewer]] | TASK-012 | COMPLETE |

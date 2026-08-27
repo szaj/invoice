@@ -84,9 +84,39 @@ AES-256-GCM application-managed envelope encryption; versioned env KEK keyring. 
 
 Append-only **application** `audit_logs`, distinct from Pino and Sentry. Privileged financial/status/settings actions must audit. Never store secrets in audit rows.
 
-## Compliance status (TASK-071)
+`GET /api/audit` is the read-only filtered viewer (TASK-076). Requires `audit.read`. Admin may see all companies (including company-null events); Compliance is limited to assigned companies; Staff is denied (US-010 — no invented grant). Values are re-masked on read. No update/delete APIs. UI: `/audit`.
 
-Shared `compliance_status` on invoices, payments, and customers (`NOT_REVIEWED` / `UNDER_REVIEW` / `APPROVED` / `FLAGGED`). Status changes require `compliance.review` (Admin/Compliance); Staff is denied. Each change appends a `compliance_reviews` row (notes/reason codes in TASK-073). Queue/filters are TASK-072.
+## Compliance status (TASK-071 / TASK-073)
+
+Shared `compliance_status` on invoices, payments, and customers (`NOT_REVIEWED` / `UNDER_REVIEW` / `APPROVED` / `FLAGGED`). Status changes require `compliance.review` (Admin/Compliance); Staff is denied. Each change appends a `compliance_reviews` row with optional notes, reason codes, resolution notes, and evidence refs. Notes-only events use `POST /api/compliance/notes` without changing status.
+
+## Compliance review queue (TASK-072 / TASK-074 / TASK-075)
+
+`GET /api/compliance/queue` returns unified invoice/payment/customer queue items with filters: company, staff, date, amount, gateway, currency, status. Requires `compliance.review`. Compliance is limited to assigned companies; Admin may see all. UI: `/compliance` queue + `/compliance/{subjectType}/{id}` review detail (approve/flag/notes); Staff has no review actions. `GET /api/compliance/export` returns a CSV of the same filtered queue; requires `report.export` and `compliance.review`; Staff denied by default (US-009); each export writes `compliance.exported` audit.
+
+## Dashboard KPIs (TASK-077)
+
+`GET /api/dashboard` and `/` dashboard UI expose §13.1 KPIs under `dashboard.view` (all roles within scope). Invoice-currency buckets: Total Invoiced, Total Paid, Outstanding, Overdue. Settlement-currency buckets: Converted Settlement from stored payment snapshots; processor fees and actual received separately (BR-020). Counts by invoice status and payment method/status. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup is not invented.
+
+## Invoice Report (TASK-078)
+
+`GET /api/reports/invoices` and `/reports/invoices` expose §13.3 Invoice Report under `report.view`. Columns: invoice number, customer, company, dates, currency, total, paid, balance, status, staff. Server-side pagination, filter, and sort. Admin all companies; Compliance assigned companies; Staff assigned companies and own/assigned invoices only. Amounts remain in original invoice currency — no unlabeled mixed-currency grand total (BR-013). ADR-011 reporting-currency rollup is not invented.
+
+## Payment Report (TASK-079)
+
+`GET /api/reports/payments` and `/reports/payments` expose §13.3 Payment Report under `report.view`. Columns: invoice, customer, method, transaction ID, invoice amount applied, stored fixed-rate snapshot, converted settlement, optional processor fee, optional actual received, settlement currency, payment date, status. Uses locked payment snapshots only — never live FX (BR-020/021). Fees remain reconciliation-only (BR-020). Same company/staff scoping as Invoice Report. No unlabeled mixed totals; ADR-011 rollup not invented.
+
+## Outstanding Report (TASK-080)
+
+`GET /api/reports/outstanding` and `/reports/outstanding` expose §13.3 Outstanding Report under `report.view`. Columns: invoice, customer, due date, age (days past due), currency, outstanding, company, staff. Collectible open balances only (`outstandingAmount > 0`); cancelled (and draft) excluded by default (BR-019). Outstanding is the stored confirmed-application balance (BR-009). Same company/staff scoping as Invoice Report. No unlabeled mixed totals; ADR-011 rollup not invented.
+
+## Overdue Aging Report (TASK-081)
+
+`GET /api/reports/overdue-aging` and `/reports/overdue-aging` expose §13.3 Overdue Aging under `report.view`. Buckets: 1–30, 31–60, 61–90, 90+ days past due (BR-018). Totals by invoice currency within each bucket (invoice count + stored outstanding). Draft never aged; paid/cancelled excluded. Same company/staff scoping as Invoice Report. No unlabeled mixed totals; ADR-011 rollup not invented.
+
+## Customer Report (TASK-082)
+
+`GET /api/reports/customers` and `/reports/customers` expose §13.3 Customer Report under `report.view`. Rows: customer, currency, total invoiced, total paid, outstanding, invoice count — grouped by customer × invoice currency. Collectible invoices only (draft/cancelled excluded). Stored confirmed-application balances (BR-009). Same company/staff scoping as Invoice Report. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
 
 ## UI design system
 

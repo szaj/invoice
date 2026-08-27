@@ -39,12 +39,17 @@ tags:
 
 - No deletion or manipulation of audit logs.
 
-### Implementation (TASK-071)
+### Implementation (TASK-071 / TASK-072 / TASK-073 / TASK-074 / TASK-075)
 
 - Shared `compliance_status` on invoices, payments, and customers: Not Reviewed / Under Review / Approved / Flagged.
-- `compliance_reviews` skeleton rows are written on status change (notes/reason codes in TASK-073).
-- Status updates require `compliance.review` (Admin/Compliance). Staff receives 403.
+- `compliance_reviews` rows on status change include optional notes, reason codes, resolution notes, and evidence refs.
+- `POST /api/compliance/status` accepts notes/reason/resolutionNotes/evidenceRefs on approve/flag.
+- `POST /api/compliance/notes` adds notes without changing status; `GET /api/compliance/notes` lists review history for a subject.
+- Status and notes require `compliance.review` (Admin/Compliance). Staff receives 403.
 - Detail pages display compliance status; Staff cannot change it via invoice draft/metadata forms.
+- Review queue: `GET /api/compliance/queue` with company/staff/date/amount/gateway/currency/status filters; Compliance assigned companies only; Admin all.
+- Review UI (TASK-074): `/compliance` queue + `/compliance/{subjectType}/{subjectId}` detail with approve/flag/notes; Staff denied; nav gated by `compliance.review`.
+- Export (TASK-075): `GET /api/compliance/export` CSV of the filtered queue; requires `report.export` and `compliance.review`; Staff denied (US-009); audited as `compliance.exported`; Export CSV on `/compliance` when export is allowed.
 
 
 ## Related Documentation

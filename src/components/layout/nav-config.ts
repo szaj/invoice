@@ -17,7 +17,14 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
   {
     id: "overview",
     label: "Overview",
-    items: [{ href: "/", label: "Home" }],
+    items: [
+      { href: "/", label: "Dashboard", permissions: ["dashboard.view"] },
+      { href: "/reports/invoices", label: "Invoice report", permissions: ["report.view"] },
+      { href: "/reports/payments", label: "Payment report", permissions: ["report.view"] },
+      { href: "/reports/outstanding", label: "Outstanding report", permissions: ["report.view"] },
+      { href: "/reports/overdue-aging", label: "Overdue aging", permissions: ["report.view"] },
+      { href: "/reports/customers", label: "Customer report", permissions: ["report.view"] },
+    ],
   },
   {
     id: "operations",
@@ -42,6 +49,16 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
         href: "/payments/manual",
         label: "Manual payment",
         permissions: ["payment.manual.record"],
+      },
+      {
+        href: "/compliance",
+        label: "Compliance",
+        permissions: ["compliance.review"],
+      },
+      {
+        href: "/audit",
+        label: "Audit logs",
+        permissions: ["audit.read"],
       },
     ],
   },

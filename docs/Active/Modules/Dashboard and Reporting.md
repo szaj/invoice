@@ -127,6 +127,20 @@ Reference reporting layout supplied by Product Owner.
 - Export action logged in audit history.
 
 
+### Implementation (TASK-077 / TASK-078 / TASK-079 / TASK-080 / TASK-081 / TASK-082)
+
+- Dashboard KPIs on `/` (`dashboard.view`): Total Invoiced / Paid / Outstanding / Overdue by invoice currency; Converted Settlement from stored payment snapshots by settlement currency; processor fees and actual received shown separately (never deducted from settlement).
+- Invoice and payment counts by status (and method for payments).
+- Filters (§13.2 as applicable): date range, company, customer, staff, reporting group, invoice/payment status, method, invoice/settlement currency, country, compliance status.
+- Invoice Report on `/reports/invoices` (`report.view`): §13.3 columns with pagination/filter/sort; `GET /api/reports/invoices`.
+- Payment Report on `/reports/payments` (`report.view`): §13.3 columns including stored fixed-rate snapshot, converted settlement, optional fee and actual received; `GET /api/reports/payments`. Stored snapshots only — never live FX.
+- Outstanding Report on `/reports/outstanding` (`report.view`): §13.3 columns (invoice, customer, due date, age, currency, outstanding, company, staff); open collectible balances only; cancelled excluded by default (BR-019); stored outstanding (BR-009); `GET /api/reports/outstanding`.
+- Overdue Aging on `/reports/overdue-aging` (`report.view`): buckets 1–30 / 31–60 / 61–90 / 90+ with per-currency outstanding totals and invoice counts; BR-018 past-due open balances only; draft never aged; `GET /api/reports/overdue-aging`.
+- Customer Report on `/reports/customers` (`report.view`): total invoiced / paid / outstanding by customer and invoice currency; pagination/filter/sort; draft/cancelled excluded; `GET /api/reports/customers`.
+- Company switcher remains the header scope control; Staff limited to assigned companies and own/assigned invoices.
+- `GET /api/dashboard` returns the same KPI payload. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
+
+
 ## Related Documentation
 
 ### Depends On

@@ -19,6 +19,72 @@ Work completed / Files / Database / Tests / Decisions / Problems / Next task
 
 ## Entries
 
+### 2026-08-27 — TASK-082
+
+Customer Report: `GET /api/reports/customers` + `/reports/customers` UI with total invoiced/paid/outstanding by customer × invoice currency; pagination/filter/sort; draft/cancelled excluded; `report.view` scoping; company/customer/currency index; no mixed unlabeled totals (BR-013); ADR-011 rollup not invented.
+
+Next: [[TASK-083 Company Performance]]
+
+### 2026-08-27 — TASK-081
+
+Overdue Aging: `GET /api/reports/overdue-aging` + `/reports/overdue-aging` UI with buckets 1–30 / 31–60 / 61–90 / 90+ by invoice currency; BR-018 past-due open balances only (draft never aged); `report.view` scoping; no mixed unlabeled totals; ADR-011 rollup not invented.
+
+Next: [[TASK-082 Customer Report]]
+
+### 2026-08-27 — TASK-080
+
+Outstanding Report: `GET /api/reports/outstanding` + `/reports/outstanding` UI with §13.3 columns (invoice, customer, due date, age, currency, outstanding, company, staff); collectible open balances only; cancelled excluded by default (BR-019); stored outstanding (BR-009); pagination/filter/sort; `report.view` scoping; company/outstanding/due-date index; no mixed unlabeled totals; ADR-011 rollup not invented.
+
+Next: [[TASK-081 Overdue Aging]]
+
+### 2026-08-27 — TASK-079
+
+Payment Report: `GET /api/reports/payments` + `/reports/payments` UI with §13.3 columns (invoice, customer, method, transaction ID, applied amount, stored fixed-rate snapshot, converted settlement, optional fee/actual received, currency, date, status); pagination/filter/sort; `report.view` scoping; method/settlement-date indexes; stored snapshots only (no live FX); fees reconciliation-only; ADR-011 rollup not invented.
+
+Next: [[TASK-080 Outstanding Report]]
+
+### 2026-08-27 — TASK-078
+
+Invoice Report: `GET /api/reports/invoices` + `/reports/invoices` UI with §13.3 columns (number, customer, company, dates, currency, total, paid, balance, status, staff); pagination/filter/sort; `report.view` for Admin (all), Compliance (assigned), Staff (assigned companies + own/assigned invoices); composite status/currency/date indexes; no mixed unlabeled totals; ADR-011 reporting rollup not invented.
+
+Next: [[TASK-079 Payment Report]]
+
+### 2026-08-27 — TASK-077
+
+Dashboard KPIs: `GET /api/dashboard` + `/` UI with §13.1 cards (invoice-currency invoiced/paid/outstanding/overdue; settlement converted totals from stored snapshots; fees and actual received separate); §13.2 filters as applicable; `dashboard.view` for all roles within company/assignment scope; Staff own/assigned only; composite date/status indexes; no mixed unlabeled totals; ADR-011 reporting rollup not invented.
+
+Next: [[TASK-078 Invoice Report]]
+
+### 2026-08-27 — TASK-076
+
+Read-only audit viewer: `GET /api/audit` with filters (company, actor, actor type, entity, action, date); `audit.read` required; Admin all companies (including company-null events); Compliance assigned companies only; Staff denied (US-010, no invented grant); values re-masked on read; no update/delete APIs; UI `/audit` with timezone display from system default timezone.
+
+Next: [[TASK-077 Dashboard KPIs]]
+
+### 2026-08-27 — TASK-075
+
+Compliance CSV export: `GET /api/compliance/export` with the same queue filters; requires `report.export` + `compliance.review`; Staff denied (US-009); audit `compliance.exported`; Export CSV control on `/compliance`. Full reporting module remains Phase 08.
+
+Next: [[TASK-076 Audit Log Viewer]]
+
+### 2026-08-27 — TASK-074
+
+Compliance review UI: `/compliance` queue with filters; `/compliance/{subjectType}/{id}` detail with approve/flag/status update and notes; server actions over existing compliance APIs; nav gated by `compliance.review`; Staff denied and cannot open unassigned company items; review links on invoice/payment/customer detail.
+
+Next: [[TASK-075 Compliance Export]]
+
+### 2026-08-27 — TASK-073
+
+Compliance notes and reason codes: `compliance_reviews` gains notes/reason/resolution_notes/evidence_refs; `POST /api/compliance/status` accepts them on approve/flag; `POST|GET /api/compliance/notes` for notes without status change; audit `compliance.status_updated` (with reason) and `compliance.note_added`; Staff denied. UI remains TASK-074.
+
+Next: [[TASK-074 Compliance Review UI]]
+
+### 2026-08-27 — TASK-072
+
+Compliance review queue: `GET /api/compliance/queue` with filters (company, staff, date, amount, gateway, currency, status) over invoices/payments/customers; composite queue indexes; `compliance.review` required; Compliance scoped to assigned companies (unassigned company filter → 403); Admin may see all. UI remains TASK-074.
+
+Next: [[TASK-073 Compliance Notes and Reason Codes]]
+
 ### 2026-08-25 — TASK-071
 
 Compliance status model: shared `compliance_status` on invoices/payments/customers (Not Reviewed / Under Review / Approved / Flagged); `compliance_reviews` skeleton; `POST /api/compliance/status` requires `compliance.review` (Staff 403); status display on detail pages; Staff cannot change via invoice draft/metadata. Notes/reason codes remain TASK-073.

@@ -23,7 +23,7 @@ Internal development vault. Prefer **current-state** notes for Cursor and day-to
 
 ## Active work
 
-- Tasks: `docs/Active/Tasks/` — next: [[TASK-071 Compliance Status Model]]
+- Tasks: `docs/Active/Tasks/` — next: [[TASK-083 Company Performance]]
 - Modules: `docs/Active/Modules/`
 - Unresolved: [[Unresolved Source Items]]
 - UI system: [[UI UX Design System]]
@@ -37,17 +37,17 @@ Internal development vault. Prefer **current-state** notes for Cursor and day-to
 
 ## Current development
 
-Current Phase: Phase 07 — Compliance and Audit
+Current Phase: Phase 08 — Reporting
 
-Current Task: [[TASK-071 Compliance Status Model]] (NOT STARTED)
+Current Task: [[TASK-083 Company Performance]] (NOT STARTED)
 
-Current Status: Payments through [[TASK-070 CBRF Calculation Engine]] COMPLETE. TASK-056/057 **DEFERRED**. Next buildable: [[TASK-071 Compliance Status Model]]. ADR-009 / ADR-010 / ADR-011 remain OPEN. US-015 overpayment *allow* remains OPEN (default reject only).
+Current Status: [[TASK-082 Customer Report]] COMPLETE. TASK-056/057 **DEFERRED**. Next buildable: [[TASK-083 Company Performance]]. ADR-009 / ADR-010 / ADR-011 remain OPEN. US-015 overpayment *allow* remains OPEN (default reject only).
 
-Do not start TASK-071 until ready.
+Do not start TASK-083 until ready.
 
 ## Blocked Items
 
-None blocking TASK-071. Bank processor live integration **DEFERRED** (US-017 / TASK-056–057).
+None blocking TASK-083. Bank processor live integration **DEFERRED** (US-017 / TASK-056–057).
 
 ## Critical Rules
 

@@ -33,7 +33,7 @@ No two source documents were found to contradict a financial, permission, paymen
 | US-007 | Staff manual payment | Roles matrix: "Optional permission". TASK-005 recorded as **denied** (no invented grant). [[TASK-050 Manual Payment Recording]] kept Staff denied (default deny); no Staff grant invented. | Remains OPEN — explicit Staff grant still not configured |
 | US-008 | Staff view of assigned invoices | Roles matrix: "Optional by policy". TASK-005 recorded as **denied** (no invented grant). | Policy during later invoice access tasks |
 | US-009 | Staff report export | Roles matrix: "Optional". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-090 Report Exports]] |
-| US-010 | Staff audit visibility | Roles matrix: "Own activity only/none". TASK-005 recorded as **denied** (no invented grant). | Policy during [[TASK-076 Audit Log Viewer]] |
+| US-010 | Staff audit visibility | Roles matrix: "Own activity only/none". TASK-005 recorded as **denied** (no invented grant). [[TASK-076 Audit Log Viewer]] kept Staff denied (default deny); no Staff grant invented. | Remains OPEN — explicit Staff grant still not configured |
 | US-011 | Due-on-receipt invoices | Due date is mandatory unless company policy allows due-on-receipt. | Remains OPEN after [[TASK-036 Invoice Lifecycle]]: due date stayed mandatory; due-on-receipt not enabled. |
 | US-015 | Overpayment | A payment cannot apply more than the open balance unless overpayment is explicitly supported and authorized. | Remains OPEN after [[TASK-059 Partial Payments]] — default reject only (BR-010). Allow-workflow still not invented; revisit during [[TASK-060 Payment Allocation]] if product chooses an allow path. |
 

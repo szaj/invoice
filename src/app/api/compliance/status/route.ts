@@ -7,9 +7,9 @@ import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permiss
 import { updateComplianceStatus } from "@/server/compliance/compliance-service";
 
 /**
- * POST /api/compliance/status — set compliance status on invoice/payment/customer (TASK-071).
+ * POST /api/compliance/status — set compliance status on invoice/payment/customer.
+ * Accepts optional notes, reason codes, resolution notes, evidence refs (TASK-073).
  * Requires compliance.review (Admin/Compliance). Staff receives 403.
- * Creates compliance_reviews row. Notes/reason codes are TASK-073.
  */
 export async function POST(request: Request) {
   if (!isSameOriginRequest(request)) {

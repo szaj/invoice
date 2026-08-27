@@ -30,6 +30,7 @@
 // TASK-044 adds payments (provider-agnostic payment records; no charges/webhooks/allocation).
 // TASK-063 adds payment_adjustments (dispute open/under review; original SUCCESSFUL payment immutable).
 // TASK-071 adds compliance_status on customers/payments (invoices already had it) and compliance_reviews.
+// TASK-073 adds compliance_reviews notes / reason / resolution_notes / evidence_refs.
 // Do not add payment charging, customer portal, or live FX here.
 //
 // Conventions for later models (PostgreSQL / Prisma):
@@ -579,19 +580,28 @@ enum ComplianceReviewSubjectType {
   @@map("compliance_review_subject_type")
 }
 
-/// Compliance review history row (TASK-071 skeleton). Notes/reason codes are TASK-073.
+/// Compliance review history row (TASK-071 / TASK-073).
+/// Notes, reason codes, resolution notes, and optional evidence refs on each review event.
 /// Subject status is also denormalized on invoice/payment/customer for queues.
 model ComplianceReview {
-  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId      String                       @map("company_id") @db.Uuid
-  subjectType    ComplianceReviewSubjectType  @map("subject_type")
-  subjectId      String                       @map("subject_id") @db.Uuid
-  status         ComplianceStatus
-  reviewerUserId String?                      @map("reviewer_user_id") @db.Uuid
-  createdAt      DateTime                     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
-  company        Company                      @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  reviewer       User?                        @relation("ComplianceReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  id               String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String                       @map("company_id") @db.Uuid
+  subjectType      ComplianceReviewSubjectType  @map("subject_type")
+  subjectId        String                       @map("subject_id") @db.Uuid
+  status           ComplianceStatus
+  /// Internal compliance notes for this review event.
+  notes            String?
+  /// Reason code (free text until a settings catalog exists).
+  reason           String?
+  /// Resolution notes when closing or clarifying a review.
+  resolutionNotes  String?                      @map("resolution_notes")
+  /// Optional evidence/attachment storage-key references when enabled (string JSON array).
+  evidenceRefs     Json?                        @map("evidence_refs")
+  reviewerUserId   String?                      @map("reviewer_user_id") @db.Uuid
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+  company          Company                      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  reviewer         User?                        @relation("ComplianceReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
 
   @@index([companyId, status])
   @@index([subjectType, subjectId])
@@ -652,7 +662,14 @@ model Invoice {
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, status])
+  @@index([companyId, status, dueDate])
+  @@index([companyId, status, invoiceDate])
+  @@index([companyId, invoiceDate])
+  @@index([companyId, currencyCode, invoiceDate])
+  @@index([companyId, outstandingAmount, dueDate])
   @@index([companyId, complianceStatus])
+  @@index([companyId, complianceStatus, invoiceDate])
+  @@index([companyId, customerId, currencyCode])
   @@index([customerId])
   @@index([assignedStaffUserId])
   @@index([invoiceDate])
@@ -844,7 +861,12 @@ model Payment {
   adjustments              PaymentAdjustment[]
 
   @@index([companyId, status])
+  @@index([companyId, status, paymentDate])
   @@index([companyId, complianceStatus])
+  @@index([companyId, complianceStatus, paymentDate])
+  @@index([companyId, methodCode, complianceStatus])
+  @@index([companyId, methodCode, paymentDate])
+  @@index([companyId, settlementCurrencyCode, paymentDate])
   @@index([invoiceId])
   @@index([customerId])
   @@index([methodCode, externalTransactionId])

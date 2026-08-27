@@ -41,6 +41,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   if (!authorizePermission(actor, "invoice.create").allowed) {
     redirect("/");
   }
+  const canComplianceReview = authorizePermission(actor, "compliance.review").allowed;
 
   const result = await loadPaymentAdjustmentUi(id);
   if (!result.ok) {
@@ -84,6 +85,11 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
             {lifecycle.dispute ? <StatusBadge status={lifecycle.dispute} /> : null}
             {lifecycle.refund ? <StatusBadge status={lifecycle.refund} /> : null}
             {lifecycle.chargeback ? <StatusBadge status={lifecycle.chargeback} /> : null}
+            {canComplianceReview ? (
+              <Button asChild variant="outline">
+                <Link href={`/compliance/payment/${payment.id}`}>Compliance review</Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <Link href="/payments">Back to list</Link>
             </Button>

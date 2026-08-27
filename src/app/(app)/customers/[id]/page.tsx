@@ -48,6 +48,7 @@ export default async function CustomerProfilePage({
 
   const actor = await getRequestAuthorizationPrincipal();
   const canDelete = authorizePermission(actor, "customer.delete").allowed;
+  const canComplianceReview = authorizePermission(actor, "compliance.review").allowed;
   const result = await loadCustomerProfileForUi(id, { companyId });
 
   if (!result.ok) {
@@ -68,6 +69,7 @@ export default async function CustomerProfilePage({
 
   const profile = result.data;
   const customer = profile.customer;
+  const reviewCompanyId = profile.companyFilterId ?? profile.companies[0]?.id ?? null;
   const country = customer.countryCode
     ? `${countryName(customer.countryCode) ?? customer.countryCode} (${customer.countryCode})`
     : null;
@@ -89,6 +91,15 @@ export default async function CustomerProfilePage({
         actions={
           <>
             <StatusBadge status={customer.status} />
+            {canComplianceReview && reviewCompanyId ? (
+              <Button asChild variant="outline">
+                <Link
+                  href={`/compliance/customer/${customer.id}?companyId=${encodeURIComponent(reviewCompanyId)}`}
+                >
+                  Compliance review
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild>
               <Link href={`/customers/${customer.id}/edit`}>Edit</Link>
             </Button>

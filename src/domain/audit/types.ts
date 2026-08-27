@@ -39,6 +39,19 @@ export interface AuditEventRecord extends AuditEventInput {
 
 export const AUDIT_APPEND_ONLY_MESSAGE = "Audit events are append-only.";
 export const AUDIT_WRITE_UNAVAILABLE = "Audit logging is temporarily unavailable.";
+export const AUDIT_READ_FORBIDDEN = "You do not have permission to view audit logs.";
+export const AUDIT_INVALID_INPUT = "Check the audit filters and try again.";
+export const AUDIT_UNAVAILABLE = "Audit logs are temporarily unavailable.";
+
+export const AUDIT_ACTOR_TYPES = ["USER", "SYSTEM", "WEBHOOK"] as const;
+
+export const AUDIT_VIEWER_DEFAULT_LIMIT = 100;
+export const AUDIT_VIEWER_MAX_LIMIT = 200;
+
+/** Wire DTO for the read-only audit viewer (TASK-076). Timestamps are ISO-8601 UTC. */
+export type AuditViewerEvent = Omit<AuditEventRecord, "occurredAt"> & {
+  readonly occurredAt: string;
+};
 
 /** Mandatory TASK-012 security/admin actions that already exist in the product. */
 export const AuditActions = {
@@ -93,6 +106,8 @@ export const AuditActions = {
   PAYMENT_ADJUSTMENT_NOTE_ADDED: "payments.adjustment_note_added",
   PAYMENT_ADJUSTMENT_CANCELLED: "payments.adjustment_cancelled",
   COMPLIANCE_STATUS_UPDATED: "compliance.status_updated",
+  COMPLIANCE_NOTE_ADDED: "compliance.note_added",
+  COMPLIANCE_EXPORTED: "compliance.exported",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
@@ -110,4 +125,5 @@ export const AuditEntityTypes = {
   PAYMENT: "payment",
   PAYMENT_ADJUSTMENT: "payment_adjustment",
   COMPLIANCE_REVIEW: "compliance_review",
+  COMPLIANCE_EXPORT: "compliance_export",
 } as const;
