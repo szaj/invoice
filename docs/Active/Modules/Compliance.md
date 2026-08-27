@@ -50,6 +50,7 @@ tags:
 - Review queue: `GET /api/compliance/queue` with company/staff/date/amount/gateway/currency/status filters; Compliance assigned companies only; Admin all.
 - Review UI (TASK-074): `/compliance` queue + `/compliance/{subjectType}/{subjectId}` detail with approve/flag/notes; Staff denied; nav gated by `compliance.review`.
 - Export (TASK-075): `GET /api/compliance/export` CSV of the filtered queue; requires `report.export` and `compliance.review`; Staff denied (US-009); audited as `compliance.exported`; Export CSV on `/compliance` when export is allowed.
+- Compliance Report (TASK-087): `GET /api/reports/compliance` + `/reports/compliance` with review counts, approved/flagged/pending, aging, and notes references; requires `report.view` and `compliance.review`; Staff denied; read-only (no audit manipulation).
 
 
 ## Related Documentation

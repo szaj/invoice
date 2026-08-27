@@ -5,6 +5,7 @@ import {
   OutstandingReportFilters,
   type OutstandingReportFilterValues,
 } from "@/app/(app)/reports/outstanding/outstanding-report-filters";
+import { ReportExportActions } from "@/app/(app)/reports/report-export-actions";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
@@ -93,6 +94,7 @@ export default async function OutstandingReportPage({
   if (!authorizePermission(actor, "report.view").allowed) {
     redirect("/");
   }
+  const canExport = authorizePermission(actor, "report.export").allowed;
 
   const params = await searchParams;
   const query = parseOutstandingReportSearchParams(params);
@@ -209,6 +211,8 @@ export default async function OutstandingReportPage({
         reportingGroups={options.data.reportingGroups}
         allowsAllCompanies={options.data.allowsAllCompanies}
       />
+
+      {canExport ? <ReportExportActions reportType="outstanding" filters={filterValues} /> : null}
 
       {!result.ok ? (
         <Alert variant={result.status === 403 ? "destructive" : "default"}>

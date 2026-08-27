@@ -58,15 +58,15 @@ Control: [[04 Current Plan]] · [[00 Home]]
 | Compliance review UI | implemented (TASK-074) |
 | Compliance export | implemented (TASK-075) |
 | Audit log viewer | implemented (TASK-076) |
-| Reporting / dashboard | dashboard KPIs (TASK-077) + invoice report (TASK-078) + payment report (TASK-079) + outstanding report (TASK-080) + overdue aging (TASK-081) + customer report (TASK-082); remaining reports TASK-083–090 |
+| Reporting / dashboard | dashboard KPIs (TASK-077) + invoice report (TASK-078) + payment report (TASK-079) + outstanding report (TASK-080) + overdue aging (TASK-081) + customer report (TASK-082) + company performance (TASK-083) + staff performance (TASK-084) + gateway report (TASK-085) + currency report (TASK-086) + compliance report (TASK-087) + monthly brand matrix (TASK-088) + reporting group rollups (TASK-089) + report exports CSV/XLSX (TASK-090) |
 | Notifications | not started (TASK-091–092) |
 | Hardening / testing suites / deployment | not started (TASK-093–103) |
 
 ## Completed ID ranges
 
-- **COMPLETE:** TASK-001 through TASK-082, **except** TASK-056 and TASK-057.
+- **COMPLETE:** TASK-001 through TASK-090, **except** TASK-056 and TASK-057.
 - **DEFERRED:** TASK-056, TASK-057 (no live bank processor until concrete vendor/API).
-- **NOT STARTED:** TASK-083 through TASK-103.
+- **NOT STARTED:** TASK-091 through TASK-103.
 
 Dependency check for active tasks: if a dependency ID is in the COMPLETE ranges above, treat it as established. Do **not** open archived task files merely to verify COMPLETE status.
 

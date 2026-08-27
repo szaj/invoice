@@ -118,6 +118,38 @@ Shared `compliance_status` on invoices, payments, and customers (`NOT_REVIEWED` 
 
 `GET /api/reports/customers` and `/reports/customers` expose §13.3 Customer Report under `report.view`. Rows: customer, currency, total invoiced, total paid, outstanding, invoice count — grouped by customer × invoice currency. Collectible invoices only (draft/cancelled excluded). Stored confirmed-application balances (BR-009). Same company/staff scoping as Invoice Report. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
 
+## Company Performance (TASK-083)
+
+`GET /api/reports/companies` and `/reports/companies` expose §13.3 Company Performance under `report.view`. Rows: owning company with invoice-currency KPIs (invoiced/paid/outstanding/overdue) and settlement-currency KPIs (converted settlement from stored snapshots; fees and actual received separate). Reporting group filters narrow company scope only — never treated as ownership. Same company/staff scoping as Invoice Report. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
+
+## Staff Performance (TASK-084)
+
+`GET /api/reports/staff` and `/reports/staff` expose §13.3 Staff Performance under `report.view`. Rows: staff user with invoices created/sent (creator attribution), value invoiced by currency (collectible creator totals), and collections linked to assigned invoices (confirmed payment applications by invoice currency). Commission is not calculated. Admin all companies; Compliance assigned; Staff limited to own created invoices and collections on invoices assigned to them. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
+
+## Gateway Report (TASK-085)
+
+`GET /api/reports/gateways` and `/reports/gateways` expose §13.3 Gateway Report under `report.view`. Rows: gateway (method) × settlement currency with transaction count, converted settlement from stored snapshots, optional processor fees and actual received (separate, never deducted — BR-020), failure count, and PROCESSED refund totals/count. Same company/staff scoping as Invoice Report. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
+
+## Currency Report (TASK-086)
+
+`GET /api/reports/currencies` and `/reports/currencies` expose §13.3 Currency Report under `report.view`. Invoice totals by invoice currency (invoiced/paid/outstanding/overdue) and settlement totals by settlement currency (converted settlement from stored snapshots; fees and actual received separate — BR-020). Currencies stay labeled — never collapsed without labels (BR-013). Same company/staff scoping as Invoice Report. ADR-011 reporting-currency rollup not invented.
+
+## Compliance Report (TASK-087)
+
+`GET /api/reports/compliance` and `/reports/compliance` expose §13.3 Compliance Report. Requires `report.view` and `compliance.review` (Admin/Compliance). Staff is denied by default. Output: review counts (approved / flagged / pending where pending = not reviewed + under review), counts by subject type, aging buckets (0–30 / 31–60 / 61–90 / 90+) for pending and flagged subjects, and notes references from `compliance_reviews`. Read-only — does not manipulate audit logs. Admin all companies; Compliance assigned only.
+
+## Monthly Brand / CB-RF Matrix (TASK-088)
+
+`GET /api/reports/monthly-brand` and `/reports/monthly-brand` expose §13.3.1 Monthly Brand / CB-RF Report under `report.view`. Spreadsheet-style matrix: January–December + G.Total rows; brand/company columns; Monthly Total; CB/RF; Net G.Total. Gross receipts from SUCCESSFUL payments by payment date; CB/RF from adjustments by effective date using shared `computeCbrf` / `computeNetGTotal` (BR-024 / BR-026). Amounts convert to the configured system reporting currency using stored Admin fixed-rate snapshots — labeled as equivalents (BR-013). Open disputes reported separately in summary; never deducted. Drill-down exposes underlying payment and adjustment IDs. Same company/reporting-group/staff scoping as other reports.
+
+## Reporting Group Rollups (TASK-089)
+
+`GET /api/reports/reporting-groups` and `/reports/reporting-groups` expose reporting-group rollups under `report.view`. Rows aggregate dashboard KPIs (invoice-currency and settlement-currency buckets) and monthly-matrix summary blocks (annual gross, CB/RF, Net G.Total, current month, open disputes) per reporting group for the selected year. Filters: reporting group, company/brand, date range, and §13.2 dimensions as applicable. Group membership intersects with user company assignment — Staff cannot roll up unassigned companies via a group. Transaction ownership stays on member companies; groups never weaken access controls. Matrix amounts use configured reporting currency via stored Admin fixed-rate snapshots (BR-013). ADR-011 reporting-currency rollup not invented.
+
+## Report Exports (TASK-090)
+
+`POST /api/reports/exports` creates a scoped CSV or XLSX export for any Phase 08 tabular report (invoices, payments, outstanding, overdue aging, customers, companies, staff, gateways, currencies, compliance report, monthly brand matrix, reporting group rollups). Generation runs through an inline export job dispatcher (ADR-005; TASK-099 hardens BullMQ). Completed files are stored in StorageService; metadata lives in `report_exports` (filters, row count, totals). Download via `GET /api/reports/exports/{id}/file`; status via `GET /api/reports/exports/{id}`. Requires `report.export` (Admin/Compliance; Staff denied by default — US-009). Compliance report export also requires `compliance.review`. Each export writes `reports.exported` audit (BR-015). UI: Export CSV / Export XLSX on each report page when allowed. Full datasets are fetched server-side — TanStack Table never loads the full financial dataset into the browser.
+
 ## UI design system
 
 From TASK-042 onward: reuse shared design system and semantic tokens. Do not invent page-specific visual languages. See [[UI UX Design System]] and `.cursor/rules/ui-ux.mdc`.

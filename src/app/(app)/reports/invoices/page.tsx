@@ -5,6 +5,7 @@ import {
   InvoiceReportFilters,
   type InvoiceReportFilterValues,
 } from "@/app/(app)/reports/invoices/invoice-report-filters";
+import { ReportExportActions } from "@/app/(app)/reports/report-export-actions";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageFrame } from "@/components/layout/page-frame";
@@ -87,6 +88,7 @@ export default async function InvoiceReportPage({
   if (!authorizePermission(actor, "report.view").allowed) {
     redirect("/");
   }
+  const canExport = authorizePermission(actor, "report.export").allowed;
 
   const params = await searchParams;
   const query = parseInvoiceReportSearchParams(params);
@@ -222,6 +224,8 @@ export default async function InvoiceReportPage({
         reportingGroups={options.data.reportingGroups}
         allowsAllCompanies={options.data.allowsAllCompanies}
       />
+
+      {canExport ? <ReportExportActions reportType="invoices" filters={filterValues} /> : null}
 
       {!result.ok ? (
         <Alert variant={result.status === 403 ? "destructive" : "default"}>

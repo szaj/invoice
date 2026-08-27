@@ -4,6 +4,7 @@ import {
   OverdueAgingFilters,
   type OverdueAgingFilterValues,
 } from "@/app/(app)/reports/overdue-aging/overdue-aging-filters";
+import { ReportExportActions } from "@/app/(app)/reports/report-export-actions";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,6 +68,7 @@ export default async function OverdueAgingReportPage({
   if (!authorizePermission(actor, "report.view").allowed) {
     redirect("/");
   }
+  const canExport = authorizePermission(actor, "report.export").allowed;
 
   const params = await searchParams;
   const query = parseOverdueAgingSearchParams(params);
@@ -115,6 +117,8 @@ export default async function OverdueAgingReportPage({
         reportingGroups={options.data.reportingGroups}
         allowsAllCompanies={options.data.allowsAllCompanies}
       />
+
+      {canExport ? <ReportExportActions reportType="overdue-aging" filters={filterValues} /> : null}
 
       {!result.ok ? (
         <Alert variant={result.status === 403 ? "destructive" : "default"}>

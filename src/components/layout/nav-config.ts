@@ -24,6 +24,42 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
       { href: "/reports/outstanding", label: "Outstanding report", permissions: ["report.view"] },
       { href: "/reports/overdue-aging", label: "Overdue aging", permissions: ["report.view"] },
       { href: "/reports/customers", label: "Customer report", permissions: ["report.view"] },
+      {
+        href: "/reports/companies",
+        label: "Company performance",
+        permissions: ["report.view"],
+      },
+      {
+        href: "/reports/staff",
+        label: "Staff performance",
+        permissions: ["report.view"],
+      },
+      {
+        href: "/reports/gateways",
+        label: "Gateway report",
+        permissions: ["report.view"],
+      },
+      {
+        href: "/reports/currencies",
+        label: "Currency report",
+        permissions: ["report.view"],
+      },
+      {
+        href: "/reports/compliance",
+        label: "Compliance report",
+        // Staff has report.view but not compliance.review — require review permission.
+        permissions: ["compliance.review"],
+      },
+      {
+        href: "/reports/monthly-brand",
+        label: "Monthly brand / CB-RF",
+        permissions: ["report.view"],
+      },
+      {
+        href: "/reports/reporting-groups",
+        label: "Reporting group rollups",
+        permissions: ["report.view"],
+      },
     ],
   },
   {

@@ -23,7 +23,7 @@ Internal development vault. Prefer **current-state** notes for Cursor and day-to
 
 ## Active work
 
-- Tasks: `docs/Active/Tasks/` — next: [[TASK-083 Company Performance]]
+- Tasks: `docs/Active/Tasks/` — next: [[TASK-091 Operational Notifications]]
 - Modules: `docs/Active/Modules/`
 - Unresolved: [[Unresolved Source Items]]
 - UI system: [[UI UX Design System]]
@@ -37,17 +37,17 @@ Internal development vault. Prefer **current-state** notes for Cursor and day-to
 
 ## Current development
 
-Current Phase: Phase 08 — Reporting
+Current Phase: Phase 09 — Hardening and Deployment (notifications next)
 
-Current Task: [[TASK-083 Company Performance]] (NOT STARTED)
+Current Task: [[TASK-091 Operational Notifications]] (NOT STARTED)
 
-Current Status: [[TASK-082 Customer Report]] COMPLETE. TASK-056/057 **DEFERRED**. Next buildable: [[TASK-083 Company Performance]]. ADR-009 / ADR-010 / ADR-011 remain OPEN. US-015 overpayment *allow* remains OPEN (default reject only).
+Current Status: [[TASK-090 Report Exports]] COMPLETE. Phase 08 reporting COMPLETE. TASK-056/057 **DEFERRED**. Next buildable: [[TASK-091 Operational Notifications]]. ADR-009 / ADR-010 / ADR-011 remain OPEN. US-015 overpayment *allow* remains OPEN (default reject only).
 
-Do not start TASK-083 until ready.
+Do not start TASK-091 until ready.
 
 ## Blocked Items
 
-None blocking TASK-083. Bank processor live integration **DEFERRED** (US-017 / TASK-056–057).
+None blocking TASK-091. Bank processor live integration **DEFERRED** (US-017 / TASK-056–057).
 
 ## Critical Rules
 

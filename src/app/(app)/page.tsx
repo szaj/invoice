@@ -152,6 +152,11 @@ export default async function Home({
       label: "Customer report",
       description: "Invoiced, paid, and outstanding totals by customer and currency.",
     });
+    links.push({
+      href: "/reports/companies",
+      label: "Company performance",
+      description: "Invoice and settlement KPIs by owning company.",
+    });
   }
   if (canReadAudit) {
     links.push({

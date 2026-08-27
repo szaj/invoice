@@ -108,6 +108,7 @@ export const AuditActions = {
   COMPLIANCE_STATUS_UPDATED: "compliance.status_updated",
   COMPLIANCE_NOTE_ADDED: "compliance.note_added",
   COMPLIANCE_EXPORTED: "compliance.exported",
+  REPORT_EXPORTED: "reports.exported",
 } as const;
 
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
@@ -126,4 +127,5 @@ export const AuditEntityTypes = {
   PAYMENT_ADJUSTMENT: "payment_adjustment",
   COMPLIANCE_REVIEW: "compliance_review",
   COMPLIANCE_EXPORT: "compliance_export",
+  REPORT_EXPORT: "report_export",
 } as const;

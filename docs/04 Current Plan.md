@@ -18,9 +18,9 @@ Executable work lives in `docs/Active/Tasks/`. See also [[Vault Completion Workf
 
 ## Next buildable task
 
-[[TASK-083 Company Performance]] (NOT STARTED)
+[[TASK-091 Operational Notifications]] (NOT STARTED)
 
-Do not start TASK-083 until ready. Do not skip ahead.
+Do not start TASK-091 until ready. Do not skip ahead.
 
 ## Remaining sequence
 
@@ -36,7 +36,7 @@ TASK-071 through TASK-076 COMPLETE.
 
 ### Phase 08 — Reporting
 
-TASK-077–082 COMPLETE. TASK-083 → TASK-090 (NOT STARTED)
+TASK-077–090 COMPLETE.
 
 ### Phase 09 — Notifications, Hardening, Deployment
 
@@ -64,7 +64,7 @@ Do not invent a fictional bank adapter. Version 1 live providers: MANUAL, STRIPE
 | US-007–010 Staff optional grants | OPEN | Default denied |
 | US-017 Bank processor vendor | DEFERRED | TASK-056/057 |
 
-None of the above currently blocks TASK-083.
+None of the above currently blocks TASK-088.
 
 ## Explicitly not planned (Version 1)
 

@@ -145,6 +145,7 @@ model User {
   confirmedPayments      Payment[] @relation("PaymentConfirmedBy")
   createdPaymentAdjustments PaymentAdjustment[] @relation("PaymentAdjustmentCreatedBy")
   complianceReviews      ComplianceReview[] @relation("ComplianceReviewReviewer")
+  requestedReportExports ReportExport[] @relation("ReportExportRequestedBy")
 
   @@map("users")
 }
@@ -258,6 +259,7 @@ model Company {
   paymentEvents          PaymentEvent[]
   paymentAdjustments     PaymentAdjustment[]
   complianceReviews      ComplianceReview[]
+  reportExports          ReportExport[]
 
   @@index([reportingGroupId])
   @@map("companies")
@@ -974,4 +976,48 @@ model PaymentAdjustment {
   @@index([companyId, type])
   @@index([effectiveDate])
   @@map("payment_adjustments")
+}
+
+/// Generated report export file metadata (TASK-090 / ADR-005 / ADR-006).
+/// Binary lives in StorageService; filters and totals preserved for audit.
+enum ReportExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@map("report_export_status")
+}
+
+enum ReportExportFormat {
+  CSV
+  XLSX
+
+  @@map("report_export_format")
+}
+
+model ReportExport {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportType        String             @map("report_type")
+  format            ReportExportFormat
+  status            ReportExportStatus @default(PENDING)
+  storageKey        String?            @map("storage_key")
+  checksumSha256    String?            @map("checksum_sha256") @db.Char(64)
+  byteSize          Int?               @map("byte_size")
+  contentType       String?            @map("content_type")
+  filename          String
+  filters           Json               @default("{}")
+  rowCount          Int?               @map("row_count")
+  totals            Json?              @map("totals")
+  errorMessage      String?            @map("error_message")
+  companyId         String?            @map("company_id") @db.Uuid
+  requestedByUserId String             @map("requested_by_user_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  completedAt       DateTime?          @map("completed_at") @db.Timestamptz
+  requestedBy       User               @relation("ReportExportRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([requestedByUserId, createdAt(sort: Desc)])
+  @@index([companyId, createdAt(sort: Desc)])
+  @@map("report_exports")
 }

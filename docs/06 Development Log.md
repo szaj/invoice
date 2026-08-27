@@ -19,6 +19,54 @@ Work completed / Files / Database / Tests / Decisions / Problems / Next task
 
 ## Entries
 
+### 2026-08-27 — TASK-090
+
+Report exports: `POST /api/reports/exports` + download routes; `report_exports` metadata table; CSV/XLSX builders for all Phase 08 tabular reports; inline export job dispatcher (ADR-005); StorageService file storage; `ReportExportActions` on report pages; requires `report.export` (Staff denied — US-009); compliance report export also requires `compliance.review`; audit `reports.exported` (BR-015).
+
+Next: [[TASK-091 Operational Notifications]]
+
+### 2026-08-27 — TASK-089
+
+Reporting Group Rollups: `GET /api/reports/reporting-groups` + `/reports/reporting-groups` UI with dashboard KPIs and monthly-matrix summary blocks rolled up by reporting group; one/all groups or single-brand scope; group membership intersects user assignment (Staff cannot roll up unassigned companies); transaction ownership stays on member companies; matrix amounts in configured reporting currency via stored snapshots (BR-013); `report.view` scoping.
+
+Next: [[TASK-090 Report Exports]]
+
+### 2026-08-27 — TASK-088
+
+Monthly Brand / CB-RF Matrix: `GET /api/reports/monthly-brand` + `/reports/monthly-brand` UI with Jan–Dec + G.Total rows, brand columns, Monthly Total, CB/RF, Net G.Total, annual/current-month summaries, and drill-down IDs; payment received / adjustment effective date basis; reporting currency via stored Admin fixed-rate snapshots; open disputes separate (BR-024 / BR-026); `report.view` scoping.
+
+Next: [[TASK-089 Reporting Group Rollups]]
+
+### 2026-08-27 — TASK-087
+
+Compliance Report: `GET /api/reports/compliance` + `/reports/compliance` UI with review counts (approved/flagged/pending), aging of pending/flagged subjects, and notes references; requires `report.view` + `compliance.review` (Staff denied); read-only (no audit manipulation).
+
+Next: [[TASK-088 Monthly Brand Matrix]]
+
+### 2026-08-27 — TASK-086
+
+Currency Report: `GET /api/reports/currencies` + `/reports/currencies` UI with invoice totals by invoice currency and settlement totals by settlement currency; currencies stay labeled (BR-013); fees never deducted from settlement (BR-020); `report.view` scoping; ADR-011 rollup not invented.
+
+Next: [[TASK-087 Compliance Report]]
+
+### 2026-08-27 — TASK-085
+
+Gateway Report: `GET /api/reports/gateways` + `/reports/gateways` UI with transactions, converted settlement, optional fees/actual received, failures, and refunds by gateway × settlement currency; fees never deducted (BR-020); `report.view` scoping; no mixed unlabeled totals (BR-013); ADR-011 rollup not invented.
+
+Next: [[TASK-087 Compliance Report]]
+
+### 2026-08-27 — TASK-084
+
+Staff Performance: `GET /api/reports/staff` + `/reports/staff` UI with invoices created/sent, value invoiced (creator), collections on assigned invoices; commission not calculated; `report.view` scoping (Staff own only); no mixed unlabeled totals (BR-013); ADR-011 rollup not invented.
+
+Next: [[TASK-085 Gateway Report]]
+
+### 2026-08-27 — TASK-083
+
+Company Performance: `GET /api/reports/companies` + `/reports/companies` UI with invoice and settlement KPIs by owning company; reporting group is filter-only (never ownership); `report.view` scoping; reuses dashboard KPI rules (BR-013/020); ADR-011 rollup not invented.
+
+Next: [[TASK-084 Staff Performance]]
+
 ### 2026-08-27 — TASK-082
 
 Customer Report: `GET /api/reports/customers` + `/reports/customers` UI with total invoiced/paid/outstanding by customer × invoice currency; pagination/filter/sort; draft/cancelled excluded; `report.view` scoping; company/customer/currency index; no mixed unlabeled totals (BR-013); ADR-011 rollup not invented.
