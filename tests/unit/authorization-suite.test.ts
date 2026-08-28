@@ -166,6 +166,7 @@ describe("authorization suite (TASK-093)", () => {
     const apiRoot = path.join(process.cwd(), "src", "app", "api");
     const exemptRoutePrefixes = [
       path.join(apiRoot, "auth"),
+      path.join(apiRoot, "health"),
       path.join(apiRoot, "webhooks"),
     ];
 

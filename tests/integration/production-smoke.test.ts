@@ -25,13 +25,13 @@ describe.skipIf(!productionEnvPath)("production deployment checklist (TASK-103)"
 });
 
 describe.skipIf(!productionSmokeUrl)("production smoke (TASK-103)", () => {
-  const baseUrl = normalizeProductionSmokeBaseUrl(productionSmokeUrl!);
-
   it("public URL uses HTTPS", () => {
+    const baseUrl = normalizeProductionSmokeBaseUrl(productionSmokeUrl!);
     expect(baseUrl.startsWith("https://")).toBe(true);
   });
 
   it("GET /api/health returns a healthy payload", async () => {
+    const baseUrl = normalizeProductionSmokeBaseUrl(productionSmokeUrl!);
     const response = await fetch(`${baseUrl}/api/health`, {
       headers: { Accept: "application/json" },
     });
@@ -47,6 +47,7 @@ describe.skipIf(!productionSmokeUrl)("production smoke (TASK-103)", () => {
   });
 
   it("GET /login is reachable for operator access", async () => {
+    const baseUrl = normalizeProductionSmokeBaseUrl(productionSmokeUrl!);
     const response = await fetch(`${baseUrl}/login`, {
       redirect: "manual",
     });

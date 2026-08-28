@@ -1,8 +1,8 @@
 allowBuilds:
   "@prisma/engines": true
-  '@sentry/cli': set this to true or false
+  '@sentry/cli': true
   esbuild: true
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: true
   prisma: true
   unrs-resolver: true
 minimumReleaseAgeExclude:

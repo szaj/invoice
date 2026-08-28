@@ -9,9 +9,8 @@ import {
 const stagingSmokeUrl = process.env.STAGING_SMOKE_URL?.trim();
 
 describe.skipIf(!stagingSmokeUrl)("staging UAT smoke (TASK-102)", () => {
-  const baseUrl = normalizeStagingSmokeBaseUrl(stagingSmokeUrl!);
-
   it("GET /api/health returns a healthy payload", async () => {
+    const baseUrl = normalizeStagingSmokeBaseUrl(stagingSmokeUrl!);
     const response = await fetch(`${baseUrl}/api/health`, {
       headers: { Accept: "application/json" },
     });
@@ -26,6 +25,7 @@ describe.skipIf(!stagingSmokeUrl)("staging UAT smoke (TASK-102)", () => {
   });
 
   it("GET /login is reachable for business UAT access", async () => {
+    const baseUrl = normalizeStagingSmokeBaseUrl(stagingSmokeUrl!);
     const response = await fetch(`${baseUrl}/login`, {
       redirect: "manual",
     });
