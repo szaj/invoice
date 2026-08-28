@@ -57,6 +57,10 @@ function readEnvInput(source: EnvSource) {
     GATEWAY_CREDENTIALS_KEY_VERSION: blankToUndefined(source.GATEWAY_CREDENTIALS_KEY_VERSION),
     GATEWAY_CREDENTIALS_KEY_V1: blankToUndefined(source.GATEWAY_CREDENTIALS_KEY_V1),
     GATEWAY_CREDENTIALS_KEY_V2: blankToUndefined(source.GATEWAY_CREDENTIALS_KEY_V2),
+    BACKUP_DIR: blankToUndefined(source.BACKUP_DIR),
+    BACKUP_RETENTION_DAYS: blankToUndefined(source.BACKUP_RETENTION_DAYS),
+    BACKUP_MAX_AGE_HOURS: blankToUndefined(source.BACKUP_MAX_AGE_HOURS),
+    BACKUP_RESTORE_ALLOW_PRODUCTION: blankToUndefined(source.BACKUP_RESTORE_ALLOW_PRODUCTION),
   };
 }
 

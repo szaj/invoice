@@ -34,6 +34,7 @@ Index of architecture decisions. Accepted items are authoritative for implementa
 | ADR-020 | Next.js server layer; no separate Express/Nest backend | ACCEPTED |
 | ADR-021 | Centralized typed environment/configuration | ACCEPTED |
 | ADR-022 | Gateway credential encryption (application-managed envelope) | ACCEPTED |
+| ADR-024 | Backup and recovery (daily DB dumps + R2 versioning) | ACCEPTED |
 
 Use [[Architecture Decision]] to add new ADRs. Compact current facts: [[01 Current Architecture]]. Historical engineering rules text: [[Engineering Rules]] (archived).
 
@@ -732,6 +733,36 @@ The exact VPS vendor and DNS/domain provider remain **open** operational choices
 - [[Deployment]]
 - [[TASK-102 Staging UAT Environment]]
 - [[TASK-103 Production Deployment]]
+
+---
+
+## ADR-024 — Backup and recovery
+
+Status: ACCEPTED
+
+Date: 2026-08-28
+
+### Context
+
+Production requires recoverable PostgreSQL data and immutable invoice PDF/object storage. Secrets must not be copied into backup artifacts as plaintext files.
+
+### Decision
+
+- **PostgreSQL (Supabase):** Daily automated `pg_dump` artifacts when `BACKUP_DIR` is configured on the application host. Production should also enable Supabase **PITR** for point-in-time recovery.
+- **Object storage (R2):** Enable bucket **object versioning** in staging/production rather than mirroring bucket contents to the VPS.
+- **Secrets:** Backup scripts dump database content only via connection URLs in environment variables. Never archive `.env` files or credential plaintext into `BACKUP_DIR`.
+- **Access:** Backup directories and off-site dump storage remain Admin-restricted. Health indicators surface on Admin `/settings/operations` (`settings.manage`).
+
+Operational scripts: `pnpm backup:database`, `pnpm restore:database` (non-production by default).
+
+### Related Documents
+
+- [[Backup and Recovery]]
+- [[Security]]
+- [[Deployment]]
+- [[TASK-101 Backup and Recovery]]
+- [[05 Architecture Decisions#ADR-006 — Object storage|ADR-006]]
+- [[05 Architecture Decisions#ADR-017 — Deployment|ADR-017]]
 
 ---
 

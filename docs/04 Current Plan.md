@@ -14,13 +14,11 @@ Executable work lives in `docs/Active/Tasks/`. See also [[Vault Completion Workf
 
 ## Current phase
 
-**Phase 08 — Reporting**
+**Phase 09 — Hardening and Deployment** (complete)
 
 ## Next buildable task
 
-[[TASK-091 Operational Notifications]] (NOT STARTED)
-
-Do not start TASK-091 until ready. Do not skip ahead.
+None — Version 1 task list complete (TASK-103 complete). Deferred bank processor tasks (TASK-056/057) remain out of scope until US-017 is resolved.
 
 ## Remaining sequence
 
@@ -40,7 +38,7 @@ TASK-077–090 COMPLETE.
 
 ### Phase 09 — Notifications, Hardening, Deployment
 
-TASK-091 → TASK-103 (all NOT STARTED)
+TASK-091–103 COMPLETE.
 
 Phase indexes: [[Phase 06 Payment Adjustments]], [[Phase 07 Compliance and Audit]], [[Phase 08 Reporting]], [[Phase 09 Hardening and Deployment]]. Phase 05 remains active only for deferred bank tasks: [[Phase 05 Payments]].
 
@@ -64,7 +62,7 @@ Do not invent a fictional bank adapter. Version 1 live providers: MANUAL, STRIPE
 | US-007–010 Staff optional grants | OPEN | Default denied |
 | US-017 Bank processor vendor | DEFERRED | TASK-056/057 |
 
-None of the above currently blocks TASK-088.
+None of the above currently blocks TASK-099.
 
 ## Explicitly not planned (Version 1)
 

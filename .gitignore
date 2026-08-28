@@ -13,6 +13,7 @@ src/generated
 .env
 .env.*
 !.env.example
+deploy/staging/env
 
 # logs / debug
 npm-debug.log*

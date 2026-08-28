@@ -14,6 +14,7 @@ import {
   type CustomerPersistedWriteInput,
 } from "@/domain/customers/schema";
 import type { CustomerRecord } from "@/domain/customers/types";
+import type { CustomerListScope } from "@/server/customers/customer-repository";
 import {
   assertCustomerActiveForNewInvoice,
   createCustomer,
@@ -84,8 +85,10 @@ function createDeps(seed: CustomerRecord[] = []): CustomerManagementDependencies
   const customers = [...seed];
   const store = {
     customers,
-    async listCustomers() {
-      return [...customers];
+    async listCustomersPage(_scope: CustomerListScope, search: { page: number; pageSize: number }) {
+      const start = (search.page - 1) * search.pageSize;
+      const rows = customers.slice(start, start + search.pageSize);
+      return { rows, totalCount: customers.length };
     },
     async getCustomerById(id: string) {
       return customers.find((row) => row.id === id) ?? null;

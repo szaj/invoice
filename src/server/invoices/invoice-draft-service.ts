@@ -12,10 +12,13 @@ import { AuditActions, AuditEntityTypes } from "@/domain/audit/types";
 import { canAccessCustomer, CustomerDomainError } from "@/domain/customers/access";
 import { customerAllowsNewInvoice } from "@/domain/customers/duplicates";
 import { canStaffEditDraftInvoice, canViewInvoice } from "@/domain/invoices/access";
+import type { ListPage } from "@/domain/lists/pagination";
+import { listPageOf, resolveListPagination } from "@/domain/lists/pagination";
 import {
   invoiceDraftListQuerySchema,
   invoiceDraftWriteSchema,
   invoiceIdSchema,
+  resolveInvoiceListQuery,
   toInvoiceHeaderWriteFromDraft,
 } from "@/domain/invoices/schema";
 import {
@@ -48,7 +51,7 @@ export type InvoiceDraftResult<T> =
 export interface InvoiceDraftDependencies {
   readonly store: Pick<
     PrismaInvoiceStore,
-    "listInvoices" | "getInvoiceById" | "createInvoice" | "updateInvoice"
+    "listInvoicesPage" | "getInvoiceById" | "createInvoice" | "updateInvoice"
   >;
   readonly customerStore: Pick<PrismaCustomerStore, "getCustomerById">;
   readonly currencySelection?: CurrencySelectionDependencies;
@@ -144,7 +147,7 @@ export async function listDraftInvoices(
   actor: AuthorizationPrincipal | null,
   query: unknown = {},
   deps: InvoiceDraftDependencies = createDefaultInvoiceDraftDependencies(),
-): Promise<InvoiceDraftResult<InvoiceRecord[]>> {
+): Promise<InvoiceDraftResult<ListPage<InvoiceRecord>>> {
   try {
     assertPermission(actor, "invoice.create");
     if (!actor) {
@@ -156,23 +159,36 @@ export async function listDraftInvoices(
       return { ok: false, status: 400, error: INVOICE_INVALID_INPUT };
     }
 
+    const resolved = resolveInvoiceListQuery(parsed.data);
+    const pagination = resolveListPagination({
+      page: resolved.page,
+      pageSize: resolved.pageSize,
+    });
+
     const accessible = accessibleCompanyIds(actor);
     let companyIds: string[];
-    if (parsed.data.companyId) {
-      assertInvoiceCompanyAccess(actor, parsed.data.companyId);
-      companyIds = [parsed.data.companyId];
+    if (resolved.companyId) {
+      assertInvoiceCompanyAccess(actor, resolved.companyId);
+      companyIds = [resolved.companyId];
     } else if (accessible === "ALL") {
       return { ok: false, status: 400, error: INVOICE_INVALID_INPUT };
     } else {
       companyIds = accessible;
     }
 
-    const rows = await deps.store.listInvoices({
+    const staffUserId = actor.roleCode === "STAFF" ? actor.userId : null;
+    const page = await deps.store.listInvoicesPage({
       companyIds,
-      status: parsed.data.status,
+      status: resolved.status,
+      q: resolved.q,
+      visibleToStaffUserId: staffUserId,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      sortBy: resolved.sortBy,
+      sortDir: resolved.sortDir,
     });
-    const visible = rows.filter((row) => canViewInvoice(actor, row));
-    return { ok: true, data: visible };
+    const visible = page.rows.filter((row) => canViewInvoice(actor, row));
+    return { ok: true, data: listPageOf(visible, page.totalCount, pagination) };
   } catch (error) {
     return toAuthzOrUnavailable(error);
   }

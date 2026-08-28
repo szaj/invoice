@@ -2,6 +2,16 @@ import { z } from "zod";
 
 import { complianceStatusSchema } from "@/domain/compliance/schema";
 import {
+  INVOICE_LIST_DEFAULT_SORT_BY,
+  INVOICE_LIST_DEFAULT_SORT_DIR,
+  INVOICE_LIST_SORT_FIELDS,
+  LIST_SORT_DIRS,
+  firstSearchParam,
+  resolveListPagination,
+  type InvoiceListSortField,
+  type ListSortDir,
+} from "@/domain/lists/pagination";
+import {
   INVOICE_STATUSES,
   INVOICE_COMPANY_CUSTOMER_REQUIRED,
   INVOICE_CURRENCY_REQUIRED,
@@ -112,27 +122,72 @@ export const invoiceDraftWriteSchema = z.strictObject({
 export type InvoiceDraftWriteInput = z.output<typeof invoiceDraftWriteSchema>;
 export type InvoiceDraftWriteFormValues = z.input<typeof invoiceDraftWriteSchema>;
 
+const optionalPositiveInt = (min: number, max: number) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (typeof value === "string" && value.trim().length > 0) {
+      const parsed = Number.parseInt(value.trim(), 10);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+    return value;
+  }, z.number().int().min(min).max(max).optional());
+
 export const invoiceDraftListQuerySchema = z.strictObject({
   companyId: z.uuid().optional(),
   status: invoiceStatusSchema.optional().default("DRAFT"),
+  q: z.string().trim().max(64).optional(),
+  page: optionalPositiveInt(1, 10_000),
+  pageSize: optionalPositiveInt(1, 10_000),
+  sortBy: z.enum(INVOICE_LIST_SORT_FIELDS).optional(),
+  sortDir: z.enum(LIST_SORT_DIRS).optional(),
 });
 
 export type InvoiceDraftListQuery = z.output<typeof invoiceDraftListQuerySchema>;
 
-/** Parse list filters from Next.js searchParams (TASK-032 / TASK-036). */
+export type ResolvedInvoiceListQuery = {
+  readonly companyId?: string;
+  readonly status: InvoiceStatus;
+  readonly q?: string;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly sortBy: InvoiceListSortField;
+  readonly sortDir: ListSortDir;
+};
+
+export function resolveInvoiceListQuery(query: InvoiceDraftListQuery): ResolvedInvoiceListQuery {
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
+  return {
+    companyId: query.companyId,
+    status: query.status,
+    q: query.q,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    sortBy: query.sortBy ?? INVOICE_LIST_DEFAULT_SORT_BY,
+    sortDir: query.sortDir ?? INVOICE_LIST_DEFAULT_SORT_DIR,
+  };
+}
+
+/** Parse list filters from Next.js searchParams (TASK-032 / TASK-036 / TASK-098). */
 export function parseInvoiceDraftListSearchParams(
   params: Record<string, string | string[] | undefined>,
-): { companyId?: string; status?: InvoiceStatus } {
-  const companyIdRaw = params.companyId;
-  const companyId =
-    typeof companyIdRaw === "string" && companyIdRaw.length > 0 ? companyIdRaw : undefined;
-  const statusRaw = params.status;
-  const statusParsed =
-    typeof statusRaw === "string" ? invoiceStatusSchema.safeParse(statusRaw) : null;
-  return {
-    companyId,
+): InvoiceDraftListQuery {
+  const statusRaw = firstSearchParam(params.status);
+  const statusParsed = statusRaw ? invoiceStatusSchema.safeParse(statusRaw) : null;
+  const parsed = invoiceDraftListQuerySchema.safeParse({
+    companyId: firstSearchParam(params.companyId),
     status: statusParsed?.success ? statusParsed.data : "DRAFT",
-  };
+    q: firstSearchParam(params.q),
+    page: firstSearchParam(params.page),
+    pageSize: firstSearchParam(params.pageSize),
+    sortBy: firstSearchParam(params.sortBy),
+    sortDir: firstSearchParam(params.sortDir),
+  });
+  return parsed.success ? parsed.data : { status: "DRAFT" };
 }
 
 export function toDateInputValue(value: Date | string | null | undefined): string {

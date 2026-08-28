@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { Prisma } from "@/generated/prisma/client";
 import type { InvoiceHeaderWriteInput } from "@/domain/invoices/schema";
 import type { InvoiceLineItemRecord } from "@/domain/invoices/line-items";
 import type { InvoiceTotalsResult } from "@/domain/invoices/totals";
@@ -8,6 +9,7 @@ import type {
   InvoiceRecord,
   InvoiceStatus,
 } from "@/domain/invoices/types";
+import type { InvoiceListSortField, ListSortDir } from "@/domain/lists/pagination";
 import { getPrisma } from "@/server/db/client";
 import { toDecimalString } from "@/domain/money";
 
@@ -113,6 +115,25 @@ function totalsWriteData(totals: InvoiceTotalsResult) {
   };
 }
 
+function invoiceListOrderBy(
+  sortBy: InvoiceListSortField,
+  sortDir: ListSortDir,
+): Prisma.InvoiceOrderByWithRelationInput[] {
+  switch (sortBy) {
+    case "invoiceDate":
+      return [{ invoiceDate: sortDir }, { id: "asc" }];
+    case "dueDate":
+      return [{ dueDate: sortDir }, { id: "asc" }];
+    case "invoiceNumber":
+      return [{ invoiceNumber: sortDir }, { id: "asc" }];
+    case "status":
+      return [{ status: sortDir }, { id: "asc" }];
+    case "updatedAt":
+    default:
+      return [{ updatedAt: sortDir }, { createdAt: sortDir }, { id: "asc" }];
+  }
+}
+
 /**
  * Internal persistence for invoice headers, line items, and stored totals (TASK-030–034).
  * No hard-delete method for invoices (BR-012 / soft status later).
@@ -140,6 +161,60 @@ export class PrismaInvoiceStore {
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
     return rows.map(mapRow);
+  }
+
+  /**
+   * Server-side paginated invoice list (TASK-098). Staff visibility is applied in SQL.
+   */
+  async listInvoicesPage(filters: {
+    readonly companyIds: readonly string[];
+    readonly status?: InvoiceStatus;
+    readonly statuses?: readonly InvoiceStatus[];
+    readonly outstandingOnly?: boolean;
+    readonly q?: string;
+    readonly visibleToStaffUserId?: string | null;
+    readonly page: number;
+    readonly pageSize: number;
+    readonly sortBy: InvoiceListSortField;
+    readonly sortDir: ListSortDir;
+  }): Promise<{ readonly rows: InvoiceRecord[]; readonly totalCount: number }> {
+    const prisma = getPrisma();
+    if (filters.companyIds.length === 0) {
+      return { rows: [], totalCount: 0 };
+    }
+
+    const where: Prisma.InvoiceWhereInput = {
+      companyId: { in: [...filters.companyIds] },
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.statuses && filters.statuses.length > 0
+        ? { status: { in: [...filters.statuses] } }
+        : {}),
+      ...(filters.outstandingOnly ? { outstandingAmount: { gt: 0 } } : {}),
+      ...(filters.q ? { invoiceNumber: { contains: filters.q, mode: "insensitive" } } : {}),
+      ...(filters.visibleToStaffUserId
+        ? {
+            OR: [
+              { createdByUserId: filters.visibleToStaffUserId },
+              { assignedStaffUserId: filters.visibleToStaffUserId },
+            ],
+          }
+        : {}),
+    };
+
+    const skip = (filters.page - 1) * filters.pageSize;
+    const orderBy = invoiceListOrderBy(filters.sortBy, filters.sortDir);
+
+    const [totalCount, rows] = await Promise.all([
+      prisma.invoice.count({ where }),
+      prisma.invoice.findMany({
+        where,
+        orderBy,
+        skip,
+        take: filters.pageSize,
+      }),
+    ]);
+
+    return { rows: rows.map(mapRow), totalCount };
   }
 
   async listLineItems(invoiceId: string): Promise<InvoiceLineItemRecord[]> {

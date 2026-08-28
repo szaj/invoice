@@ -18,6 +18,7 @@ import {
 } from "@/domain/money";
 import { confirmedInvoiceApplicationsFromPayments } from "@/domain/payments/reconciliation";
 import type { PaymentListQuery } from "@/domain/payments/schema";
+import { LIST_MAX_PAGE_SIZE } from "@/domain/lists/pagination";
 import {
   PAYMENT_INVALID_INPUT,
   PAYMENT_RECORD_FORBIDDEN,
@@ -146,10 +147,16 @@ export async function loadPaymentListOptions(companyId?: string | null) {
  * Company-scoped payments transaction list for UI (TASK-061).
  * Delegates to listPayments — Staff cannot see unassigned company rows.
  */
-export async function loadPaymentsForUi(
-  query: PaymentListQuery,
-): Promise<
-  | { ok: true; data: PaymentListRow[]; status?: undefined; error?: undefined }
+export async function loadPaymentsForUi(query: PaymentListQuery): Promise<
+  | {
+      ok: true;
+      data: PaymentListRow[];
+      totalCount: number;
+      page: number;
+      pageSize: number;
+      status?: undefined;
+      error?: undefined;
+    }
   | { ok: false; error: string; status: number; data?: undefined }
 > {
   const actor = await getRequestAuthorizationPrincipal();
@@ -165,7 +172,7 @@ export async function loadPaymentsForUi(
   const companies = await listSwitcherCompanies(actor);
   const companyNameById = new Map(companies.map((company) => [company.id, company.displayName]));
 
-  const invoiceIds = [...new Set(result.data.map((payment) => payment.invoiceId))];
+  const invoiceIds = [...new Set(result.data.rows.map((payment) => payment.invoiceId))];
   const invoiceStore = new PrismaInvoiceStore();
   const invoices = await Promise.all(invoiceIds.map((id) => invoiceStore.getInvoiceById(id)));
   const invoiceLabelById = new Map(
@@ -174,20 +181,20 @@ export async function loadPaymentsForUi(
       .map((invoice) => [invoice.id, invoiceLabel(invoice)]),
   );
 
-  const ordered = [...result.data]
-    .sort(
-      (a, b) =>
-        b.paymentDate.getTime() - a.paymentDate.getTime() ||
-        b.createdAt.getTime() - a.createdAt.getTime(),
-    )
-    .map((payment) => ({
-      ...payment,
-      companyDisplayName: companyNameById.get(payment.companyId) ?? payment.companyId.slice(0, 8),
-      invoiceLabel:
-        invoiceLabelById.get(payment.invoiceId) ?? `Invoice ${payment.invoiceId.slice(0, 8)}`,
-    }));
+  const rows = result.data.rows.map((payment) => ({
+    ...payment,
+    companyDisplayName: companyNameById.get(payment.companyId) ?? payment.companyId.slice(0, 8),
+    invoiceLabel:
+      invoiceLabelById.get(payment.invoiceId) ?? `Invoice ${payment.invoiceId.slice(0, 8)}`,
+  }));
 
-  return { ok: true, data: ordered };
+  return {
+    ok: true,
+    data: rows,
+    totalCount: result.data.totalCount,
+    page: result.data.page,
+    pageSize: result.data.pageSize,
+  };
 }
 
 /**
@@ -262,12 +269,13 @@ export async function loadInvoicePaymentsForUi(
   const result = await listPayments(actor, {
     companyId: invoice.companyId,
     invoiceId: invoice.id,
+    pageSize: LIST_MAX_PAGE_SIZE,
   });
   if (!result.ok) {
     return { ok: false, error: result.error };
   }
 
-  const ordered = [...result.data].sort(
+  const ordered = [...result.data.rows].sort(
     (a, b) =>
       b.paymentDate.getTime() - a.paymentDate.getTime() ||
       b.createdAt.getTime() - a.createdAt.getTime(),
@@ -554,8 +562,18 @@ export async function loadCollectibleInvoicesForManualPayment(
     assertCompanyAccess(actor, companyId);
 
     const invoices = new PrismaInvoiceStore();
-    const rows = await invoices.listInvoices({ companyIds: [companyId] });
-    const options = rows
+    const staffUserId = actor.roleCode === "STAFF" ? actor.userId : null;
+    const page = await invoices.listInvoicesPage({
+      companyIds: [companyId],
+      statuses: ["ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE"],
+      outstandingOnly: true,
+      visibleToStaffUserId: staffUserId,
+      page: 1,
+      pageSize: LIST_MAX_PAGE_SIZE,
+      sortBy: "dueDate",
+      sortDir: "asc",
+    });
+    const options = page.rows
       .filter((row) => isCollectibleInvoiceStatus(row.status) && canViewInvoice(actor, row))
       .map((row) => ({
         id: row.id,

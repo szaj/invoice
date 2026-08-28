@@ -242,7 +242,7 @@ describe.skipIf(!runDbIntegration)("payment service integration", () => {
     if (!listed.ok) {
       throw new Error(listed.error);
     }
-    expect(listed.data.some((row) => row.id === pending.data.id)).toBe(true);
+    expect(listed.data.rows.some((row) => row.id === pending.data.id)).toBe(true);
 
     const confirmed = await confirmPayment(admin, pending.data.id, paymentDeps);
     expect(confirmed.ok).toBe(true);

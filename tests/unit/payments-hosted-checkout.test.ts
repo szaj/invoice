@@ -24,6 +24,7 @@ import {
 } from "@/server/payments/payment-service";
 import { FakePaymentAdapter } from "@/server/payments/providers/fake-payment-adapter";
 import { createMemoryAuditWriter } from "../helpers/memory-audit-writer";
+import { testSystemSettingsRecord } from "../helpers/system-settings-record";
 import { AuditActions } from "@/domain/audit/types";
 
 const COMPANY_A = "11111111-1111-4111-8111-111111111111";
@@ -314,6 +315,19 @@ function createHostedDeps(seed: {
             (filters.invoiceId ? row.invoiceId === filters.invoiceId : true),
         );
       },
+      async listPaymentsPage(filters) {
+        const rows = payments.filter(
+          (row) =>
+            filters.companyIds.includes(row.companyId) &&
+            (filters.invoiceId ? row.invoiceId === filters.invoiceId : true),
+        );
+        const start = (filters.page - 1) * filters.pageSize;
+        return {
+          rows: rows.slice(start, start + filters.pageSize),
+          totalCount: rows.length,
+          invoiceNumberById: new Map(),
+        };
+      },
       async createPayment(input) {
         const created = toPaymentRecord(
           input,
@@ -353,15 +367,7 @@ function createHostedDeps(seed: {
     },
     settings: {
       async getSettings() {
-        return {
-          id: "system",
-          reportingCurrencyCode: "USD",
-          defaultTimezone: "UTC",
-          roundingTolerance: "0.01",
-          invoiceNumberIncludeYear: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        return testSystemSettingsRecord({ id: "system" });
       },
     },
     customers: {

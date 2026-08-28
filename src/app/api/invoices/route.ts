@@ -15,6 +15,11 @@ export async function GET(request: Request) {
   const query = {
     companyId: url.searchParams.get("companyId") ?? undefined,
     status: url.searchParams.get("status") ?? undefined,
+    q: url.searchParams.get("q") ?? undefined,
+    page: url.searchParams.get("page") ?? undefined,
+    pageSize: url.searchParams.get("pageSize") ?? undefined,
+    sortBy: url.searchParams.get("sortBy") ?? undefined,
+    sortDir: url.searchParams.get("sortDir") ?? undefined,
   };
 
   const actor = await getRequestAuthorizationPrincipal();
@@ -23,7 +28,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }
 
-  return NextResponse.json({ ok: true, invoices: result.data });
+  return NextResponse.json({
+    ok: true,
+    invoices: result.data.rows,
+    totalCount: result.data.totalCount,
+    page: result.data.page,
+    pageSize: result.data.pageSize,
+  });
 }
 
 export async function POST(request: Request) {

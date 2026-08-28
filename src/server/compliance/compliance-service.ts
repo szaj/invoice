@@ -43,6 +43,7 @@ import { PrismaComplianceStore } from "@/server/compliance/compliance-repository
 import { PrismaCustomerStore } from "@/server/customers/customer-repository";
 import { PrismaInvoiceStore } from "@/server/invoices/invoice-repository";
 import { PrismaPaymentStore } from "@/server/payments/payment-repository";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type ComplianceServiceResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 401 | 403 | 404 | 503; error: string };
@@ -212,6 +213,22 @@ async function resolveSubjectAccess(
     ok: true,
     data: { companyId: companyIdInput, previousStatus: customer.complianceStatus },
   };
+}
+
+async function resolveComplianceSubjectLabel(
+  subjectType: "INVOICE" | "PAYMENT" | "CUSTOMER",
+  subjectId: string,
+  deps: ComplianceServiceDependencies,
+): Promise<string> {
+  if (subjectType === "INVOICE") {
+    const invoice = await deps.invoices.getInvoiceById(subjectId);
+    return invoice?.invoiceNumber ?? subjectId.slice(0, 8);
+  }
+  if (subjectType === "PAYMENT") {
+    return subjectId.slice(0, 8);
+  }
+  const customer = await deps.customers.getCustomerById(subjectId);
+  return customer?.displayName ?? subjectId.slice(0, 8);
 }
 
 /**
@@ -385,6 +402,20 @@ export async function updateComplianceStatus(
       },
       "Compliance status updated",
     );
+
+    if (status === "FLAGGED" && previousStatus !== "FLAGGED") {
+      const subjectLabel = await resolveComplianceSubjectLabel(subjectType, subjectId, deps);
+      await emitOperationalNotification({
+        kind: "COMPLIANCE_FLAGGED",
+        companyId,
+        subjectType,
+        subjectId,
+        subjectLabel,
+        status,
+        reason: review.reason,
+        notes: review.notes,
+      });
+    }
 
     return {
       ok: true,

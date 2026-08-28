@@ -305,7 +305,7 @@ describe.skipIf(!runDbIntegration)("partial payments + allocation (TASK-059 / TA
     );
     expect(listed.ok).toBe(true);
     if (listed.ok) {
-      expect(listed.data.filter((row) => row.status === "SUCCESSFUL")).toHaveLength(2);
+      expect(listed.data.rows.filter((row) => row.status === "SUCCESSFUL")).toHaveLength(2);
     }
 
     const over = await recordManualPayment(

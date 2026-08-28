@@ -28,6 +28,8 @@ export const STATUS_TONES: Record<string, StatusTone> = {
   SUCCESS: "success",
   SENT: "success",
   HEALTHY: "success",
+  DEGRADED: "warning",
+  UNHEALTHY: "destructive",
   CONFIGURATION_ERROR: "warning",
   DISABLED: "muted",
   // Compliance-ish

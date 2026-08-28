@@ -26,6 +26,7 @@ Authoritative **current** architectural facts for implementation. Historical nar
 | Gateway credentials | Application-managed envelope encryption | ADR-022 |
 | PDF | React-pdf | ADR-013 |
 | Logging / monitoring | Pino / Sentry | ADR-014, ADR-015 |
+| Backup / recovery | Daily pg_dump + R2 versioning + Supabase PITR (prod) | ADR-024 |
 | Tests | Vitest + Playwright | ADR-016 |
 | Deploy / CI | Docker + Linux VPS + Caddy; GitHub Actions | ADR-017, ADR-018 |
 
@@ -102,6 +103,10 @@ Shared `compliance_status` on invoices, payments, and customers (`NOT_REVIEWED` 
 
 `GET /api/reports/invoices` and `/reports/invoices` expose §13.3 Invoice Report under `report.view`. Columns: invoice number, customer, company, dates, currency, total, paid, balance, status, staff. Server-side pagination, filter, and sort. Admin all companies; Compliance assigned companies; Staff assigned companies and own/assigned invoices only. Amounts remain in original invoice currency — no unlabeled mixed-currency grand total (BR-013). ADR-011 reporting-currency rollup is not invented.
 
+## Operational list pagination (TASK-098)
+
+Invoice (`GET /api/invoices`, `/invoices`), customer (`GET /api/customers`, `/customers`), and payment (`GET /api/payments`, `/payments`) lists are server-side paginated (default 50, max 100). Staff invoice visibility is applied in SQL. Payment list does not load all invoices. Full report datasets use export jobs (TASK-090). p95 target under ~2 seconds for standard authenticated list/report APIs under normal load. Indexes cover invoice number, staff visibility, dates, transaction IDs, and report filters.
+
 ## Payment Report (TASK-079)
 
 `GET /api/reports/payments` and `/reports/payments` expose §13.3 Payment Report under `report.view`. Columns: invoice, customer, method, transaction ID, invoice amount applied, stored fixed-rate snapshot, converted settlement, optional processor fee, optional actual received, settlement currency, payment date, status. Uses locked payment snapshots only — never live FX (BR-020/021). Fees remain reconciliation-only (BR-020). Same company/staff scoping as Invoice Report. No unlabeled mixed totals; ADR-011 rollup not invented.
@@ -148,7 +153,31 @@ Shared `compliance_status` on invoices, payments, and customers (`NOT_REVIEWED` 
 
 ## Report Exports (TASK-090)
 
-`POST /api/reports/exports` creates a scoped CSV or XLSX export for any Phase 08 tabular report (invoices, payments, outstanding, overdue aging, customers, companies, staff, gateways, currencies, compliance report, monthly brand matrix, reporting group rollups). Generation runs through an inline export job dispatcher (ADR-005; TASK-099 hardens BullMQ). Completed files are stored in StorageService; metadata lives in `report_exports` (filters, row count, totals). Download via `GET /api/reports/exports/{id}/file`; status via `GET /api/reports/exports/{id}`. Requires `report.export` (Admin/Compliance; Staff denied by default — US-009). Compliance report export also requires `compliance.review`. Each export writes `reports.exported` audit (BR-015). UI: Export CSV / Export XLSX on each report page when allowed. Full datasets are fetched server-side — TanStack Table never loads the full financial dataset into the browser.
+`POST /api/reports/exports` creates a scoped CSV or XLSX export for any Phase 08 tabular report (invoices, payments, outstanding, overdue aging, customers, companies, staff, gateways, currencies, compliance report, monthly brand matrix, reporting group rollups). Generation runs through BullMQ when `REDIS_URL` is set (ADR-005 / TASK-099); otherwise inline. Completed files are stored in StorageService; metadata lives in `report_exports` (filters, row count, totals). Download via `GET /api/reports/exports/{id}/file`; status via `GET /api/reports/exports/{id}`. Requires `report.export` (Admin/Compliance; Staff denied by default — US-009). Compliance report export also requires `compliance.review`. Each export writes `reports.exported` audit (BR-015). UI: Export CSV / Export XLSX on each report page when allowed. Full datasets are fetched server-side — TanStack Table never loads the full financial dataset into the browser.
+
+## Background jobs (TASK-099)
+
+BullMQ + Redis + dedicated worker (`pnpm worker`) when `REDIS_URL` is configured (ADR-005). Queues: Stripe/PayPal webhook post-processing, invoice PDF, invoice email, report exports, operational notifications. Exponential retries (5 attempts); provider webhook idempotency remains on `payment_events`. Operational metadata in `background_jobs` (status, attempts, last error) — PostgreSQL stays authoritative for financial records; Redis is not. Without Redis, inline dispatchers preserve local/test behavior.
+
+## Operational notifications (TASK-091, TASK-092)
+
+Internal operational alerts send through **EmailService** (ADR-007), not provider SDKs from domain modules. Events: invoice email sent/failed; optional payment success/failed; invoice overdue (assigned staff and/or Admin per `system_settings` flags); compliance flagged (Admin + assigned Compliance); gateway configuration/webhook failure (Admin). Emission is best-effort and non-blocking; BullMQ dispatcher when `REDIS_URL` is set (ADR-005 / TASK-099). Notification toggles persist on `system_settings`; Admin configures them at `/settings/notifications` (TASK-092). No customer portal notifications in Version 1.
+
+## Monitoring (TASK-100)
+
+**Sentry** (ADR-015) instruments the Next.js app (`instrumentation.ts` / `instrumentation-client.ts`) and the dedicated worker (`pnpm worker`). `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are optional; `beforeSend` scrubs credentials and prohibited payment data. Public load-balancer probe: `GET /api/health` (database ping + queue/Sentry status). Admin operational indicators at `/settings/operations` (`settings.manage`): per-company gateway config status, adapter `healthCheck()` results, webhook failure counts from recent `payment_events` rows marked `FAILED`, and backup health (TASK-101).
+
+## Backup and recovery (TASK-101)
+
+Daily automated PostgreSQL dumps via `pnpm backup:database` when `BACKUP_DIR` is set (ADR-024). Artifacts are gzip SQL dumps plus `.last-success.json`; retention controlled by `BACKUP_RETENTION_DAYS`. Production should enable Supabase PITR in addition to application dumps. R2 bucket object versioning protects PDFs/exports; Admin `/settings/operations` reports last dump age and versioning status. `pnpm restore:database` is for staging/UAT drills and blocks production unless `BACKUP_RESTORE_ALLOW_PRODUCTION=true`. Secrets are never backed up as plaintext files.
+
+## Production deployment (TASK-103)
+
+Live operations on **Docker + Caddy + TLS** (ADR-017): `deploy/production/docker-compose.yml` runs Next.js (`runner-web`), worker (`runner-worker`), Redis, and Caddy with automatic HTTPS. Managed Supabase PostgreSQL and R2 stay external. Live Stripe/PayPal credentials per company (ADR-022). Pre-cutover checklist: `pnpm check:production-env -- deploy/production/env`. Post-deploy smoke: `PRODUCTION_SMOKE_URL=… pnpm test:production-smoke`. Daily backups via `pnpm backup:database` when `BACKUP_DIR` is set; enable Supabase PITR (ADR-024). Runbook: [[Deployment]] · `deploy/production/README.md`.
+
+## Staging / UAT deployment (TASK-102)
+
+Production-like acceptance on **Docker + Caddy** (ADR-017): `deploy/staging/docker-compose.yml` runs Next.js (`runner-web`), worker (`runner-worker`), Redis, and Caddy reverse proxy. Managed Supabase PostgreSQL and R2 stay external — UAT uses a dedicated Supabase project and R2 bucket with sandbox payment credentials only. Web container runs `prisma migrate deploy` on start. Post-deploy smoke: `STAGING_SMOKE_URL=… pnpm test:staging-smoke`. Runbook: [[Deployment]] · `deploy/staging/README.md`.
 
 ## UI design system
 
@@ -158,6 +187,7 @@ From TASK-042 onward: reuse shared design system and semantic tokens. Do not inv
 
 - Numbered TASKs: read the active TASK first; use Current Architecture / Product Rules only when relevant; do not scan `docs/Archive/**` in normal execution.
 - Targeted unit (+ affected integration) tests per TASK; full integration only at phase/checkpoint/release boundaries.
+- Playwright E2E: `pnpm test:e2e` (`tests/e2e/`). Coverage registry in `tests/e2e/coverage.ts` maps E2E-01..17 to Playwright specs or Vitest integration sign-off. Live flows need `E2E_ADMIN_*` or `AUTH_TEST_*` credentials.
 - See `.cursor/rules/task-execution.mdc` and `.cursor/rules/testing-execution.mdc`.
 
 ## Open / deferred architecture items

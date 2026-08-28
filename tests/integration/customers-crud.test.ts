@@ -113,7 +113,7 @@ describe.skipIf(!runDbIntegration)("customer company relationships integration",
     );
     expect(filtered.ok).toBe(true);
     if (filtered.ok) {
-      expect(filtered.data.some((row) => row.id === created.data.id)).toBe(true);
+      expect(filtered.data.rows.some((row) => row.id === created.data.id)).toBe(true);
     }
 
     const unlinked = await unlinkCustomerCompany(

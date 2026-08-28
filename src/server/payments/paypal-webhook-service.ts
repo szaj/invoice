@@ -31,6 +31,9 @@ import {
   type PayPalWebhookProcessingJob,
   type PayPalWebhookProcessingResult,
 } from "@/server/payments/paypal-webhook-queue";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
+import { isQueueEnabled } from "@/server/queue/config";
+import { createPayPalWebhookBullMqDispatcher } from "@/server/queue/dispatchers";
 
 export type ProcessPayPalWebhookResult =
   | { ok: true; status: 200; data: PayPalWebhookProcessingResult }
@@ -55,7 +58,33 @@ function registryOf(deps: PayPalWebhookServiceDependencies): PaymentProviderRegi
   return deps.providerRegistry ?? createPaymentProviderRegistry();
 }
 
-async function processPayPalWebhookJob(
+function dispatcherOf(deps: PayPalWebhookServiceDependencies): PayPalWebhookJobDispatcher {
+  if (deps.dispatcher) {
+    return deps.dispatcher;
+  }
+  const processFn = (job: PayPalWebhookProcessingJob) => processPayPalWebhookJob(job, deps);
+  if (isQueueEnabled()) {
+    return createPayPalWebhookBullMqDispatcher();
+  }
+  return new InlinePayPalWebhookJobDispatcher(processFn);
+}
+
+async function notifyGatewayWebhookFailure(
+  companyIdInput: string,
+  message: string,
+  failureType: "WEBHOOK" | "CONFIGURATION",
+): Promise<void> {
+  const companyParsed = companyIdSchema.safeParse(companyIdInput);
+  await emitOperationalNotification({
+    kind: "GATEWAY_FAILURE",
+    companyId: companyParsed.success ? companyParsed.data : null,
+    methodCode: "PAYPAL",
+    failureType,
+    message: message.slice(0, 500),
+  });
+}
+
+export async function processPayPalWebhookJob(
   job: PayPalWebhookProcessingJob,
   deps: PayPalWebhookServiceDependencies,
 ): Promise<PayPalWebhookProcessingResult> {
@@ -204,9 +233,7 @@ export async function processPayPalWebhook(
       return { ok: false, status: 400, error: PAYMENT_EVENT_INVALID };
     }
 
-    const dispatcher =
-      deps.dispatcher ??
-      new InlinePayPalWebhookJobDispatcher((job) => processPayPalWebhookJob(job, deps));
+    const dispatcher = dispatcherOf(deps);
 
     const data = await dispatcher.dispatch({
       companyId,
@@ -235,6 +262,7 @@ export async function processPayPalWebhook(
       message === PROVIDER_CONFIGURATION_ERROR ||
       message === PROVIDER_METHOD_DISABLED
     ) {
+      await notifyGatewayWebhookFailure(companyIdInput, message, "CONFIGURATION");
       return { ok: false, status: 401, error: PROVIDER_WEBHOOK_INVALID };
     }
     if (message === PROVIDER_EVENT_UNSUPPORTED) {
@@ -252,6 +280,7 @@ export async function processPayPalWebhook(
     if (message === PROVIDER_INVALID_RESPONSE || message === PAYMENT_EVENT_INVALID) {
       return { ok: false, status: 400, error: PAYMENT_EVENT_INVALID };
     }
+    await notifyGatewayWebhookFailure(companyIdInput, message, "WEBHOOK");
     return { ok: false, status: 503, error: PAYMENT_WEBHOOK_UNAVAILABLE };
   }
 }

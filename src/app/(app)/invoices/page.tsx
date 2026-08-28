@@ -3,18 +3,46 @@ import { redirect } from "next/navigation";
 
 import { InvoiceListFilters } from "@/app/(app)/invoices/invoice-list-filters";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
+import { ListPagination } from "@/components/data/list-pagination";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { authorizePermission } from "@/domain/authz/authorize";
+import { LIST_DEFAULT_PAGE_SIZE, resolveListPagination } from "@/domain/lists/pagination";
 import { parseInvoiceDraftListSearchParams, toDateInputValue } from "@/domain/invoices/schema";
+import type { InvoiceStatus } from "@/domain/invoices/types";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
 import { loadCompanyContextForLayout } from "@/server/company-context/actions";
 import { loadDraftInvoicesForUi, loadInvoiceFormOptions } from "@/server/invoices/actions";
 
 export const dynamic = "force-dynamic";
+
+function buildInvoiceListHref(input: {
+  readonly companyId?: string;
+  readonly status: InvoiceStatus;
+  readonly q?: string;
+  readonly page: number;
+  readonly pageSize: number;
+}): string {
+  const params = new URLSearchParams();
+  if (input.companyId) {
+    params.set("companyId", input.companyId);
+  }
+  params.set("status", input.status);
+  if (input.q) {
+    params.set("q", input.q);
+  }
+  if (input.page > 1) {
+    params.set("page", String(input.page));
+  }
+  if (input.pageSize !== LIST_DEFAULT_PAGE_SIZE) {
+    params.set("pageSize", String(input.pageSize));
+  }
+  const query = params.toString();
+  return query ? `/invoices?${query}` : "/invoices";
+}
 
 type InvoiceRow = {
   id: string;
@@ -40,6 +68,7 @@ export default async function InvoicesPage({
   const params = await searchParams;
   const query = parseInvoiceDraftListSearchParams(params);
   const status = query.status ?? "DRAFT";
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
   const options = await loadInvoiceFormOptions(query.companyId);
   if (!options.ok) {
     redirect("/");
@@ -56,7 +85,26 @@ export default async function InvoicesPage({
         ? options.companies[0]?.id
         : undefined);
 
-  const result = await loadDraftInvoicesForUi(companyId ? { companyId, status } : { status });
+  const result = await loadDraftInvoicesForUi(
+    companyId
+      ? {
+          companyId,
+          status,
+          q: query.q,
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          sortBy: query.sortBy,
+          sortDir: query.sortDir,
+        }
+      : {
+          status,
+          q: query.q,
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          sortBy: query.sortBy,
+          sortDir: query.sortDir,
+        },
+  );
 
   if (!result.ok) {
     if (result.status === 403) {
@@ -145,11 +193,11 @@ export default async function InvoicesPage({
 
       <DataTable
         columns={columns}
-        rows={result.data}
+        rows={result.data.rows}
         rowKey={(invoice) => invoice.id}
-        summary={`${result.data.length} invoice(s) with status ${status}${
+        summary={`${result.data.totalCount} invoice(s) with status ${status}${
           companyId ? ` for ${companyNameById.get(companyId) ?? "selected company"}` : ""
-        }`}
+        } · page ${result.data.page}`}
         emptyTitle="No invoices found"
         emptyDescription="No invoices match this company scope and status."
         emptyAction={
@@ -158,6 +206,20 @@ export default async function InvoicesPage({
               <Link href="/invoices/new">Create draft</Link>
             </Button>
           ) : undefined
+        }
+      />
+      <ListPagination
+        page={result.data.page}
+        pageSize={result.data.pageSize}
+        totalCount={result.data.totalCount}
+        hrefForPage={(nextPage) =>
+          buildInvoiceListHref({
+            companyId,
+            status,
+            q: query.q,
+            page: nextPage,
+            pageSize: result.data.pageSize,
+          })
         }
       />
     </PageFrame>

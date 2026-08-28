@@ -3,6 +3,11 @@ import "server-only";
 import type { CustomerPersistedWriteInput, CustomerSearchInput } from "@/domain/customers/schema";
 import type { CustomerRecord, CustomerStatus } from "@/domain/customers/types";
 import type { ComplianceStatus } from "@/domain/compliance/types";
+import {
+  LIST_MAX_PAGE_SIZE,
+  type CustomerListSortField,
+  type ListSortDir,
+} from "@/domain/lists/pagination";
 import { getPrisma } from "@/server/db/client";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -74,6 +79,21 @@ const withLinks = {
   companyLinks: { select: { companyId: true } },
 } as const;
 
+function customerListOrderBy(
+  sortBy: CustomerListSortField,
+  sortDir: ListSortDir,
+): Prisma.CustomerOrderByWithRelationInput[] {
+  switch (sortBy) {
+    case "createdAt":
+      return [{ createdAt: sortDir }, { id: "asc" }];
+    case "status":
+      return [{ status: sortDir }, { displayName: "asc" }, { id: "asc" }];
+    case "displayName":
+    default:
+      return [{ displayName: sortDir }, { createdAt: "asc" }];
+  }
+}
+
 export type CustomerListScope =
   | { kind: "all" }
   | {
@@ -100,6 +120,28 @@ export class PrismaCustomerStore {
     scope: CustomerListScope,
     search: CustomerSearchInput = {},
   ): Promise<CustomerRecord[]> {
+    const page = await this.listCustomersPage(scope, {
+      ...search,
+      page: 1,
+      pageSize: LIST_MAX_PAGE_SIZE,
+      sortBy: "displayName",
+      sortDir: "asc",
+    });
+    return [...page.rows];
+  }
+
+  /**
+   * Server-side paginated customer list (TASK-098). Never returns more than pageSize rows.
+   */
+  async listCustomersPage(
+    scope: CustomerListScope,
+    search: CustomerSearchInput & {
+      readonly page: number;
+      readonly pageSize: number;
+      readonly sortBy: CustomerListSortField;
+      readonly sortDir: ListSortDir;
+    },
+  ): Promise<{ readonly rows: CustomerRecord[]; readonly totalCount: number }> {
     const prisma = getPrisma();
     const where: Prisma.CustomerWhereInput = {};
 
@@ -119,7 +161,7 @@ export class PrismaCustomerStore {
 
     if (scope.kind === "assigned") {
       if (scope.companyIds.length === 0) {
-        return [];
+        return { rows: [], totalCount: 0 };
       }
       where.companyLinks = {
         some: { companyId: { in: [...scope.companyIds] } },
@@ -133,12 +175,21 @@ export class PrismaCustomerStore {
       ];
     }
 
-    const rows = await prisma.customer.findMany({
-      where,
-      include: withLinks,
-      orderBy: [{ displayName: "asc" }, { createdAt: "asc" }],
-    });
-    return rows.map(mapRow);
+    const skip = (search.page - 1) * search.pageSize;
+    const orderBy = customerListOrderBy(search.sortBy, search.sortDir);
+
+    const [totalCount, rows] = await Promise.all([
+      prisma.customer.count({ where }),
+      prisma.customer.findMany({
+        where,
+        include: withLinks,
+        orderBy,
+        skip,
+        take: search.pageSize,
+      }),
+    ]);
+
+    return { rows: rows.map(mapRow), totalCount };
   }
 
   /**

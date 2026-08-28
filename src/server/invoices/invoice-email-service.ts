@@ -40,6 +40,8 @@ import { createEmailService, type EmailService } from "@/server/email/email-serv
 import { PrismaEmailLogStore } from "@/server/invoices/email-log-repository";
 import { PrismaInvoiceFileStore } from "@/server/invoices/invoice-file-repository";
 import type { InvoiceEmailJobDispatcher } from "@/server/invoices/invoice-email-queue";
+import { isQueueEnabled } from "@/server/queue/config";
+import { createInvoiceEmailBullMqDispatcher } from "@/server/queue/dispatchers";
 import {
   generateInvoicePdf,
   createDefaultInvoicePdfDependencies,
@@ -49,6 +51,7 @@ import { PrismaInvoiceVersionStore } from "@/server/invoices/invoice-version-rep
 import { createStorageService } from "@/server/storage/create-storage-service";
 import type { StorageService } from "@/server/storage/storage-service";
 import { getEnv } from "@/config/env";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type InvoiceEmailResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 403 | 404 | 503; error: string };
@@ -89,6 +92,16 @@ function emailServiceOf(deps: InvoiceEmailDependencies): EmailService {
 
 function auditWriterOf(deps: InvoiceEmailDependencies): AuditWriter {
   return deps.auditWriter ?? getAuditWriter();
+}
+
+function dispatcherOf(deps: InvoiceEmailDependencies): InvoiceEmailJobDispatcher | undefined {
+  if (deps.dispatcher) {
+    return deps.dispatcher;
+  }
+  if (!isQueueEnabled()) {
+    return undefined;
+  }
+  return createInvoiceEmailBullMqDispatcher();
 }
 
 /**
@@ -307,6 +320,14 @@ export async function sendInvoiceEmail(
         "Invoice email sent",
       );
 
+      await emitOperationalNotification({
+        kind: "INVOICE_EMAIL_SENT",
+        companyId: invoice.companyId,
+        invoiceId: invoice.id,
+        invoiceNumber: snapshot.invoiceNumber ?? invoice.invoiceNumber,
+        recipient,
+      });
+
       return { ok: true, data: log };
     } catch (error) {
       const message = error instanceof Error ? error.message : INVOICE_EMAIL_SEND_FAILED;
@@ -356,6 +377,15 @@ export async function sendInvoiceEmail(
         },
         "Invoice email failed",
       );
+
+      await emitOperationalNotification({
+        kind: "INVOICE_EMAIL_FAILED",
+        companyId: invoice.companyId,
+        invoiceId: invoice.id,
+        invoiceNumber: snapshot.invoiceNumber ?? invoice.invoiceNumber,
+        recipient,
+        errorMessage: message,
+      });
 
       // Invoice remains issued; return failure without claiming success.
       return { ok: false, status: 503, error: INVOICE_EMAIL_SEND_FAILED };
@@ -514,12 +544,13 @@ export async function enqueueInvoiceEmail(
   },
   deps: InvoiceEmailDependencies = createDefaultInvoiceEmailDependencies(),
 ): Promise<InvoiceEmailResult<EmailLogRecord>> {
-  if (!deps.dispatcher) {
+  const dispatcher = dispatcherOf(deps);
+  if (!dispatcher) {
     return sendInvoiceEmail(actor, job.invoiceId, job, deps);
   }
 
   try {
-    const dispatched = await deps.dispatcher.dispatch({
+    const dispatched = await dispatcher.dispatch({
       invoiceId: job.invoiceId,
       invoiceFileId: job.invoiceFileId,
       recipientOverride: job.recipientOverride,
@@ -532,6 +563,9 @@ export async function enqueueInvoiceEmail(
       if (log) {
         return { ok: true, data: log };
       }
+    }
+    if (isQueueEnabled()) {
+      return { ok: false, status: 503, error: INVOICE_EMAIL_UNAVAILABLE };
     }
     return sendInvoiceEmail(actor, job.invoiceId, job, deps);
   } catch (error) {

@@ -114,12 +114,21 @@ function createDeps(seed: {
   return {
     auditWriter,
     store: {
-      async listInvoices(filters) {
-        return invoices.filter(
+      async listInvoicesPage(filters) {
+        const rows = invoices.filter(
           (row) =>
             filters.companyIds.includes(row.companyId) &&
-            (filters.status ? row.status === filters.status : true),
+            (filters.status ? row.status === filters.status : true) &&
+            (filters.visibleToStaffUserId
+              ? row.createdByUserId === filters.visibleToStaffUserId ||
+                row.assignedStaffUserId === filters.visibleToStaffUserId
+              : true),
         );
+        const start = (filters.page - 1) * filters.pageSize;
+        return {
+          rows: rows.slice(start, start + filters.pageSize),
+          totalCount: rows.length,
+        };
       },
       async getInvoiceById(id: string) {
         return invoices.find((row) => row.id === id) ?? null;
@@ -345,8 +354,9 @@ describe("invoice draft service authorization", () => {
     );
     expect(allowed.ok).toBe(true);
     if (allowed.ok) {
-      expect(allowed.data).toHaveLength(1);
-      expect(allowed.data[0]?.companyId).toBe(COMPANY_A);
+      expect(allowed.data.rows).toHaveLength(1);
+      expect(allowed.data.rows[0]?.companyId).toBe(COMPANY_A);
+      expect(allowed.data.pageSize).toBeLessThanOrEqual(100);
     }
 
     const denied = await listDraftInvoices(

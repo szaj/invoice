@@ -27,6 +27,8 @@ import {
   matchCustomerDuplicates,
   type CustomerDuplicateMatch,
 } from "@/domain/customers/duplicates";
+import type { ListPage } from "@/domain/lists/pagination";
+import { listPageOf, resolveListPagination } from "@/domain/lists/pagination";
 import {
   customerCompaniesUpdateSchema,
   customerCompanyLinkSchema,
@@ -34,6 +36,7 @@ import {
   customerSearchSchema,
   customerStatusUpdateSchema,
   customerWriteSchema,
+  resolveCustomerListQuery,
   toCustomerPersistedWriteInput,
   type CustomerWriteInput,
 } from "@/domain/customers/schema";
@@ -71,7 +74,7 @@ export type CustomerManagementResult<T> =
 export interface CustomerManagementDependencies {
   readonly store: Pick<
     PrismaCustomerStore,
-    | "listCustomers"
+    | "listCustomersPage"
     | "getCustomerById"
     | "createCustomer"
     | "updateCustomer"
@@ -252,7 +255,7 @@ export async function listCustomers(
   actor: AuthorizationPrincipal | null,
   query: unknown = {},
   deps: CustomerManagementDependencies = createDefaultCustomerManagementDependencies(),
-): Promise<CustomerManagementResult<CustomerRecord[]>> {
+): Promise<CustomerManagementResult<ListPage<CustomerRecord>>> {
   try {
     assertPermission(actor, "customer.edit");
     if (!actor) {
@@ -263,8 +266,19 @@ export async function listCustomers(
       return { ok: false, status: 400, error: CUSTOMER_INVALID_INPUT };
     }
     assertSearchCompanyFilter(actor, parsed.data.companyId);
-    const customers = await deps.store.listCustomers(listScopeFor(actor), parsed.data);
-    return { ok: true, data: customers };
+    const resolved = resolveCustomerListQuery(parsed.data);
+    const pagination = resolveListPagination({
+      page: resolved.page,
+      pageSize: resolved.pageSize,
+    });
+    const page = await deps.store.listCustomersPage(listScopeFor(actor), {
+      ...parsed.data,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      sortBy: resolved.sortBy,
+      sortDir: resolved.sortDir,
+    });
+    return { ok: true, data: listPageOf(page.rows, page.totalCount, pagination) };
   } catch (error) {
     return toAuthzOrUnavailable(error);
   }

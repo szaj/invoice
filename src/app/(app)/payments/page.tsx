@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PaymentListFilters } from "@/app/(app)/payments/payment-list-filters";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
+import { ListPagination } from "@/components/data/list-pagination";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { authorizePermission } from "@/domain/authz/authorize";
 import { parsePaymentListSearchParams } from "@/domain/payments/schema";
+import { LIST_DEFAULT_PAGE_SIZE, resolveListPagination } from "@/domain/lists/pagination";
 import { PAYMENT_COMPANY_SCOPE_REQUIRED, type PaymentStatus } from "@/domain/payments/types";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
 import { loadCompanyContextForLayout } from "@/server/company-context/actions";
@@ -20,6 +22,29 @@ import {
 } from "@/server/payments/actions";
 
 export const dynamic = "force-dynamic";
+
+function buildPaymentListHref(input: {
+  readonly companyId?: string;
+  readonly status?: PaymentStatus;
+  readonly page: number;
+  readonly pageSize: number;
+}): string {
+  const params = new URLSearchParams();
+  if (input.companyId) {
+    params.set("companyId", input.companyId);
+  }
+  if (input.status) {
+    params.set("status", input.status);
+  }
+  if (input.page > 1) {
+    params.set("page", String(input.page));
+  }
+  if (input.pageSize !== LIST_DEFAULT_PAGE_SIZE) {
+    params.set("pageSize", String(input.pageSize));
+  }
+  const query = params.toString();
+  return query ? `/payments?${query}` : "/payments";
+}
 
 function formatDate(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
@@ -56,15 +81,26 @@ export default async function PaymentsPage({
         : (options.defaultCompanyId ?? undefined));
 
   const status = query.status;
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
   const listQuery = {
     ...(companyId ? { companyId } : {}),
     ...(status ? { status } : {}),
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
   };
 
   const result = companyId
     ? await loadPaymentsForUi(listQuery)
     : options.companies.length === 0
-      ? { ok: true as const, data: [] as PaymentListRow[] }
+      ? {
+          ok: true as const,
+          data: [] as PaymentListRow[],
+          totalCount: 0,
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+        }
       : {
           ok: false as const,
           status: 400,
@@ -160,23 +196,38 @@ export default async function PaymentsPage({
           <AlertDescription>{result.error}</AlertDescription>
         </Alert>
       ) : (
-        <DataTable
-          columns={columns}
-          rows={result.data}
-          rowKey={(payment) => payment.id}
-          summary={`${result.data.length} payment(s)${status ? ` with status ${status}` : ""}${
-            companyId ? ` for ${companyNameById.get(companyId) ?? "selected company"}` : ""
-          }`}
-          emptyTitle="No payments found"
-          emptyDescription="No payments match this company scope and filters."
-          emptyAction={
-            options.canRecordManual ? (
-              <Button asChild size="sm">
-                <Link href="/payments/manual">Record manual payment</Link>
-              </Button>
-            ) : undefined
-          }
-        />
+        <>
+          <DataTable
+            columns={columns}
+            rows={result.data}
+            rowKey={(payment) => payment.id}
+            summary={`${result.totalCount} payment(s)${status ? ` with status ${status}` : ""}${
+              companyId ? ` for ${companyNameById.get(companyId) ?? "selected company"}` : ""
+            } · page ${result.page}`}
+            emptyTitle="No payments found"
+            emptyDescription="No payments match this company scope and filters."
+            emptyAction={
+              options.canRecordManual ? (
+                <Button asChild size="sm">
+                  <Link href="/payments/manual">Record manual payment</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+          <ListPagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            hrefForPage={(nextPage) =>
+              buildPaymentListHref({
+                companyId,
+                status,
+                page: nextPage,
+                pageSize: result.pageSize,
+              })
+            }
+          />
+        </>
       )}
     </PageFrame>
   );

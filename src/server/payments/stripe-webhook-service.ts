@@ -31,6 +31,9 @@ import {
   type StripeWebhookProcessingJob,
   type StripeWebhookProcessingResult,
 } from "@/server/payments/stripe-webhook-queue";
+import { isQueueEnabled } from "@/server/queue/config";
+import { createStripeWebhookBullMqDispatcher } from "@/server/queue/dispatchers";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type ProcessStripeWebhookResult =
   | { ok: true; status: 200; data: StripeWebhookProcessingResult }
@@ -55,7 +58,33 @@ function registryOf(deps: StripeWebhookServiceDependencies): PaymentProviderRegi
   return deps.providerRegistry ?? createPaymentProviderRegistry();
 }
 
-async function processStripeWebhookJob(
+function dispatcherOf(deps: StripeWebhookServiceDependencies): StripeWebhookJobDispatcher {
+  if (deps.dispatcher) {
+    return deps.dispatcher;
+  }
+  const processFn = (job: StripeWebhookProcessingJob) => processStripeWebhookJob(job, deps);
+  if (isQueueEnabled()) {
+    return createStripeWebhookBullMqDispatcher();
+  }
+  return new InlineStripeWebhookJobDispatcher(processFn);
+}
+
+async function notifyGatewayWebhookFailure(
+  companyIdInput: string,
+  message: string,
+  failureType: "WEBHOOK" | "CONFIGURATION",
+): Promise<void> {
+  const companyParsed = companyIdSchema.safeParse(companyIdInput);
+  await emitOperationalNotification({
+    kind: "GATEWAY_FAILURE",
+    companyId: companyParsed.success ? companyParsed.data : null,
+    methodCode: "STRIPE",
+    failureType,
+    message: message.slice(0, 500),
+  });
+}
+
+export async function processStripeWebhookJob(
   job: StripeWebhookProcessingJob,
   deps: StripeWebhookServiceDependencies,
 ): Promise<StripeWebhookProcessingResult> {
@@ -204,9 +233,7 @@ export async function processStripeWebhook(
       return { ok: false, status: 400, error: PAYMENT_EVENT_INVALID };
     }
 
-    const dispatcher =
-      deps.dispatcher ??
-      new InlineStripeWebhookJobDispatcher((job) => processStripeWebhookJob(job, deps));
+    const dispatcher = dispatcherOf(deps);
 
     const data = await dispatcher.dispatch({
       companyId,
@@ -235,6 +262,7 @@ export async function processStripeWebhook(
       message === PROVIDER_CONFIGURATION_ERROR ||
       message === PROVIDER_METHOD_DISABLED
     ) {
+      await notifyGatewayWebhookFailure(companyIdInput, message, "CONFIGURATION");
       return { ok: false, status: 401, error: PROVIDER_WEBHOOK_INVALID };
     }
     if (message === PROVIDER_EVENT_UNSUPPORTED) {
@@ -252,6 +280,7 @@ export async function processStripeWebhook(
     if (message === PROVIDER_INVALID_RESPONSE || message === PAYMENT_EVENT_INVALID) {
       return { ok: false, status: 400, error: PAYMENT_EVENT_INVALID };
     }
+    await notifyGatewayWebhookFailure(companyIdInput, message, "WEBHOOK");
     return { ok: false, status: 503, error: PAYMENT_WEBHOOK_UNAVAILABLE };
   }
 }

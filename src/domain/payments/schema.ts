@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+import {
+  LIST_SORT_DIRS,
+  PAYMENT_LIST_DEFAULT_SORT_BY,
+  PAYMENT_LIST_DEFAULT_SORT_DIR,
+  PAYMENT_LIST_SORT_FIELDS,
+  firstSearchParam,
+  resolveListPagination,
+  type ListSortDir,
+  type PaymentListSortField,
+} from "@/domain/lists/pagination";
 import { PAYMENT_METHOD_CODES } from "@/domain/settlement/types";
 import {
   PAYMENT_AMOUNT_REQUIRED,
@@ -213,38 +223,75 @@ export const paymentHostedCheckoutSchema = z.strictObject({
 export type PaymentHostedCheckoutInput = z.output<typeof paymentHostedCheckoutSchema>;
 export type PaymentHostedCheckoutFormValues = z.input<typeof paymentHostedCheckoutSchema>;
 
+const optionalPositiveInt = (min: number, max: number) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (typeof value === "string" && value.trim().length > 0) {
+      const parsed = Number.parseInt(value.trim(), 10);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+    return value;
+  }, z.number().int().min(min).max(max).optional());
+
 export const paymentListQuerySchema = z.strictObject({
   companyId: z.uuid().optional(),
   invoiceId: z.uuid().optional(),
   customerId: z.uuid().optional(),
   status: paymentStatusSchema.optional(),
+  page: optionalPositiveInt(1, 10_000),
+  pageSize: optionalPositiveInt(1, 10_000),
+  sortBy: z.enum(PAYMENT_LIST_SORT_FIELDS).optional(),
+  sortDir: z.enum(LIST_SORT_DIRS).optional(),
 });
 
 export type PaymentListQuery = z.output<typeof paymentListQuerySchema>;
 
+export type ResolvedPaymentListQuery = {
+  readonly companyId?: string;
+  readonly invoiceId?: string;
+  readonly customerId?: string;
+  readonly status?: PaymentListQuery["status"];
+  readonly page: number;
+  readonly pageSize: number;
+  readonly sortBy: PaymentListSortField;
+  readonly sortDir: ListSortDir;
+};
+
+export function resolvePaymentListQuery(query: PaymentListQuery): ResolvedPaymentListQuery {
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
+  return {
+    companyId: query.companyId,
+    invoiceId: query.invoiceId,
+    customerId: query.customerId,
+    status: query.status,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    sortBy: query.sortBy ?? PAYMENT_LIST_DEFAULT_SORT_BY,
+    sortDir: query.sortDir ?? PAYMENT_LIST_DEFAULT_SORT_DIR,
+  };
+}
+
 /**
  * Parse payments list page searchParams into list query input.
- * Keeps filter/query logic out of React components (TASK-061).
+ * Keeps filter/query logic out of React components (TASK-061 / TASK-098).
  */
 export function parsePaymentListSearchParams(
   params: Record<string, string | string[] | undefined>,
 ): PaymentListQuery {
-  const companyIdRaw = params.companyId;
-  const statusRaw = params.status;
-  const invoiceIdRaw = params.invoiceId;
-  const customerIdRaw = params.customerId;
-  const companyId =
-    typeof companyIdRaw === "string" && companyIdRaw.length > 0 ? companyIdRaw : undefined;
-  const status = typeof statusRaw === "string" && statusRaw.length > 0 ? statusRaw : undefined;
-  const invoiceId =
-    typeof invoiceIdRaw === "string" && invoiceIdRaw.length > 0 ? invoiceIdRaw : undefined;
-  const customerId =
-    typeof customerIdRaw === "string" && customerIdRaw.length > 0 ? customerIdRaw : undefined;
   const parsed = paymentListQuerySchema.safeParse({
-    companyId,
-    status,
-    invoiceId,
-    customerId,
+    companyId: firstSearchParam(params.companyId),
+    status: firstSearchParam(params.status),
+    invoiceId: firstSearchParam(params.invoiceId),
+    customerId: firstSearchParam(params.customerId),
+    page: firstSearchParam(params.page),
+    pageSize: firstSearchParam(params.pageSize),
+    sortBy: firstSearchParam(params.sortBy),
+    sortDir: firstSearchParam(params.sortDir),
   });
   return parsed.success ? parsed.data : {};
 }

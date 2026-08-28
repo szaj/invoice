@@ -38,6 +38,7 @@ import {
   type PaymentServiceDependencies,
 } from "@/server/payments/payment-service";
 import { createMemoryAuditWriter } from "../helpers/memory-audit-writer";
+import { testSystemSettingsRecord } from "../helpers/system-settings-record";
 import { AuditActions } from "@/domain/audit/types";
 
 const COMPANY_A = "11111111-1111-4111-8111-111111111111";
@@ -266,6 +267,21 @@ function createDeps(seed: {
             (filters.status ? row.status === filters.status : true),
         );
       },
+      async listPaymentsPage(filters) {
+        const rows = payments.filter(
+          (row) =>
+            filters.companyIds.includes(row.companyId) &&
+            (filters.invoiceId ? row.invoiceId === filters.invoiceId : true) &&
+            (filters.customerId ? row.customerId === filters.customerId : true) &&
+            (filters.status ? row.status === filters.status : true),
+        );
+        const start = (filters.page - 1) * filters.pageSize;
+        return {
+          rows: rows.slice(start, start + filters.pageSize),
+          totalCount: rows.length,
+          invoiceNumberById: new Map(),
+        };
+      },
       async createPayment(input) {
         const created = toPaymentRecord(
           input,
@@ -325,15 +341,7 @@ function createDeps(seed: {
     },
     settings: {
       async getSettings() {
-        return {
-          id: "system",
-          reportingCurrencyCode: "USD",
-          defaultTimezone: "UTC",
-          roundingTolerance: "0.01",
-          invoiceNumberIncludeYear: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        return testSystemSettingsRecord({ id: "system" });
       },
     },
     customers: {
@@ -672,7 +680,7 @@ describe("payment service (TASK-045)", () => {
     if (!adminList.ok) {
       throw new Error(adminList.error);
     }
-    expect(adminList.data).toHaveLength(1);
+    expect(adminList.data.rows).toHaveLength(1);
 
     const adminAllCompanies = await listPayments(admin, {}, deps);
     expect(adminAllCompanies.ok).toBe(false);
@@ -685,7 +693,7 @@ describe("payment service (TASK-045)", () => {
     if (!staffList.ok) {
       throw new Error(staffList.error);
     }
-    expect(staffList.data).toHaveLength(1);
+    expect(staffList.data.rows).toHaveLength(1);
 
     const staffDenied = await listPayments(principal("STAFF"), { companyId: COMPANY_B }, deps);
     expect(staffDenied.ok).toBe(false);
@@ -1188,7 +1196,7 @@ describe("manual payment recording (TASK-050)", () => {
     );
     expect(listed.ok).toBe(true);
     if (listed.ok) {
-      expect(listed.data.filter((row) => row.status === "SUCCESSFUL")).toHaveLength(2);
+      expect(listed.data.rows.filter((row) => row.status === "SUCCESSFUL")).toHaveLength(2);
     }
 
     const over = await recordManualPayment(

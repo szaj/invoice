@@ -9,9 +9,11 @@ import type {
   PaymentStatus,
 } from "@/domain/payments/types";
 import type { ComplianceStatus } from "@/domain/compliance/types";
+import type { PaymentListSortField, ListSortDir } from "@/domain/lists/pagination";
 import type { PaymentMethodCode } from "@/domain/settlement/types";
 import { toDecimalString } from "@/domain/money";
 import { getPrisma } from "@/server/db/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 type PaymentRow = {
   id: string;
@@ -141,6 +143,69 @@ export class PrismaPaymentStore {
     return rows.map((row) => mapRow(row as PaymentRow));
   }
 
+  /**
+   * Server-side paginated payment list (TASK-098).
+   * Staff visibility is applied via invoice created/assigned join — does not load all invoices.
+   */
+  async listPaymentsPage(filters: {
+    readonly companyIds: readonly string[];
+    readonly invoiceId?: string;
+    readonly customerId?: string;
+    readonly status?: PaymentStatus;
+    readonly visibleToStaffUserId?: string | null;
+    readonly page: number;
+    readonly pageSize: number;
+    readonly sortBy: PaymentListSortField;
+    readonly sortDir: ListSortDir;
+  }): Promise<{
+    readonly rows: PaymentRecord[];
+    readonly totalCount: number;
+    readonly invoiceNumberById: ReadonlyMap<string, string | null>;
+  }> {
+    if (filters.companyIds.length === 0) {
+      return { rows: [], totalCount: 0, invoiceNumberById: new Map() };
+    }
+    const prisma = getPrisma();
+    const where: Prisma.PaymentWhereInput = {
+      companyId: { in: [...filters.companyIds] },
+      ...(filters.invoiceId ? { invoiceId: filters.invoiceId } : {}),
+      ...(filters.customerId ? { customerId: filters.customerId } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.visibleToStaffUserId
+        ? {
+            invoice: {
+              OR: [
+                { createdByUserId: filters.visibleToStaffUserId },
+                { assignedStaffUserId: filters.visibleToStaffUserId },
+              ],
+            },
+          }
+        : {}),
+    };
+
+    const skip = (filters.page - 1) * filters.pageSize;
+    const orderBy = paymentListOrderBy(filters.sortBy, filters.sortDir);
+
+    const [totalCount, rows] = await Promise.all([
+      prisma.payment.count({ where }),
+      prisma.payment.findMany({
+        where,
+        orderBy,
+        skip,
+        take: filters.pageSize,
+        include: { invoice: { select: { invoiceNumber: true } } },
+      }),
+    ]);
+
+    const invoiceNumberById = new Map<string, string | null>();
+    const mapped = rows.map((row) => {
+      invoiceNumberById.set(row.invoiceId, row.invoice.invoiceNumber);
+      return mapRow(row as PaymentRow);
+    });
+
+    return { rows: mapped, totalCount, invoiceNumberById };
+  }
+
   async createPayment(input: PaymentWriteInput): Promise<PaymentRecord> {
     const prisma = getPrisma();
     const row = await prisma.payment.create({
@@ -214,5 +279,20 @@ export class PrismaPaymentStore {
     assertPaymentHardDeleteAllowed(status);
     const prisma = getPrisma();
     await prisma.payment.delete({ where: { id } });
+  }
+}
+
+function paymentListOrderBy(
+  sortBy: PaymentListSortField,
+  sortDir: ListSortDir,
+): Prisma.PaymentOrderByWithRelationInput[] {
+  switch (sortBy) {
+    case "status":
+      return [{ status: sortDir }, { paymentDate: "desc" }, { id: "asc" }];
+    case "createdAt":
+      return [{ createdAt: sortDir }, { id: "asc" }];
+    case "paymentDate":
+    default:
+      return [{ paymentDate: sortDir }, { createdAt: sortDir }, { id: "asc" }];
   }
 }

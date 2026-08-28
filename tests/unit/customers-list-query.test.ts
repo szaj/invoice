@@ -9,11 +9,15 @@ describe("customer list search params", () => {
         q: "  acme ",
         status: "ACTIVE",
         companyId: "11111111-1111-4111-8111-111111111111",
+        page: "2",
+        pageSize: "25",
       }),
     ).toEqual({
       q: "acme",
       status: "ACTIVE",
       companyId: "11111111-1111-4111-8111-111111111111",
+      page: 2,
+      pageSize: 25,
     });
   });
 

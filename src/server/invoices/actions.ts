@@ -37,6 +37,7 @@ import {
   replaceDraftInvoiceLineItems,
 } from "@/server/invoices/invoice-line-item-service";
 import type { InvoiceStatus } from "@/domain/invoices/types";
+import { LIST_MAX_PAGE_SIZE } from "@/domain/lists/pagination";
 
 export type InvoiceActionResult =
   { ok: true; message?: string; invoiceId?: string } | { ok: false; error: string };
@@ -251,18 +252,34 @@ export async function updateIssuedInvoiceMetadataAction(
 }
 
 export async function loadDraftInvoicesForUi(
-  query: { companyId?: string; status?: InvoiceStatus } = {},
+  query: {
+    companyId?: string;
+    status?: InvoiceStatus;
+    q?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
+  } = {},
 ) {
   const actor = await getRequestAuthorizationPrincipal();
   const result = await listDraftInvoices(actor, {
     companyId: query.companyId,
     status: query.status ?? "DRAFT",
+    q: query.q,
+    page: query.page,
+    pageSize: query.pageSize,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
   });
   if (!result.ok || !actor) {
     return result;
   }
-  const withOverdue = await applyOverdueToInvoiceList(actor, result.data);
-  return { ok: true as const, data: withOverdue };
+  const withOverdue = await applyOverdueToInvoiceList(actor, result.data.rows);
+  return {
+    ok: true as const,
+    data: { ...result.data, rows: withOverdue },
+  };
 }
 
 export async function loadDraftInvoiceForUi(invoiceId: string) {
@@ -330,10 +347,11 @@ export async function loadInvoiceFormOptions(companyId?: string | null) {
 
   const customersResult = await listCustomers(actor, {
     status: "ACTIVE",
+    pageSize: LIST_MAX_PAGE_SIZE,
     ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
   });
   const customers = customersResult.ok
-    ? customersResult.data.map((customer) => ({
+    ? customersResult.data.rows.map((customer) => ({
         id: customer.id,
         displayName: customer.displayName,
         companyIds: [...customer.companyIds],

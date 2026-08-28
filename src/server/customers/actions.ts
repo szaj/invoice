@@ -91,7 +91,15 @@ export async function setCustomerStatusAction(
 }
 
 export async function loadCustomersForUi(
-  query: { q?: string; status?: string; companyId?: string } = {},
+  query: {
+    q?: string;
+    status?: string;
+    companyId?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
+  } = {},
 ) {
   const actor = await getRequestAuthorizationPrincipal();
   return listCustomers(actor, query);

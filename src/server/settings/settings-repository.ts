@@ -12,6 +12,15 @@ function mapRow(row: {
   defaultTimezone: string;
   roundingTolerance: Prisma.Decimal;
   invoiceNumberIncludeYear: boolean;
+  notifyInvoiceEmailSent: boolean;
+  notifyInvoiceEmailFailed: boolean;
+  notifyPaymentSuccess: boolean;
+  notifyPaymentFailed: boolean;
+  notifyInvoiceOverdue: boolean;
+  notifyInvoiceOverdueToAdmin: boolean;
+  notifyInvoiceOverdueToAssignedStaff: boolean;
+  notifyComplianceFlagged: boolean;
+  notifyGatewayFailure: boolean;
   createdAt: Date;
   updatedAt: Date;
 }): SystemSettingsRecord {
@@ -21,6 +30,15 @@ function mapRow(row: {
     defaultTimezone: row.defaultTimezone,
     roundingTolerance: row.roundingTolerance.toString(),
     invoiceNumberIncludeYear: row.invoiceNumberIncludeYear,
+    notifyInvoiceEmailSent: row.notifyInvoiceEmailSent,
+    notifyInvoiceEmailFailed: row.notifyInvoiceEmailFailed,
+    notifyPaymentSuccess: row.notifyPaymentSuccess,
+    notifyPaymentFailed: row.notifyPaymentFailed,
+    notifyInvoiceOverdue: row.notifyInvoiceOverdue,
+    notifyInvoiceOverdueToAdmin: row.notifyInvoiceOverdueToAdmin,
+    notifyInvoiceOverdueToAssignedStaff: row.notifyInvoiceOverdueToAssignedStaff,
+    notifyComplianceFlagged: row.notifyComplianceFlagged,
+    notifyGatewayFailure: row.notifyGatewayFailure,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -56,6 +74,30 @@ export class PrismaSystemSettingsStore {
         roundingTolerance: new Prisma.Decimal(input.roundingTolerance),
         invoiceNumberIncludeYear: input.invoiceNumberIncludeYear,
       },
+    });
+    return mapRow(updated);
+  }
+
+  async updateNotificationSettings(input: {
+    notifyInvoiceEmailSent: boolean;
+    notifyInvoiceEmailFailed: boolean;
+    notifyPaymentSuccess: boolean;
+    notifyPaymentFailed: boolean;
+    notifyInvoiceOverdue: boolean;
+    notifyInvoiceOverdueToAdmin: boolean;
+    notifyInvoiceOverdueToAssignedStaff: boolean;
+    notifyComplianceFlagged: boolean;
+    notifyGatewayFailure: boolean;
+  }): Promise<SystemSettingsRecord> {
+    const prisma = getPrisma();
+    const existing = await this.getSettings();
+    if (!existing) {
+      throw new Error("SYSTEM_SETTINGS_MISSING");
+    }
+
+    const updated = await prisma.systemSettings.update({
+      where: { id: existing.id },
+      data: input,
     });
     return mapRow(updated);
   }

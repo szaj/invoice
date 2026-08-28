@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "vault-tabs",
+        "id": "951aefffa3019709",
         "type": "tabs",
         "children": [
           {
-            "id": "vault-home",
+            "id": "c97438a7a12c1bf6",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "empty",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -180,6 +180,16 @@
   },
   "active": "vault-files",
   "lastOpenFiles": [
+    "Archive/Completed Tasks/TASK-103 Production Deployment.md",
+    "Active/Tasks/TASK-103 Production Deployment.md",
+    "Archive/Completed Tasks/TASK-102 Staging UAT Environment.md",
+    "Active/Tasks/TASK-102 Staging UAT Environment.md",
+    "Active/Modules/Deployment.md",
+    "Active/Modules/Backup and Recovery.md",
+    "Archive/Completed Tasks/TASK-100 Monitoring.md",
+    "Archive/Completed Tasks/TASK-098 Performance Hardening.md",
+    "Archive/Completed Tasks/TASK-097 PDF Visual QA.md",
+    "Archive/Historical Specs/Technical/Deployment.md",
     "Archive/Completed Tasks/TASK-090 Report Exports.md",
     "Archive/Completed Tasks/TASK-089 Reporting Group Rollups.md",
     "Active/Tasks/TASK-088 Monthly Brand Matrix.md",
@@ -196,16 +206,6 @@
     "Archive/Completed Tasks/TASK-077 Dashboard KPIs.md",
     "Archive/Completed Tasks/TASK-071 Compliance Status Model.md",
     "Archive/Completed Tasks/TASK-070 CBRF Calculation Engine.md",
-    "Archive/Completed Tasks/TASK-069 Payment Adjustment UI.md",
-    "Archive/Completed Tasks/TASK-068 Adjustment History and Notes.md",
-    "Archive/Completed Tasks/TASK-067 Chargeback Won Reversal.md",
-    "Archive/Completed Tasks/TASK-066 Chargeback Debit Loss.md",
-    "Archive/Completed Tasks/TASK-065 Partial Refunds.md",
-    "Active/UI UX Design System.md",
-    "Active/Vault Completion Workflow.md",
-    "06 Development Log.md",
-    "Archive/Historical Specs/Source/Original Home.md",
-    "Archive/Historical Specs/Source/multi_brand_invoice_saas_development_spec.md",
     "Archive/Historical Specs/Technical",
     "Archive/Historical Specs/Source",
     "Archive/Historical Specs/Product",

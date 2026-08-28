@@ -1,0 +1,126 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PDF visual QA suite (TASK-097) > render snapshots > PDF-VQA-01 — Minimal brand, USD totals, A4 > PDF-VQA-01 layout 1`] = `
+{
+  "company": {
+    "displayName": "Minimal Brand Co",
+    "hasAddress": false,
+    "hasLogo": false,
+    "hasTerms": false,
+  },
+  "currencyCode": "USD",
+  "customer": "Sample Customer",
+  "customerNotes": "Thank you for your business.",
+  "lineItems": [
+    {
+      "description": "Consulting services",
+      "lineTotal": "100.0000",
+      "taxRatePercent": null,
+    },
+  ],
+  "pageSize": "A4",
+  "totals": {
+    "confirmedPaidAmount": "25.0000",
+    "invoiceTotal": "100.0000",
+    "outstandingAmount": "75.0000",
+    "subtotal": "100.0000",
+    "taxTotal": "0.0000",
+  },
+  "versionNo": 1,
+}
+`;
+
+exports[`PDF visual QA suite (TASK-097) > render snapshots > PDF-VQA-02 — Brand logo, GBP currency, terms, Letter > PDF-VQA-02 layout 1`] = `
+{
+  "company": {
+    "displayName": "Logo Brand Ltd",
+    "hasAddress": true,
+    "hasLogo": true,
+    "hasTerms": true,
+  },
+  "currencyCode": "GBP",
+  "customer": "UK Buyer PLC",
+  "customerNotes": null,
+  "lineItems": [
+    {
+      "description": "Widget supply",
+      "lineTotal": "250.0000",
+      "taxRatePercent": null,
+    },
+  ],
+  "pageSize": "LETTER",
+  "totals": {
+    "confirmedPaidAmount": "0.0000",
+    "invoiceTotal": "250.0000",
+    "outstandingAmount": "250.0000",
+    "subtotal": "250.0000",
+    "taxTotal": "0.0000",
+  },
+  "versionNo": 2,
+}
+`;
+
+exports[`PDF visual QA suite (TASK-097) > render snapshots > PDF-VQA-03 — Multi-line tax totals, EUR, A4 > PDF-VQA-03 layout 1`] = `
+{
+  "company": {
+    "displayName": "Euro Services GmbH",
+    "hasAddress": true,
+    "hasLogo": false,
+    "hasTerms": true,
+  },
+  "currencyCode": "EUR",
+  "customer": "EU Client SA",
+  "customerNotes": "Thank you for your business.",
+  "lineItems": [
+    {
+      "description": "Implementation",
+      "lineTotal": "720.0000",
+      "taxRatePercent": "20.0000",
+    },
+    {
+      "description": "Support retainer",
+      "lineTotal": "360.0000",
+      "taxRatePercent": "20.0000",
+    },
+  ],
+  "pageSize": "A4",
+  "totals": {
+    "confirmedPaidAmount": "1080.0000",
+    "invoiceTotal": "1080.0000",
+    "outstandingAmount": "0.0000",
+    "subtotal": "900.0000",
+    "taxTotal": "180.0000",
+  },
+  "versionNo": 1,
+}
+`;
+
+exports[`PDF visual QA suite (TASK-097) > render snapshots > PDF-VQA-04 — Full brand block, AED currency, Letter > PDF-VQA-04 layout 1`] = `
+{
+  "company": {
+    "displayName": "Gulf Trading LLC",
+    "hasAddress": true,
+    "hasLogo": true,
+    "hasTerms": true,
+  },
+  "currencyCode": "AED",
+  "customer": "Regional Partner FZE",
+  "customerNotes": "Thank you for your business.",
+  "lineItems": [
+    {
+      "description": "Professional services bundle",
+      "lineTotal": "1575.0000",
+      "taxRatePercent": "5.0000",
+    },
+  ],
+  "pageSize": "LETTER",
+  "totals": {
+    "confirmedPaidAmount": "1050.0000",
+    "invoiceTotal": "1575.0000",
+    "outstandingAmount": "525.0000",
+    "subtotal": "1500.0000",
+    "taxTotal": "75.0000",
+  },
+  "versionNo": 3,
+}
+`;

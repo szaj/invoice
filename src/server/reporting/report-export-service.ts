@@ -36,6 +36,8 @@ import {
   type ReportExportJobDispatcher,
 } from "@/server/reporting/report-export-queue";
 import { PrismaReportExportStore } from "@/server/reporting/report-export-repository";
+import { isQueueEnabled } from "@/server/queue/config";
+import { createReportExportBullMqDispatcher } from "@/server/queue/dispatchers";
 
 export type ReportExportServiceResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 401 | 403 | 404 | 503; error: string };
@@ -68,10 +70,13 @@ function auditWriterOf(deps: ReportExportServiceDependencies): AuditWriter {
 }
 
 function dispatcherOf(deps: ReportExportServiceDependencies): ReportExportJobDispatcher {
-  return (
-    deps.dispatcher ??
-    new InlineReportExportJobDispatcher((job) => processReportExportJob(job, deps))
-  );
+  if (deps.dispatcher) {
+    return deps.dispatcher;
+  }
+  if (isQueueEnabled()) {
+    return createReportExportBullMqDispatcher();
+  }
+  return new InlineReportExportJobDispatcher((job) => processReportExportJob(job, deps));
 }
 
 function assertExportPermission(
@@ -116,7 +121,7 @@ export function createDefaultReportExportServiceDependencies(): ReportExportServ
   };
 }
 
-async function processReportExportJob(
+export async function processReportExportJob(
   job: ReportExportJob,
   deps: ReportExportServiceDependencies,
 ): Promise<void> {

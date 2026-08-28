@@ -77,6 +77,13 @@ export const serverEnvSchema = z.object({
   GATEWAY_CREDENTIALS_KEY_VERSION: z.coerce.number().int().positive().optional(),
   GATEWAY_CREDENTIALS_KEY_V1: optionalSecret,
   GATEWAY_CREDENTIALS_KEY_V2: optionalSecret,
+
+  /** Application-managed pg_dump output directory on the VPS (server-only, restricted filesystem ACL). */
+  BACKUP_DIR: z.string().min(1).optional(),
+  BACKUP_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+  BACKUP_MAX_AGE_HOURS: z.coerce.number().int().positive().optional(),
+  /** Emergency-only override for production restore scripts. Never store secrets in BACKUP_DIR. */
+  BACKUP_RESTORE_ALLOW_PRODUCTION: z.string().optional(),
 });
 
 export const envSchema = z.object({

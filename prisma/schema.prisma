@@ -9,6 +9,7 @@
 // TASK-011 adds company_groups and companies.reporting_group_id (reporting only).
 // TASK-012 adds append-only audit_logs (application audit trail; not Pino).
 // TASK-013 adds system_settings (reporting currency, timezone, rounding placeholder).
+// TASK-091 adds operational notification flags on system_settings.
 // TASK-014 adds currencies (global catalog; company enablement and rates are later).
 // TASK-015 adds company_currencies (per-company enabled subset + default invoice currency).
 // TASK-016 adds fixed_conversion_rates (Admin-defined; no live FX; versioning expire is TASK-017).
@@ -291,6 +292,16 @@ model SystemSettings {
   roundingTolerance     Decimal  @default(0) @map("rounding_tolerance") @db.Decimal(19, 4)
   /// When true, allocated invoice numbers include YYYY between prefix and sequence (TASK-035).
   invoiceNumberIncludeYear Boolean @default(false) @map("invoice_number_include_year")
+  /// Operational notification toggles (TASK-091; Admin UI in TASK-092).
+  notifyInvoiceEmailSent Boolean @default(true) @map("notify_invoice_email_sent")
+  notifyInvoiceEmailFailed Boolean @default(true) @map("notify_invoice_email_failed")
+  notifyPaymentSuccess Boolean @default(false) @map("notify_payment_success")
+  notifyPaymentFailed Boolean @default(false) @map("notify_payment_failed")
+  notifyInvoiceOverdue Boolean @default(true) @map("notify_invoice_overdue")
+  notifyInvoiceOverdueToAdmin Boolean @default(true) @map("notify_invoice_overdue_to_admin")
+  notifyInvoiceOverdueToAssignedStaff Boolean @default(true) @map("notify_invoice_overdue_to_assigned_staff")
+  notifyComplianceFlagged Boolean @default(true) @map("notify_compliance_flagged")
+  notifyGatewayFailure Boolean @default(true) @map("notify_gateway_failure")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -513,6 +524,8 @@ model Customer {
   @@index([email])
   @@index([defaultCompanyId])
   @@index([assignedStaffUserId])
+  @@index([countryCode])
+  @@index([status, displayName])
   @@map("customers")
 }
 
@@ -675,6 +688,11 @@ model Invoice {
   @@index([customerId])
   @@index([assignedStaffUserId])
   @@index([invoiceDate])
+  @@index([invoiceNumber])
+  @@index([createdByUserId])
+  @@index([dueDate])
+  @@index([companyId, createdByUserId])
+  @@index([companyId, assignedStaffUserId])
   @@map("invoices")
 }
 
@@ -873,6 +891,9 @@ model Payment {
   @@index([customerId])
   @@index([methodCode, externalTransactionId])
   @@index([paymentDate])
+  @@index([externalTransactionId])
+  @@index([companyId, customerId, paymentDate])
+  @@index([companyId, invoiceCurrencyCode, paymentDate])
   @@map("payments")
 }
 
@@ -915,6 +936,7 @@ model PaymentEvent {
   @@index([paymentId])
   @@index([correlationId])
   @@index([createdAt])
+  @@index([externalTransactionId])
   @@map("payment_events")
 }
 
@@ -975,6 +997,8 @@ model PaymentAdjustment {
   @@index([paymentId, type, status])
   @@index([companyId, type])
   @@index([effectiveDate])
+  @@index([companyId, type, status, effectiveDate])
+  @@index([companyId, effectiveDate])
   @@map("payment_adjustments")
 }
 
@@ -1020,4 +1044,40 @@ model ReportExport {
   @@index([requestedByUserId, createdAt(sort: Desc)])
   @@index([companyId, createdAt(sort: Desc)])
   @@map("report_exports")
+}
+
+enum BackgroundJobStatus {
+  QUEUED
+  ACTIVE
+  COMPLETED
+  FAILED
+  DUPLICATE_SKIPPED
+
+  @@map("background_job_status")
+}
+
+/// Operational BullMQ job metadata for retries and failure visibility (TASK-099).
+/// PostgreSQL remains authoritative for financial records; Redis is not.
+model BackgroundJob {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  queueName      String              @map("queue_name")
+  jobName        String              @map("job_name")
+  bullJobId      String?             @map("bull_job_id")
+  idempotencyKey String?             @map("idempotency_key")
+  correlationId  String?             @map("correlation_id")
+  status         BackgroundJobStatus @default(QUEUED)
+  attemptCount   Int                 @default(0) @map("attempt_count")
+  maxAttempts    Int                 @default(5) @map("max_attempts")
+  lastError      String?             @map("last_error")
+  companyId      String?             @map("company_id") @db.Uuid
+  entityType     String?             @map("entity_type")
+  entityId       String?             @map("entity_id")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt    DateTime?           @map("completed_at") @db.Timestamptz
+
+  @@unique([queueName, idempotencyKey])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([queueName, createdAt(sort: Desc)])
+  @@map("background_jobs")
 }

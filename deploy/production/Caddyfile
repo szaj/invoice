@@ -1,0 +1,11 @@
+# Production reverse proxy with automatic HTTPS (ADR-017).
+# Requires PROD_DOMAIN and ACME_EMAIL in the caddy container environment.
+# DNS for PROD_DOMAIN must point to this host before certificates can be issued.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$PROD_DOMAIN} {
+	reverse_proxy web:3000
+}

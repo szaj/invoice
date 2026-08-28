@@ -20,7 +20,8 @@ export type PayPalWebhookProcessingResult = {
     | "pending_noop"
     | "not_found"
     | "ignored"
-    | "duplicate";
+    | "duplicate"
+    | "queued";
   readonly paymentEventId: string | null;
   readonly paymentId: string | null;
 };

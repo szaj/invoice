@@ -124,6 +124,16 @@ export const APP_NAV_GROUPS: readonly NavGroup[] = [
         permissions: ["settings.manage"],
       },
       {
+        href: "/settings/notifications",
+        label: "Notifications",
+        permissions: ["settings.manage"],
+      },
+      {
+        href: "/settings/operations",
+        label: "Operations",
+        permissions: ["settings.manage"],
+      },
+      {
         href: "/settings/currencies",
         label: "Currencies",
         permissions: ["currency.manage"],

@@ -19,6 +19,82 @@ Work completed / Files / Database / Tests / Decisions / Problems / Next task
 
 ## Entries
 
+### 2026-08-28 — TASK-103
+
+Production deployment (ADR-017): `deploy/production/` compose stack (web, worker, Redis, Caddy TLS), shared `deploy/docker-entrypoint-web.sh`, production `env.example` runbook with least-privilege credential guidance; `src/domain/ops/production-smoke.ts` checklist + smoke helpers; `pnpm check:production-env`, `pnpm test:production-smoke`, `pnpm docker:production:*`; unit + integration tests.
+
+Next: None — Version 1 task list complete.
+
+### 2026-08-28 — TASK-102
+
+Staging/UAT deployment (ADR-017): multi-target `Dockerfile` (Next.js standalone + worker), `deploy/staging/docker-compose.yml` (web, worker, Redis, Caddy), `env.example` runbook, `Deployment` module with environments table; staging smoke helpers + `pnpm test:staging-smoke` (`STAGING_SMOKE_URL`).
+
+Next: [[TASK-103 Production Deployment]]
+
+### 2026-08-28 — TASK-101
+
+Backup and recovery (ADR-024): `pnpm backup:database` / `pnpm restore:database` scripts with pg_dump gzip artifacts, retention pruning, `.last-success.json` marker, production restore guard; R2 versioning health check; Admin `/settings/operations` backup indicators; runbook `docs/Active/Modules/Backup and Recovery.md`; unit + integration restore guard tests.
+
+Next: [[TASK-102 Staging UAT Environment]]
+
+### 2026-08-28 — TASK-100
+
+Monitoring: `@sentry/nextjs` at Next.js instrumentation + worker boundary with credential scrubbing (`beforeSend`); public `GET /api/health`; Admin `/settings/operations` gateway adapter `healthCheck` + webhook failure indicators (24h `payment_events` FAILED); `GET /api/monitoring/operations` under `settings.manage`; gateway failure email alerts reuse TASK-091 `GATEWAY_FAILURE` notifications.
+
+Next: [[TASK-101 Backup and Recovery]]
+
+### 2026-08-28 — TASK-099
+
+Queue hardening: BullMQ + ioredis + `pnpm worker` dedicated process; queues for Stripe/PayPal webhooks, invoice PDF/email, report exports, operational notifications; exponential retries; `background_jobs` metadata for failure visibility; inline fallback when `REDIS_URL` unset; webhook idempotency preserved via `payment_events`.
+
+### 2026-08-28 — TASK-098
+
+Performance hardening: server-side pagination (default 50 / max 100) on invoice, customer, and payment lists with SQL staff visibility; payment list no longer loads all invoices; extra indexes for invoice number, staff, dates, transaction IDs, and report filters; large dumps remain on TASK-090 export jobs; p95 budget 2s checks on list/report endpoints.
+
+Next: [[TASK-099 Queue Hardening]]
+
+### 2026-08-28 — TASK-097
+
+PDF visual QA suite: `tests/pdf-visual/coverage.ts` registry for PDF-VQA-01..05; representative render fixtures (`tests/helpers/pdf-visual-fixtures.ts`) covering logo/no-logo, USD/GBP/EUR/AED totals, terms, A4/Letter; `tests/unit/pdf-visual-suite.test.ts` with layout JSON snapshots, MediaBox/logo structural checks, metadata assertions, internal-notes boundary; `tests/e2e/pdf-visual-qa.spec.ts` documented sign-off; `pnpm test:pdf-visual` script. Raw react-pdf byte checksums intentionally not snapshotted (non-deterministic CreationDate/ID).
+
+Next: [[TASK-098 Performance Hardening]]
+
+### 2026-08-28 — TASK-096
+
+Playwright E2E suite: `tests/e2e/coverage.ts` registry for E2E-01..17; shared fixtures (`fixtures/credentials`, `auth`, `api-client`); Playwright specs for admin setup, invoice/PDF/email, compliance/audit, staff isolation, PayPal disable, currency enablement, webhook route guards, currency report, invoice cancel, monthly-brand matrix; Vitest delegation sign-off for partial payments, manual FX, snapshot lock, dispute/refund/chargeback chains; `pnpm test:e2e` script; manifest/delegated meta-tests always runnable without credentials.
+
+Next: [[TASK-097 PDF Visual QA]]
+
+### 2026-08-28 — TASK-095
+
+Webhook test suite: `tests/unit/webhook-suite.test.ts` (E2E-10 duplicate prevention, unsigned rejection, idempotency, safe retries, out-of-order SUCCESS/FAILED/PENDING, orphan events, webhook route/service boundary checks); shared `tests/helpers/webhook-fixtures.ts`; `tests/integration/webhook-suite.test.ts` (DB retry + out-of-order); `pnpm test:webhooks` script.
+
+Next: [[TASK-096 E2E Test Suite]]
+
+### 2026-08-28 — TASK-094
+
+Financial calculation test suite: `tests/unit/financial-calculation-suite.test.ts` (BR-020–BR-026, conversion snapshot locking, invoice numbering/status logic, Decimal boundary, financial domain source scan, E2E-13 calculation chain); shared `tests/helpers/financial-calculation-fixtures.ts`; `pnpm test:finance` script. All assertions use Prisma Decimal — no JS float compares.
+
+Next: [[TASK-095 Webhook Testing]]
+
+### 2026-08-28 — TASK-093
+
+Authorization test suite: `tests/unit/authorization-suite.test.ts` (role matrix, authenticated≠authorized, 403 denials, Route Handler and Server Action boundary checks); `tests/integration/authorization-suite.test.ts` (Staff/Compliance cross-company denial on company/customer/invoice reads); shared `tests/helpers/authz-fixtures.ts`; `pnpm test:auth` script.
+
+Next: [[TASK-094 Financial Calculation Testing]]
+
+### 2026-08-28 — TASK-092
+
+Notification settings UI: `/settings/notifications` Admin page with toggles for all operational alert flags (invoice email, optional payments, overdue recipients, compliance, gateway); `notificationSettingsUpdateSchema`; `getNotificationSettings` / `updateNotificationSettings` under `settings.manage` with audit; nav item added. Schema/migration from TASK-091 unchanged; customer invoice merge fields untouched.
+
+Next: [[TASK-093 Authorization Testing]]
+
+### 2026-08-28 — TASK-091
+
+Operational notifications: `OperationalNotificationService` via EmailService (ADR-007); inline job dispatcher (ADR-005); notification flags on `system_settings`; events for invoice email sent/failed, optional payment success/fail, invoice overdue, compliance flagged, gateway/webhook failure; recipient rules (Admin, assigned Compliance, assigned staff for overdue). Tests: unit + integration (compliance flagged recipients).
+
+Next: [[TASK-093 Authorization Testing]]
+
 ### 2026-08-27 — TASK-090
 
 Report exports: `POST /api/reports/exports` + download routes; `report_exports` metadata table; CSV/XLSX builders for all Phase 08 tabular reports; inline export job dispatcher (ADR-005); StorageService file storage; `ReportExportActions` on report pages; requires `report.export` (Staff denied — US-009); compliance report export also requires `compliance.review`; audit `reports.exported` (BR-015).

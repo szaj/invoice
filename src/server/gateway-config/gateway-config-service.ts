@@ -31,6 +31,7 @@ import {
   GatewayCredentialService,
   getGatewayCredentialService,
 } from "@/server/gateway-credentials/gateway-credential-service";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type GatewayConfigResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 403 | 404 | 503; error: string };
@@ -255,6 +256,13 @@ export async function replaceGatewayMethodCredentials(
           },
           "Gateway credential encryption failed",
         );
+        await emitOperationalNotification({
+          kind: "GATEWAY_FAILURE",
+          companyId: parsedId.data,
+          methodCode,
+          failureType: "CONFIGURATION",
+          message: GATEWAY_ENCRYPTION_UNAVAILABLE,
+        });
         return { ok: false, status: 503, error: GATEWAY_ENCRYPTION_UNAVAILABLE };
       }
       throw error;

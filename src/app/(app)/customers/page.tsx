@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { CustomerListFilters } from "@/app/(app)/customers/customer-list-filters";
 import { DataTable, type DataTableColumn } from "@/components/data/data-table";
+import { ListPagination } from "@/components/data/list-pagination";
 import { StatusBadge } from "@/components/data/status-badge";
 import { PageFrame } from "@/components/layout/page-frame";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,10 +11,38 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { authorizePermission } from "@/domain/authz/authorize";
 import { parseCustomerListSearchParams } from "@/domain/customers/list-query";
+import { LIST_DEFAULT_PAGE_SIZE, resolveListPagination } from "@/domain/lists/pagination";
 import { getRequestAuthorizationPrincipal } from "@/server/authz/require-permission";
 import { loadCustomerFormOptions, loadCustomersForUi } from "@/server/customers/actions";
 
 export const dynamic = "force-dynamic";
+
+function buildCustomerListHref(input: {
+  readonly q?: string;
+  readonly status?: string;
+  readonly companyId?: string;
+  readonly page: number;
+  readonly pageSize: number;
+}): string {
+  const params = new URLSearchParams();
+  if (input.q) {
+    params.set("q", input.q);
+  }
+  if (input.status) {
+    params.set("status", input.status);
+  }
+  if (input.companyId) {
+    params.set("companyId", input.companyId);
+  }
+  if (input.page > 1) {
+    params.set("page", String(input.page));
+  }
+  if (input.pageSize !== LIST_DEFAULT_PAGE_SIZE) {
+    params.set("pageSize", String(input.pageSize));
+  }
+  const query = params.toString();
+  return query ? `/customers?${query}` : "/customers";
+}
 
 type CustomerRow = {
   id: string;
@@ -38,8 +67,9 @@ export default async function CustomersPage({
 
   const params = await searchParams;
   const query = parseCustomerListSearchParams(params);
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
   const [result, options] = await Promise.all([
-    loadCustomersForUi(query),
+    loadCustomersForUi({ ...query, page: pagination.page, pageSize: pagination.pageSize }),
     loadCustomerFormOptions(),
   ]);
 
@@ -120,11 +150,11 @@ export default async function CustomersPage({
 
       <DataTable
         columns={columns}
-        rows={result.data}
+        rows={result.data.rows}
         rowKey={(customer) => customer.id}
-        summary={`${result.data.length} customer(s)${
+        summary={`${result.data.totalCount} customer(s)${
           query.q || query.status || query.companyId ? " matching filters" : ""
-        }`}
+        } · page ${result.data.page}`}
         emptyTitle="No customers found"
         emptyDescription="Try adjusting filters or create a new customer."
         emptyAction={
@@ -133,6 +163,20 @@ export default async function CustomersPage({
               <Link href="/customers/new">Create customer</Link>
             </Button>
           ) : undefined
+        }
+      />
+      <ListPagination
+        page={result.data.page}
+        pageSize={result.data.pageSize}
+        totalCount={result.data.totalCount}
+        hrefForPage={(nextPage) =>
+          buildCustomerListHref({
+            q: query.q,
+            status: query.status,
+            companyId: query.companyId,
+            page: nextPage,
+            pageSize: result.data.pageSize,
+          })
         }
       />
     </PageFrame>

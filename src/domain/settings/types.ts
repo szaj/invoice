@@ -6,6 +6,15 @@ export type SystemSettingsRecord = {
   readonly roundingTolerance: string;
   /** Optional YYYY segment in allocated invoice numbers (TASK-035). */
   readonly invoiceNumberIncludeYear: boolean;
+  readonly notifyInvoiceEmailSent: boolean;
+  readonly notifyInvoiceEmailFailed: boolean;
+  readonly notifyPaymentSuccess: boolean;
+  readonly notifyPaymentFailed: boolean;
+  readonly notifyInvoiceOverdue: boolean;
+  readonly notifyInvoiceOverdueToAdmin: boolean;
+  readonly notifyInvoiceOverdueToAssignedStaff: boolean;
+  readonly notifyComplianceFlagged: boolean;
+  readonly notifyGatewayFailure: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 };

@@ -35,7 +35,11 @@ import { PrismaInvoiceFileStore } from "@/server/invoices/invoice-file-repositor
 import { PrismaInvoiceVersionStore } from "@/server/invoices/invoice-version-repository";
 import { renderInvoicePdfBytes } from "@/server/invoices/invoice-pdf-render";
 import { PrismaInvoiceStore } from "@/server/invoices/invoice-repository";
-import type { InvoicePdfJobDispatcher } from "@/server/invoices/invoice-pdf-queue";
+import {
+  type InvoicePdfJobDispatcher,
+} from "@/server/invoices/invoice-pdf-queue";
+import { isQueueEnabled } from "@/server/queue/config";
+import { createInvoicePdfBullMqDispatcher } from "@/server/queue/dispatchers";
 
 export type InvoicePdfResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 403 | 404 | 503; error: string };
@@ -72,6 +76,16 @@ function storageOf(deps: InvoicePdfDependencies): StorageService {
 
 function auditWriterOf(deps: InvoicePdfDependencies): AuditWriter {
   return deps.auditWriter ?? getAuditWriter();
+}
+
+function dispatcherOf(deps: InvoicePdfDependencies): InvoicePdfJobDispatcher | undefined {
+  if (deps.dispatcher) {
+    return deps.dispatcher;
+  }
+  if (!isQueueEnabled()) {
+    return undefined;
+  }
+  return createInvoicePdfBullMqDispatcher();
 }
 
 function parsePageSize(value: unknown): InvoicePdfPageSize {
@@ -301,12 +315,13 @@ export async function enqueueInvoicePdfGeneration(
       deps,
     );
 
-  if (!deps.dispatcher) {
+  const dispatcher = dispatcherOf(deps);
+  if (!dispatcher) {
     return run();
   }
 
   try {
-    const dispatched = await deps.dispatcher.dispatch({
+    const dispatched = await dispatcher.dispatch({
       invoiceId: job.invoiceId,
       invoiceVersionId: job.invoiceVersionId,
       actorUserId: actor?.userId ?? null,
@@ -318,6 +333,9 @@ export async function enqueueInvoicePdfGeneration(
       if (file) {
         return { ok: true, data: { ...file, reusedExisting: false } };
       }
+    }
+    if (isQueueEnabled()) {
+      return { ok: false, status: 503, error: INVOICE_PDF_UNAVAILABLE };
     }
     return run();
   } catch (error) {

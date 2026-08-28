@@ -22,6 +22,8 @@ import {
   toDecimalString,
 } from "@/domain/money";
 import { canViewPayment } from "@/domain/payments/access";
+import type { ListPage } from "@/domain/lists/pagination";
+import { listPageOf, resolveListPagination } from "@/domain/lists/pagination";
 import {
   assertConfirmedFinancialFieldsUnchanged,
   assertProcessorFeeExcludedFromSettlement,
@@ -57,6 +59,7 @@ import {
   paymentListQuerySchema,
   paymentManualRecordSchema,
   paymentWriteSchema,
+  resolvePaymentListQuery,
   type PaymentCreatePendingInput,
 } from "@/domain/payments/schema";
 import {
@@ -109,6 +112,7 @@ import { PrismaPaymentStore } from "@/server/payments/payment-repository";
 import { createPaymentProviderRegistry } from "@/server/payments/providers/create-payment-provider-registry";
 import { PrismaSystemSettingsStore } from "@/server/settings/settings-repository";
 import { PrismaSettlementConfigStore } from "@/server/settlement/settlement-repository";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type PaymentServiceResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 401 | 403 | 404 | 503; error: string };
@@ -119,6 +123,7 @@ export interface PaymentServiceDependencies {
     | "getPaymentById"
     | "getPaymentByExternalTransaction"
     | "listPayments"
+    | "listPaymentsPage"
     | "createPayment"
     | "updatePaymentLifecycle"
   >;
@@ -201,6 +206,24 @@ async function allocateAfterSuccessfulPayment(
       auditWriter: auditWriterOf(deps),
     },
   );
+}
+
+async function emitPaymentOperationalNotification(
+  kind: "PAYMENT_SUCCESS" | "PAYMENT_FAILED",
+  payment: PaymentRecord,
+  deps: PaymentServiceDependencies,
+): Promise<void> {
+  const invoice = await deps.invoices.getInvoiceById(payment.invoiceId);
+  await emitOperationalNotification({
+    kind,
+    companyId: payment.companyId,
+    paymentId: payment.id,
+    invoiceId: payment.invoiceId,
+    invoiceNumber: invoice?.invoiceNumber ?? null,
+    amount: payment.invoiceAmountApplied,
+    currencyCode: payment.invoiceCurrencyCode,
+    methodCode: payment.methodCode,
+  });
 }
 
 function gatewayConfigsOf(
@@ -344,7 +367,7 @@ export async function listPayments(
   actor: AuthorizationPrincipal | null,
   query: unknown = {},
   deps: PaymentServiceDependencies = createDefaultPaymentServiceDependencies(),
-): Promise<PaymentServiceResult<PaymentRecord[]>> {
+): Promise<PaymentServiceResult<ListPage<PaymentRecord>>> {
   try {
     if (!actor) {
       throw new AuthorizationError("unauthenticated");
@@ -358,34 +381,37 @@ export async function listPayments(
       return { ok: false, status: 400, error: PAYMENT_INVALID_INPUT };
     }
 
+    const resolved = resolvePaymentListQuery(parsed.data);
+    const pagination = resolveListPagination({
+      page: resolved.page,
+      pageSize: resolved.pageSize,
+    });
+
     const accessible = accessibleCompanyIds(actor);
     let companyIds: string[];
-    if (parsed.data.companyId) {
-      assertCompanyAccess(actor, parsed.data.companyId);
-      companyIds = [parsed.data.companyId];
+    if (resolved.companyId) {
+      assertCompanyAccess(actor, resolved.companyId);
+      companyIds = [resolved.companyId];
     } else if (accessible === "ALL") {
       return { ok: false, status: 400, error: PAYMENT_COMPANY_SCOPE_REQUIRED };
     } else {
       companyIds = accessible;
     }
 
-    const [rows, invoices] = await Promise.all([
-      deps.payments.listPayments({
-        companyIds,
-        invoiceId: parsed.data.invoiceId,
-        customerId: parsed.data.customerId,
-        status: parsed.data.status,
-      }),
-      deps.invoices.listInvoices({ companyIds }),
-    ]);
-
-    const invoicesById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
-    const visible = rows.filter((payment) => {
-      const invoice = invoicesById.get(payment.invoiceId);
-      return invoice ? canViewPayment(actor, payment, invoice) : false;
+    const staffUserId = actor.roleCode === "STAFF" ? actor.userId : null;
+    const page = await deps.payments.listPaymentsPage({
+      companyIds,
+      invoiceId: resolved.invoiceId,
+      customerId: resolved.customerId,
+      status: resolved.status,
+      visibleToStaffUserId: staffUserId,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      sortBy: resolved.sortBy,
+      sortDir: resolved.sortDir,
     });
 
-    return { ok: true, data: visible };
+    return { ok: true, data: listPageOf(page.rows, page.totalCount, pagination) };
   } catch (error) {
     return toPaymentError(error, "read");
   }
@@ -1248,6 +1274,8 @@ export async function confirmPayment(
       deps,
     );
 
+    await emitPaymentOperationalNotification("PAYMENT_SUCCESS", updated, deps);
+
     return { ok: true, data: updated };
   } catch (error) {
     return toPaymentError(error, "write");
@@ -1313,6 +1341,8 @@ export async function failPayment(
       },
       "Payment marked failed",
     );
+
+    await emitPaymentOperationalNotification("PAYMENT_FAILED", updated, deps);
 
     return { ok: true, data: updated };
   } catch (error) {
@@ -1493,6 +1523,8 @@ export async function applyGatewayWebhookPaymentStatus(
         deps,
       );
 
+      await emitPaymentOperationalNotification("PAYMENT_SUCCESS", updated, deps);
+
       return { ok: true, data: { payment: updated, outcome: "confirmed" } };
     }
 
@@ -1533,6 +1565,8 @@ export async function applyGatewayWebhookPaymentStatus(
       },
       "Payment marked failed via gateway webhook",
     );
+
+    await emitPaymentOperationalNotification("PAYMENT_FAILED", updated, deps);
 
     return { ok: true, data: { payment: updated, outcome: "failed" } };
   } catch (error) {

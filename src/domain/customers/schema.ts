@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 import { isIsoCountryCode } from "@/domain/companies/countries";
+import {
+  CUSTOMER_LIST_DEFAULT_SORT_BY,
+  CUSTOMER_LIST_DEFAULT_SORT_DIR,
+  CUSTOMER_LIST_SORT_FIELDS,
+  LIST_SORT_DIRS,
+  resolveListPagination,
+  type CustomerListSortField,
+  type ListSortDir,
+} from "@/domain/lists/pagination";
 
 export const customerTypeSchema = z.enum(["INDIVIDUAL", "BUSINESS"]);
 export const customerStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
@@ -110,13 +119,55 @@ export const customerStatusUpdateSchema = z.strictObject({
   status: customerStatusSchema,
 });
 
+const optionalPositiveInt = (min: number, max: number) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+    if (typeof value === "number") {
+      return value;
+    }
+    if (typeof value === "string" && value.trim().length > 0) {
+      const parsed = Number.parseInt(value.trim(), 10);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+    return value;
+  }, z.number().int().min(min).max(max).optional());
+
 export const customerSearchSchema = z.strictObject({
   q: z.string().trim().max(200).optional(),
   status: customerStatusSchema.optional(),
   companyId: z.uuid().optional(),
+  page: optionalPositiveInt(1, 10_000),
+  pageSize: optionalPositiveInt(1, 10_000),
+  sortBy: z.enum(CUSTOMER_LIST_SORT_FIELDS).optional(),
+  sortDir: z.enum(LIST_SORT_DIRS).optional(),
 });
 
 export type CustomerSearchInput = z.output<typeof customerSearchSchema>;
+
+export type ResolvedCustomerListQuery = {
+  readonly q?: string;
+  readonly status?: CustomerSearchInput["status"];
+  readonly companyId?: string;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly sortBy: CustomerListSortField;
+  readonly sortDir: ListSortDir;
+};
+
+export function resolveCustomerListQuery(query: CustomerSearchInput): ResolvedCustomerListQuery {
+  const pagination = resolveListPagination({ page: query.page, pageSize: query.pageSize });
+  return {
+    q: query.q,
+    status: query.status,
+    companyId: query.companyId,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    sortBy: query.sortBy ?? CUSTOMER_LIST_DEFAULT_SORT_BY,
+    sortDir: query.sortDir ?? CUSTOMER_LIST_DEFAULT_SORT_DIR,
+  };
+}
 
 export const customerProfileQuerySchema = z.strictObject({
   companyId: z.uuid().optional(),

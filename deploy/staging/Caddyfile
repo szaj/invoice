@@ -1,0 +1,6 @@
+# Caddy reverse proxy for staging/UAT (ADR-017).
+# Published host port defaults to 8080 → container :80.
+
+:80 {
+	reverse_proxy web:3000
+}

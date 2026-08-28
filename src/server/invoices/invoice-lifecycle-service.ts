@@ -37,6 +37,8 @@ import {
   createInvoiceVersionSnapshot,
   type InvoiceVersionDependencies,
 } from "@/server/invoices/invoice-version-service";
+import { PrismaCustomerStore } from "@/server/customers/customer-repository";
+import { emitOperationalNotification } from "@/server/notifications/notification-service";
 
 export type InvoiceLifecycleResult<T> =
   { ok: true; data: T } | { ok: false; status: 400 | 403 | 404 | 409 | 503; error: string };
@@ -56,6 +58,7 @@ export interface InvoiceLifecycleDependencies {
   readonly now?: () => Date;
   /** When true, skip best-effort PDF generation after issue (tests). */
   readonly skipPdfGeneration?: boolean;
+  readonly customers?: Pick<PrismaCustomerStore, "getCustomerById">;
 }
 
 export function createDefaultInvoiceLifecycleDependencies(): InvoiceLifecycleDependencies {
@@ -72,6 +75,25 @@ function auditWriterOf(deps: InvoiceLifecycleDependencies): AuditWriter {
 
 function nowOf(deps: InvoiceLifecycleDependencies): Date {
   return deps.now?.() ?? new Date();
+}
+
+async function emitInvoiceOverdueNotification(
+  invoice: InvoiceRecord,
+  deps: InvoiceLifecycleDependencies,
+): Promise<void> {
+  const customerStore = deps.customers ?? new PrismaCustomerStore();
+  const customer = await customerStore.getCustomerById(invoice.customerId);
+  await emitOperationalNotification({
+    kind: "INVOICE_OVERDUE",
+    companyId: invoice.companyId,
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    customerName: customer?.displayName ?? "Customer",
+    dueDate: invoice.dueDate.toISOString().slice(0, 10),
+    balanceDue: invoice.outstandingAmount,
+    currencyCode: invoice.currencyCode,
+    assignedStaffUserId: invoice.assignedStaffUserId,
+  });
 }
 
 /**
@@ -271,6 +293,8 @@ export async function refreshInvoiceOverdueStatus(
       auditWriterOf(deps),
     );
 
+    await emitInvoiceOverdueNotification(updated, deps);
+
     return { ok: true, data: updated };
   } catch (error) {
     return toLifecycleError(error);
@@ -311,6 +335,7 @@ export async function applyOverdueToInvoiceList(
           },
           auditWriterOf(deps),
         );
+        await emitInvoiceOverdueNotification(updated, deps);
         result.push(updated);
       } catch {
         result.push(invoice);

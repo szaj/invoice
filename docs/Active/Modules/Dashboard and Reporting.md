@@ -127,7 +127,7 @@ Reference reporting layout supplied by Product Owner.
 - Export action logged in audit history.
 
 
-### Implementation (TASK-077 / TASK-078 / TASK-079 / TASK-080 / TASK-081 / TASK-082 / TASK-083 / TASK-084 / TASK-085 / TASK-086 / TASK-087 / TASK-088 / TASK-090)
+### Implementation (TASK-077 / TASK-078 / TASK-079 / TASK-080 / TASK-081 / TASK-082 / TASK-083 / TASK-084 / TASK-085 / TASK-086 / TASK-087 / TASK-088 / TASK-090 / TASK-098)
 
 - Dashboard KPIs on `/` (`dashboard.view`): Total Invoiced / Paid / Outstanding / Overdue by invoice currency; Converted Settlement from stored payment snapshots by settlement currency; processor fees and actual received shown separately (never deducted from settlement).
 - Invoice and payment counts by status (and method for payments).
@@ -145,6 +145,7 @@ Reference reporting layout supplied by Product Owner.
 - Monthly Brand / CB-RF Matrix on `/reports/monthly-brand` (`report.view`): Jan–Dec + G.Total rows; brand/company columns; Monthly Total; CB/RF; Net G.Total; annual and current-month summary; gross by payment date and CB/RF by adjustment effective date; amounts in configured reporting currency via stored snapshots; drill-down payment/adjustment IDs; open disputes separate (BR-024 / BR-026); `GET /api/reports/monthly-brand`.
 - Reporting Group Rollups on `/reports/reporting-groups` (`report.view`): dashboard KPIs and monthly-matrix summary blocks rolled up by reporting group; one/all groups or single-brand scope; group membership narrows scope only — never ownership or authorization; Staff limited to assigned companies within a group; `GET /api/reports/reporting-groups`.
 - Report exports (TASK-090): CSV for all tabular reports; XLSX recommended; server-side generation via inline job dispatcher (ADR-005; TASK-099 hardens BullMQ); files stored in StorageService with `report_exports` metadata; preserves selected filters and totals; `POST /api/reports/exports`, `GET /api/reports/exports/[id]`, `GET /api/reports/exports/[id]/file`; requires `report.export` (Staff denied by default — US-009); compliance report export also requires `compliance.review`; audited as `reports.exported` (BR-015); Export CSV/XLSX on each report page when allowed.
+- Performance (TASK-098): invoice, customer, and payment operational lists use server-side pagination (default 50, max 100); p95 target under ~2 seconds for standard authenticated list/report APIs under normal load; full report dumps stay on export jobs (TASK-090) rather than unbounded browser/API lists. Additional indexes on invoice number, staff visibility, dates, transaction IDs, and report filters.
 - Company switcher remains the header scope control; Staff limited to assigned companies and own/assigned invoices.
 - `GET /api/dashboard` returns the same KPI payload. No unlabeled mixed-currency totals (BR-013). ADR-011 reporting-currency rollup not invented.
 
