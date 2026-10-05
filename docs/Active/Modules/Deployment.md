@@ -104,6 +104,27 @@ PRODUCTION_SMOKE_URL=https://app.example.com pnpm test:production-smoke
 
 Production uses live gateway credentials (per company, ADR-022), Sentry monitoring, and daily `pnpm backup:database` when `BACKUP_DIR` is set. Enable Supabase PITR in addition to application dumps (ADR-024).
 
+## Plesk Docker (alternate host)
+
+When the app runs on a **Plesk** VPS, Plesk nginx already owns ports 80/443 and Let's Encrypt. Do not start the production Caddy service on that host.
+
+```text
+Internet → Plesk nginx (TLS) → 127.0.0.1:3000 → Next.js (web)
+Worker → BullMQ → Redis (compose service)
+```
+
+Compose definition: `deploy/plesk/docker-compose.yml` (`redis`, `web`, `worker` only — no Caddy).
+
+| Container | Image target | Notes |
+| --- | --- | --- |
+| `web` | `runner-web` | Published as `127.0.0.1:3000`; Plesk Docker Proxy Rules or nginx proxies here |
+| `worker` | `runner-worker` | Same as production |
+| `redis` | `redis:7-alpine` | Internal network only |
+
+Runbook: `deploy/plesk/README.md` · template: `deploy/plesk/env.example`
+
+Use the same production secrets model and smoke checks; point `pnpm check:production-env` at `deploy/plesk/env`.
+
 ## CI / build
 
 GitHub Actions (ADR-018) runs typecheck, lint, format check, unit tests, and production build on every push/PR. Staging and production deploys are operator-driven from the compose stacks.
