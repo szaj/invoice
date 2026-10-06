@@ -14,7 +14,26 @@ export function blankToUndefined(value: string | undefined): string | undefined 
 
 const optionalSecret = z.string().min(1).optional();
 const optionalUrl = z.url().optional();
-const optionalEmail = z.email().optional();
+
+/** Resend-style From: bare email or `Display Name <email@domain>`. */
+function isEmailFromAddress(value: string): boolean {
+  const trimmed = value.trim();
+  if (z.email().safeParse(trimmed).success) {
+    return true;
+  }
+  const match = trimmed.match(/^(.+?)\s*<([^<>]+)>$/);
+  if (!match) {
+    return false;
+  }
+  return z.email().safeParse(match[2].trim()).success;
+}
+
+const optionalEmailFrom = z
+  .string()
+  .min(1)
+  .refine(isEmailFromAddress, "must be an email or 'Name <email@domain>'")
+  .optional();
+
 const optionalPostgresUrl = z
   .string()
   .min(1)
@@ -56,7 +75,7 @@ export const serverEnvSchema = z.object({
   REDIS_URL: optionalSecret,
 
   RESEND_API_KEY: optionalSecret,
-  EMAIL_FROM: optionalEmail,
+  EMAIL_FROM: optionalEmailFrom,
 
   SENTRY_DSN: optionalUrl,
 

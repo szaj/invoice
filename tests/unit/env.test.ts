@@ -71,4 +71,22 @@ describe("loadEnv", () => {
       ),
     ).toThrow(/APP_URL is required/);
   });
+
+  it("accepts Resend-style EMAIL_FROM display names", () => {
+    const env = loadEnv({
+      NODE_ENV: "test",
+      EMAIL_FROM: "Invoices <billing@example.com>",
+    });
+
+    expect(env.EMAIL_FROM).toBe("Invoices <billing@example.com>");
+  });
+
+  it("rejects an invalid EMAIL_FROM", () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: "test",
+        EMAIL_FROM: "not-an-email",
+      }),
+    ).toThrow(/Invalid environment configuration/);
+  });
 });
