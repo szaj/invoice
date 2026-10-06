@@ -24,20 +24,30 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-# Prefer COPY --chown over `chown -R /app` — recursive chown of .pnpm is extremely slow.
+
+# Flat npm install of Prisma CLI for migrate-on-start.
+# Partial pnpm copies break `require('@prisma/config')` inside prisma/build/cli.js.
+COPY --from=builder /app/package.json /tmp/app-package.json
+WORKDIR /opt/prisma-cli
+RUN npm init -y >/dev/null 2>&1 \
+  && PRISMA_VERSION=$(node -p "require('/tmp/app-package.json').dependencies.prisma") \
+  && npm install "prisma@${PRISMA_VERSION}" --omit=dev \
+  && rm -f /tmp/app-package.json \
+  && chown -R nextjs:nodejs /opt/prisma-cli
+WORKDIR /app
+
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Prisma 7 custom output (schema: src/generated/prisma) — not node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated/prisma ./src/generated/prisma
-# migrate deploy needs Prisma 7 config + dotenv loader; runtime needs adapter/pg
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/src/config/load-env-files.ts ./src/config/load-env-files.ts
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+# Runtime deps for Next serverExternalPackages + prisma.config dotenv loader
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pg ./node_modules/pg
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
 COPY --chown=nextjs:nodejs deploy/docker-entrypoint-web.sh /usr/local/bin/docker-entrypoint-web.sh

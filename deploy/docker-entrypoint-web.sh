@@ -9,7 +9,7 @@ if [ "${RUN_MIGRATIONS_ON_START:-true}" = "true" ]; then
     exit 1
   fi
   echo "Running prisma migrate deploy..."
-  node ./node_modules/prisma/build/index.js migrate deploy
+  node /opt/prisma-cli/node_modules/prisma/build/index.js migrate deploy
 fi
 
 if [ ! -f ./server.js ]; then
