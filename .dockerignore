@@ -20,3 +20,5 @@ deploy/staging/env
 deploy/staging/.env
 deploy/production/env
 deploy/production/.env
+deploy/plesk/env
+deploy/plesk/.env
