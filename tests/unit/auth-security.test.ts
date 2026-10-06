@@ -43,6 +43,7 @@ describe("public auth paths", () => {
     expect(isPublicAuthPath("/api/webhooks/paypal/11111111-1111-4111-8111-111111111111")).toBe(
       true,
     );
+    expect(isPublicAuthPath("/api/health")).toBe(true);
     expect(isPublicAuthPath("/")).toBe(false);
     expect(isPublicAuthPath("/signup")).toBe(false);
     expect(isLoginPagePath("/login")).toBe(true);

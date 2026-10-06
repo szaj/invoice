@@ -38,14 +38,12 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      # Process liveness only — /api/health can return 503 if DB is briefly unreachable
-      # and would keep the stack from coming up. Probe DB via curl after start.
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/api/health').then(()=>process.exit(0)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 30s
       timeout: 10s

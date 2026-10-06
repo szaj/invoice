@@ -16,6 +16,12 @@ function currentAppEnv() {
 
 export async function proxy(request: NextRequest) {
   const appEnv = currentAppEnv();
+  const pathname = request.nextUrl.pathname;
+
+  // Docker / LB probes hit HTTP on the container; do not force HTTPS or auth here.
+  if (pathname === "/api/health" || pathname.startsWith("/api/health/")) {
+    return NextResponse.next();
+  }
 
   if (requiresHttps(appEnv) && !requestIsHttps(request)) {
     const httpsUrl = request.nextUrl.clone();
@@ -24,7 +30,6 @@ export async function proxy(request: NextRequest) {
   }
 
   const { response, identity } = await refreshAuthSession(request);
-  const pathname = request.nextUrl.pathname;
   const isPublic = isPublicAuthPath(pathname);
 
   if (!identity && !isPublic) {

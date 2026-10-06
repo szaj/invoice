@@ -33,7 +33,9 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/api/webhooks/stripe" ||
     pathname.startsWith("/api/webhooks/stripe/") ||
     pathname === "/api/webhooks/paypal" ||
-    pathname.startsWith("/api/webhooks/paypal/")
+    pathname.startsWith("/api/webhooks/paypal/") ||
+    pathname === "/api/health" ||
+    pathname.startsWith("/api/health/")
   );
 }
 
