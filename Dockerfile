@@ -30,7 +30,8 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/package.json /tmp/app-package.json
 WORKDIR /opt/prisma-cli
 RUN npm init -y >/dev/null 2>&1 \
-  && PRISMA_VERSION=$(node -p "require('/tmp/app-package.json').dependencies.prisma") \
+  && PRISMA_VERSION=$(node -p "const p=require('/tmp/app-package.json'); p.devDependencies?.prisma || p.dependencies?.prisma || p.dependencies?.['@prisma/client']") \
+  && echo "Installing prisma@${PRISMA_VERSION}" \
   && npm install "prisma@${PRISMA_VERSION}" --omit=dev \
   && rm -f /tmp/app-package.json \
   && chown -R nextjs:nodejs /opt/prisma-cli
