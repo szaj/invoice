@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "server-only": ["./tests/shims/server-only.ts"]
+      "server-only": ["./scripts/shims/server-only.js"]
     }
   },
   "include": ["scripts/**/*.ts", "src/**/*.ts"]

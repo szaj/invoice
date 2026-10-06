@@ -37,7 +37,7 @@
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "backup:database": "tsx scripts/backup-database.ts",
     "restore:database": "tsx scripts/restore-database.ts",
-    "worker": "tsx --tsconfig tsconfig.worker.json scripts/worker.ts",
+    "worker": "node --require ./scripts/register-server-only-shim.cjs ./node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.worker.json scripts/worker.ts",
     "docker:staging:build": "docker compose --project-directory deploy/staging build",
     "docker:staging:up": "docker compose --project-directory deploy/staging up -d",
     "docker:staging:down": "docker compose --project-directory deploy/staging down",
