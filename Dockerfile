@@ -11,6 +11,8 @@ RUN pnpm install --frozen-lockfile
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Next.js standalone expects ./public even when the app has no static assets.
+RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm prisma generate && pnpm build
 
