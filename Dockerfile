@@ -24,9 +24,16 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Prisma 7 custom output (schema: src/generated/prisma) — not node_modules/.prisma
+COPY --from=builder /app/src/generated/prisma ./src/generated/prisma
+# migrate deploy needs Prisma 7 config + dotenv loader; runtime needs adapter/pg
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/src/config/load-env-files.ts ./src/config/load-env-files.ts
+COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/pg ./node_modules/pg
+COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
 COPY deploy/docker-entrypoint-web.sh /usr/local/bin/docker-entrypoint-web.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint-web.sh
 USER nextjs
