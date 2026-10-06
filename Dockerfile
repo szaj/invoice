@@ -51,6 +51,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.pnpm ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pg ./node_modules/pg
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
+# prisma.config.ts imports `prisma/config` from /app — point at the CLI install.
+RUN ln -sfn /opt/prisma-cli/node_modules/prisma ./node_modules/prisma
 COPY --chown=nextjs:nodejs deploy/docker-entrypoint-web.sh /usr/local/bin/docker-entrypoint-web.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint-web.sh
 USER nextjs
